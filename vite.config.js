@@ -37,7 +37,9 @@ export default defineConfig({
         navigateFallback: `/${REPO}/index.html`,
       },
       devOptions: {
-        enabled: true,
+        // Keep the service worker out of dev — it interferes with HMR/tooling.
+        // The production build still generates a full offline-capable PWA.
+        enabled: false,
       },
     }),
   ],
