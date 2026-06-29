@@ -7,23 +7,30 @@ import {
   DAYS_OPTIONS,
   SESSION_OPTIONS,
 } from '../data/options.js'
-import { saveProfile } from '../lib/storage.js'
+import { saveProfile, saveProgram, loadProfile } from '../lib/storage.js'
+import { generateProgram } from '../lib/generator.js'
 
 const toggle = (arr, val) =>
   arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]
 
 const STEPS = ['focus', 'balance', 'equipment', 'schedule', 'goals']
 
+const DEFAULT_DRAFT = {
+  focusAreas: [],
+  trainOthers: true,
+  equipment: [],
+  daysPerWeek: 3,
+  sessionLength: 45,
+  goals: [],
+}
+
 export default function Onboarding() {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
-  const [draft, setDraft] = useState({
-    focusAreas: [],
-    trainOthers: true,
-    equipment: [],
-    daysPerWeek: 3,
-    sessionLength: 45,
-    goals: [],
+  // Prefill from an existing profile when re-running setup.
+  const [draft, setDraft] = useState(() => {
+    const existing = loadProfile()
+    return existing ? { ...DEFAULT_DRAFT, ...existing } : DEFAULT_DRAFT
   })
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
@@ -44,7 +51,9 @@ export default function Onboarding() {
   const next = () => {
     if (!isValid) return
     if (isLast) {
-      saveProfile({ ...draft, createdAt: new Date().toISOString() })
+      const profile = { ...draft, createdAt: new Date().toISOString() }
+      saveProfile(profile)
+      saveProgram(generateProgram(profile))
       navigate('/today')
     } else {
       setStep((s) => s + 1)
