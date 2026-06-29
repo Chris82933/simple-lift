@@ -1,35 +1,29 @@
 // Analyzes a finished session and splits the outcome into:
 //  • persist  — applied immediately (carry entered weights forward, GZCLP deloads)
 //  • autoNotes — informational messages for deloads that were auto-applied
-//  • suggestions — *optional* increases the user confirms at the end, defaulted
-//    to weight vs reps based on the program's goals.
+//  • suggestions — *optional* increases the user confirms at the end. The
+//    default is always to keep the weight the same; a lift-appropriate
+//    increment is merely flagged as "recommended".
 import { schemeOf, evaluateProgression, applyStage } from './gzclp.js'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 
-const GOAL_PREF = {
-  strength: 'weight', general: 'weight', climbing: 'weight',
-  size: 'reps', endurance: 'reps', running: 'reps',
-}
+// Selectable weight increments per unit (smallest → largest).
+export const INCREMENTS = { lbs: [2.5, 5, 10], kg: [1.25, 2.5, 5] }
 
-export function goalDefault(goals = []) {
-  const prefs = goals.map((g) => GOAL_PREF[g] || 'weight')
-  if (prefs.length === 0) return 'weight'
-  const reps = prefs.filter((p) => p === 'reps').length
-  return reps > prefs.length / 2 ? 'reps' : 'weight'
+// The lift-appropriate increment to flag as recommended.
+export function recommendedInc(ex, units) {
+  const lower = ex.regions?.includes('legs') && ['squat', 'hinge', 'lunge'].includes(ex.pattern)
+  const isolation = !ex.compound
+  if (units === 'kg') return isolation ? 1.25 : lower ? 5 : 2.5
+  return isolation ? 2.5 : lower ? 10 : 5
 }
-
-const INC = { lbs: { big: 10, small: 5 }, kg: { big: 5, small: 2.5 } }
-const isLower = (ex) =>
-  ex.regions?.includes('legs') && ['squat', 'hinge', 'lunge'].includes(ex.pattern)
-const weightInc = (ex, units) => (INC[units] || INC.lbs)[isLower(ex) ? 'big' : 'small']
 
 const maxEntered = (logged) => Math.max(0, ...logged.map((s) => Number(s.weight) || 0))
 
 export function reviewSession(session, setsMap, goals, units) {
-  const persist = []      // { exId, ...fields to write now }
-  const autoNotes = []    // strings (deloads already applied)
-  const suggestions = []  // confirmable increases
-  const def = goalDefault(goals)
+  const persist = []
+  const autoNotes = []
+  const suggestions = []
 
   for (const ex of session.exercises) {
     const logged = setsMap[ex.id] || []
@@ -39,14 +33,12 @@ export function reviewSession(session, setsMap, goals, units) {
     const target = ex.repHigh
     const completedAll = doneSets.length >= ex.sets && doneSets.every((s) => Number(s.reps) >= target)
 
-    // Always carry the entered working weight forward (fixes blank-prefill).
     const base = { exId: ex.id }
     if (tracksLoad && entered > 0) base.startWeight = entered
 
     const scheme = schemeOf(ex)
 
-    // Nothing ticked → incomplete. Keep everything as-is, just remember the
-    // weight for next time (no progression, no deload, no suggestion).
+    // Nothing ticked → incomplete: keep everything, just remember the weight.
     if (doneSets.length === 0) {
       if (scheme && entered > 0) base.progression = { ...ex.progression, weight: entered }
       persist.push(base)
@@ -57,16 +49,15 @@ export function reviewSession(session, setsMap, goals, units) {
     if (scheme) {
       const result = evaluateProgression(ex, logged, units)
       if (result.kind === 'increase') {
-        // Keep current weight now; offer the bump as a confirmable suggestion.
-        base.progression = { ...ex.progression, weight: entered || ex.progression.weight }
+        const baseWeight = entered || ex.progression.weight
+        base.progression = { ...ex.progression, weight: baseWeight }
         persist.push(base)
         suggestions.push({
-          exId: ex.id, name: ex.name, kind: 'gzclp', goalDefault: 'weight',
-          weight: { to: result.progression.weight, inc: result.inc },
-          proposed: result.progression,
+          exId: ex.id, name: ex.name, type: 'load',
+          base: baseWeight, reps: null, // GZCLP progresses by weight, not reps
+          recommendedInc: recommendedInc(ex, units), isGzclp: true,
         })
       } else {
-        // deload / hold — apply automatically.
         if (result.kind === 'deload') autoNotes.push(result.message)
         base.progression = result.progression
         persist.push(base)
@@ -79,32 +70,30 @@ export function reviewSession(session, setsMap, goals, units) {
       persist.push(base)
       if (completedAll) {
         const next = EXERCISE_BY_ID[ex.nextId]
-        suggestions.push({
-          exId: ex.id, name: ex.name, kind: 'levelUp',
-          nextId: ex.nextId, nextName: next?.name, goalDefault: 'levelUp',
-        })
+        suggestions.push({ exId: ex.id, name: ex.name, type: 'levelUp', nextId: ex.nextId, nextName: next?.name })
       }
       continue
     }
 
-    // --- Generic loaded / bodyweight exercises ---
+    // --- Generic exercises ---
     persist.push(base)
     if (completedAll) {
-      const s = { exId: ex.id, name: ex.name, kind: 'generic', goalDefault: tracksLoad ? def : 'reps' }
       if (tracksLoad && entered > 0) {
-        const inc = weightInc(ex, units)
-        s.weight = { to: entered + inc, inc }
+        suggestions.push({
+          exId: ex.id, name: ex.name, type: 'load',
+          base: entered, reps: { to: target + 1 },
+          recommendedInc: recommendedInc(ex, units), isGzclp: false,
+        })
+      } else {
+        suggestions.push({ exId: ex.id, name: ex.name, type: 'reps', reps: { to: target + 1 } })
       }
-      s.reps = { to: target + 1 }
-      // Only surface if there's at least one actionable option.
-      if (s.weight || s.reps) suggestions.push(s)
     }
   }
 
-  return { persist, autoNotes, suggestions, goalDefault: def }
+  return { persist, autoNotes, suggestions }
 }
 
-// Apply the confirmed choices to a fresh program copy. choices: { exId: 'weight'|'reps'|'levelUp'|'keep' }
+// Choice keys: 'keep' | 'reps' | `w${increment}` (e.g. 'w5')
 export function applyChoices(program, dayIndex, suggestions, choices) {
   const exercises = program.days[dayIndex].exercises.map((ex) => {
     const sug = suggestions.find((s) => s.exId === ex.id)
@@ -123,12 +112,14 @@ export function applyChoices(program, dayIndex, suggestions, choices) {
         startWeight: '',
       }
     }
-    if (choice === 'weight' && sug.weight) {
-      if (ex.progression) return applyStage({ ...ex, progression: { ...sug.proposed } })
-      return { ...ex, startWeight: sug.weight.to }
-    }
     if (choice === 'reps' && sug.reps) {
-      return { ...ex, repHigh: sug.reps.to, repLow: Math.max(ex.repLow ?? sug.reps.to, ex.repLow ?? 0) }
+      return { ...ex, repHigh: sug.reps.to }
+    }
+    if (choice.startsWith('w')) {
+      const inc = parseFloat(choice.slice(1))
+      const newWeight = sug.base + inc
+      if (ex.progression) return applyStage({ ...ex, progression: { ...ex.progression, weight: newWeight } })
+      return { ...ex, startWeight: newWeight }
     }
     return ex
   })

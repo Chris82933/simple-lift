@@ -7,6 +7,7 @@ import Builder from './pages/Builder.jsx'
 import Templates from './pages/Templates.jsx'
 import Schedule from './pages/Schedule.jsx'
 import OneRepMax from './pages/OneRepMax.jsx'
+import Progress from './pages/Progress.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import Profile from './pages/Profile.jsx'
 import Workout from './pages/Workout.jsx'
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/program" element={<Program />} />
         <Route path="/programs" element={<Programs />} />
         <Route path="/templates" element={<Templates />} />
+        <Route path="/progress" element={<Progress />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
 

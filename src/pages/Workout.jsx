@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation } from '../lib/storage.js'
 import { repsLabel } from '../data/schemes.js'
 import { stageNote, applyStage } from '../lib/gzclp.js'
-import { reviewSession, applyChoices } from '../lib/sessionReview.js'
+import { reviewSession, applyChoices, INCREMENTS } from '../lib/sessionReview.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import RestTimer from '../components/RestTimer.jsx'
@@ -28,28 +28,23 @@ function applyPersist(program, dayIndex, persist) {
   return { ...program, days: program.days.map((d, i) => (i === dayIndex ? { ...d, exercises } : d)) }
 }
 
-// ---- progression-choice helpers (end-of-session) ----
-const optionsFor = (sug) => {
-  if (sug.kind === 'levelUp') return ['levelUp', 'keep']
+// ---- progression-choice options (end-of-session). Default is always 'keep'. ----
+const optionsFor = (sug, units) => {
+  if (sug.type === 'levelUp') {
+    return [
+      { key: 'levelUp', label: `Level up → ${sug.nextName}` },
+      { key: 'keep', label: 'Keep same' },
+    ]
+  }
   const opts = []
-  if (sug.weight) opts.push('weight')
-  if (sug.reps && sug.kind !== 'gzclp') opts.push('reps')
-  opts.push('keep')
+  if (sug.type === 'load') {
+    for (const inc of INCREMENTS[units] || INCREMENTS.lbs) {
+      opts.push({ key: `w${inc}`, label: `+${inc} ${units}`, recommended: inc === sug.recommendedInc })
+    }
+  }
+  if (sug.reps) opts.push({ key: 'reps', label: '+1 rep' })
+  opts.push({ key: 'keep', label: 'Keep same' })
   return opts
-}
-const defaultChoice = (sug) => {
-  const opts = optionsFor(sug)
-  if (sug.kind === 'levelUp') return 'levelUp'
-  if (sug.goalDefault === 'reps' && opts.includes('reps')) return 'reps'
-  if (opts.includes('weight')) return 'weight'
-  if (opts.includes('reps')) return 'reps'
-  return 'keep'
-}
-const labelFor = (opt, sug, units) => {
-  if (opt === 'weight') return `+${sug.weight.inc} ${units}`
-  if (opt === 'reps') return '+1 rep'
-  if (opt === 'levelUp') return `Level up → ${sug.nextName}`
-  return 'Keep same'
 }
 
 export default function Workout() {
@@ -130,8 +125,9 @@ export default function Workout() {
     if (fresh) updateProgram(applyPersist(fresh, dayIndex, result.persist))
     advanceRotation(program.id, dayIndex)
 
+    // Default is always "keep the same" — increases are an explicit choice.
     const initChoices = {}
-    result.suggestions.forEach((s) => { initChoices[s.exId] = defaultChoice(s) })
+    result.suggestions.forEach((s) => { initChoices[s.exId] = 'keep' })
     setChoices(initChoices)
     setReview(result)
     setFinished(true)
@@ -147,7 +143,6 @@ export default function Workout() {
   }
 
   if (finished) {
-    const goalWord = review.goalDefault === 'reps' ? 'more reps' : 'more weight'
     return (
       <section className="page full-flow">
         <header className="page-header">
@@ -162,28 +157,41 @@ export default function Workout() {
 
         {review.suggestions.length > 0 && (
           <div className="card">
-            <p className="group-label">Ready for more next time?</p>
+            <p className="group-label">Progress next time?</p>
             <p className="muted small">
-              You completed everything on these. Based on your goals we&apos;ve pre-picked <strong>{goalWord}</strong> — tweak any below, or keep them the same.
+              You completed everything on these. Bump them up only if it felt right — otherwise keep the same (the default).
             </p>
             {review.suggestions.map((sug) => (
               <div className="review-row" key={sug.exId}>
-                <span className="review-name">{sug.kind === 'levelUp' ? '🚀' : '✅'} {sug.name}</span>
+                <span className="review-name">{sug.type === 'levelUp' ? '🚀' : '✅'} {sug.name}</span>
                 <div className="choice-chips">
-                  {optionsFor(sug).map((opt) => (
+                  {optionsFor(sug, units).map((opt) => (
                     <button
-                      key={opt}
+                      key={opt.key}
                       type="button"
-                      className={'chip' + (choices[sug.exId] === opt ? ' is-selected' : '')}
-                      onClick={() => setChoices((c) => ({ ...c, [sug.exId]: opt }))}
+                      className={'chip' + (choices[sug.exId] === opt.key ? ' is-selected' : '')}
+                      onClick={() => setChoices((c) => ({ ...c, [sug.exId]: opt.key }))}
                     >
-                      {labelFor(opt, sug, units)}
+                      {opt.label}{opt.recommended ? ' ★' : ''}
                     </button>
                   ))}
                 </div>
               </div>
             ))}
+            <p className="muted small">★ = the usual jump for this kind of lift.</p>
           </div>
+        )}
+
+        {review.suggestions.length > 0 && (
+          <details className="card guide">
+            <summary>When should I add weight or reps?</summary>
+            <ul className="tips">
+              <li><strong>Add weight</strong> when you finished all sets and reps with clean form and the last set still had <strong>1–2 reps in the tank</strong> — the bar moved smoothly, not a grind.</li>
+              <li><strong>Add a rep</strong> when you hit your sets but the weight felt heavy, or your goal is muscle/endurance — earn the reps before adding load.</li>
+              <li><strong>Keep the same</strong> if form broke down, bar speed slowed a lot, or any set felt maximal. Repeating a weight builds confidence and is never wasted.</li>
+              <li><strong>Increment guide:</strong> big lifts (squat, deadlift) jump ~10 lb, upper-body presses/rows ~5 lb, and small isolation moves ~2.5 lb.</li>
+            </ul>
+          </details>
         )}
 
         {review.autoNotes.length > 0 && (

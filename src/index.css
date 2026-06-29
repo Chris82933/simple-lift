@@ -656,6 +656,49 @@ select.text-input { appearance: none; }
   color: #fff;
 }
 
+/* ---- "When to increase" guide ---- */
+.guide summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--accent);
+  list-style: none;
+}
+.guide summary::-webkit-details-marker { display: none; }
+.guide summary::before { content: '▸ '; }
+.guide[open] summary::before { content: '▾ '; }
+.guide .tips { margin-top: 10px; }
+
+/* ---- Progress chart ---- */
+.progress-chart { width: 100%; height: auto; display: block; }
+.chart-grid { stroke: var(--border); stroke-width: 1; }
+.chart-axis { fill: var(--muted); font-size: 9px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.legend-item.is-off { opacity: 0.4; }
+.legend-swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+
+/* ---- Session log ---- */
+.log-entry { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.log-entry:last-child { border-bottom: none; }
+.log-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.log-exercises { display: flex; flex-direction: column; gap: 4px; }
+.log-row { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.log-row > span:last-child { white-space: nowrap; }
+
 .flow-actions {
   margin-top: auto;
   display: flex;
