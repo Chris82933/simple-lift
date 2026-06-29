@@ -86,6 +86,14 @@ export default function Profile() {
         </p>
       </div>
 
+      {/* ---- Tools ---- */}
+      <div className="card">
+        <p className="group-label">Tools</p>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/one-rep-max')}>
+          🏋️ 1RM &amp; working-weight finder
+        </button>
+      </div>
+
       {/* ---- Units ---- */}
       <div className="card">
         <p className="group-label">Units</p>

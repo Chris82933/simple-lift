@@ -5,6 +5,7 @@ const PROGRAMS_KEY = 'simple-lift:programs'
 const ACTIVE_KEY = 'simple-lift:activeProgramId'
 const HISTORY_KEY = 'simple-lift:history'
 const SETTINGS_KEY = 'simple-lift:settings'
+const MAXES_KEY = 'simple-lift:maxes'
 const UPDATED_KEY = 'simple-lift:updatedAt'
 const LEGACY_PROGRAM_KEY = 'simple-lift:program' // pre-multi-program
 
@@ -112,6 +113,24 @@ export function deleteProgram(id) {
   }
 }
 
+// ---- Estimated maxes (from the 1RM calculator) ----
+// Shape: { [exerciseId]: { oneRM, weight, reps, rir, units, name, updatedAt } }
+export const loadMaxes = () => read(MAXES_KEY, {})
+export const getMax = (exerciseId) => loadMaxes()[exerciseId] || null
+
+export function saveMax(exerciseId, data) {
+  const maxes = loadMaxes()
+  maxes[exerciseId] = { ...data, updatedAt: new Date().toISOString() }
+  write(MAXES_KEY, maxes)
+  return maxes
+}
+
+export function deleteMax(exerciseId) {
+  const maxes = loadMaxes()
+  delete maxes[exerciseId]
+  write(MAXES_KEY, maxes)
+}
+
 // ---- Workout history ----
 export const loadHistory = () => read(HISTORY_KEY, [])
 
@@ -139,6 +158,7 @@ export function exportData() {
     activeProgramId: read(ACTIVE_KEY),
     history: read(HISTORY_KEY, []),
     settings: read(SETTINGS_KEY, { units: 'lbs' }),
+    maxes: read(MAXES_KEY, {}),
     updatedAt: read(UPDATED_KEY, 0),
   }
 }
@@ -151,13 +171,14 @@ export function importData(blob) {
   if (blob.activeProgramId !== undefined) write(ACTIVE_KEY, blob.activeProgramId, { silent: true })
   if (blob.history !== undefined) write(HISTORY_KEY, blob.history, { silent: true })
   if (blob.settings !== undefined) write(SETTINGS_KEY, blob.settings, { silent: true })
+  if (blob.maxes !== undefined) write(MAXES_KEY, blob.maxes, { silent: true })
   if (blob.updatedAt !== undefined) localStorage.setItem(UPDATED_KEY, JSON.stringify(blob.updatedAt))
 }
 
 export const getUpdatedAt = () => read(UPDATED_KEY, 0)
 
 export function clearAll() {
-  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, UPDATED_KEY, LEGACY_PROGRAM_KEY].forEach(
+  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, UPDATED_KEY, LEGACY_PROGRAM_KEY].forEach(
     (k) => localStorage.removeItem(k),
   )
   window.dispatchEvent(new CustomEvent('sl-data-changed'))

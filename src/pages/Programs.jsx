@@ -35,6 +35,7 @@ export default function Programs() {
           ＋ Build custom program
         </button>
         <Link className="btn btn-ghost" to="/onboarding">Generate one from a few questions</Link>
+        <Link className="btn btn-ghost" to="/one-rep-max">🏋️ Find your starting weights (1RM)</Link>
       </div>
 
       {programs.length === 0 && (

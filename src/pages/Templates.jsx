@@ -1,6 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { TEMPLATES, instantiateTemplate } from '../data/templates.js'
-import { addProgram } from '../lib/storage.js'
+import { addProgram, getMax, loadSettings } from '../lib/storage.js'
+import { weightForReps, incrementForUnits } from '../lib/oneRepMax.js'
+
+// Conservative starting reps per GZCLP tier (heavier T1, lighter accessory).
+const TIER_START_REPS = { t1: 5, t2: 10, t3: 15 }
 
 export default function Templates() {
   const navigate = useNavigate()
@@ -8,6 +12,21 @@ export default function Templates() {
   const use = (templateId) => {
     const program = instantiateTemplate(templateId)
     if (!program) return
+
+    // Prefill scheme-based starting weights from any saved 1RMs.
+    const inc = incrementForUnits(loadSettings().units)
+    for (const day of program.days) {
+      for (const ex of day.exercises) {
+        if (!ex.progression) continue
+        const max = getMax(ex.id)
+        if (max) {
+          const repsTarget = TIER_START_REPS[ex.progression.scheme] || ex.repHigh
+          ex.progression.weight = weightForReps(max.oneRM, repsTarget, inc)
+          ex.startWeight = ex.progression.weight
+        }
+      }
+    }
+
     addProgram(program) // becomes active
     navigate('/schedule') // let them set their training days
   }

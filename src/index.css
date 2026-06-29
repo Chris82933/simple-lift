@@ -539,6 +539,71 @@ select.text-input { appearance: none; }
 .suggestion.levelup span { flex: 1; }
 .suggestion.levelup .btn { flex: none; }
 
+/* ---- 1RM calculator ---- */
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+.big-input { font-size: 22px; font-weight: 700; text-align: center; }
+.advanced { display: flex; flex-direction: column; gap: 4px; }
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+}
+.stepper-label { font-size: 14px; }
+.stepper-controls { display: flex; align-items: center; gap: 10px; }
+.stepper-controls button {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+}
+.stepper-value { min-width: 44px; text-align: center; font-weight: 700; font-size: 16px; }
+
+.result-card { border-color: var(--accent); align-items: stretch; }
+.result-lift { font-weight: 600; margin: 0; color: var(--muted); }
+.result-1rm { margin: 0; font-size: 18px; color: var(--muted); }
+.result-1rm span { font-size: 44px; font-weight: 800; color: var(--accent); }
+
+.weight-table { display: flex; flex-direction: column; }
+.weight-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.weight-row:last-child { border-bottom: none; }
+.weight-row strong { text-align: right; }
+
+.screenshot-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-radius: 10px;
+  padding: 8px;
+  margin: 4px 0 0;
+}
+
+.tips { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+.tips li { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.tips strong { color: var(--text); }
+
 .flow-actions {
   margin-top: auto;
   display: flex;

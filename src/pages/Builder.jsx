@@ -5,8 +5,9 @@ import { GOALS } from '../data/options.js'
 import { schemeForGoals } from '../data/schemes.js'
 import { WEEKDAY_LABELS } from '../lib/generator.js'
 import {
-  loadProfile, getProgram, addProgram, updateProgram,
+  loadProfile, getProgram, addProgram, updateProgram, getMax, loadSettings,
 } from '../lib/storage.js'
+import { weightForReps, incrementForUnits } from '../lib/oneRepMax.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
@@ -14,12 +15,15 @@ const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
 const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
 
 // Build a day's default exercise entry from the library + current goal scheme.
-function makeExercise(ex, scheme) {
+// Prefills a starting weight from a saved 1RM when one exists for this lift.
+function makeExercise(ex, scheme, inc) {
   const tier = ex.compound ? scheme.compound : scheme.accessory
+  const max = ex.load !== false ? getMax(ex.id) : null
   return {
     id: ex.id, name: ex.name, pattern: ex.pattern, regions: ex.regions,
     compound: ex.compound, load: ex.load !== false, cues: ex.cues,
-    sets: tier.sets, reps: tier.repHigh, restSec: tier.rest, startWeight: '',
+    sets: tier.sets, reps: tier.repHigh, restSec: tier.rest,
+    startWeight: max ? String(weightForReps(max.oneRM, tier.repHigh, inc)) : '',
   }
 }
 
@@ -57,6 +61,7 @@ export default function Builder() {
   const [search, setSearch] = useState('')
 
   const scheme = useMemo(() => schemeForGoals(draft.goals), [draft.goals])
+  const inc = incrementForUnits(loadSettings().units)
 
   const update = (patch) => setDraft((d) => ({ ...d, ...patch }))
   const updateDay = (i, patch) =>
@@ -75,7 +80,7 @@ export default function Builder() {
     updateDay(di, { exercises: draft.days[di].exercises.filter((_, j) => j !== ei) })
 
   const addExerciseToDay = (di, ex) =>
-    updateDay(di, { exercises: [...draft.days[di].exercises, makeExercise(ex, scheme)] })
+    updateDay(di, { exercises: [...draft.days[di].exercises, makeExercise(ex, scheme, inc)] })
 
   const totalExercises = draft.days.reduce((n, d) => n + d.exercises.length, 0)
   const canSave = draft.name.trim() && draft.days.some((d) => d.exercises.length > 0)
@@ -144,6 +149,10 @@ export default function Builder() {
               </button>
             ))}
           </div>
+          <p className="muted small">
+            💡 Starting weights auto-fill from your saved 1RMs.{' '}
+            <button type="button" className="link-btn" onClick={() => navigate('/one-rep-max')}>Find your maxes</button>
+          </p>
         </div>
 
         {draft.days.map((day, di) => (
