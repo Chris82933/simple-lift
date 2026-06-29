@@ -382,6 +382,126 @@ body {
 }
 .history-row:last-child { border-bottom: none; }
 
+/* ---- Inputs ---- */
+.text-input {
+  width: 100%;
+  padding: 11px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+}
+.text-input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+select.text-input { appearance: none; }
+.icon-btn {
+  border: none;
+  background: var(--surface-2);
+  color: var(--muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  flex: none;
+}
+
+/* ---- Program builder ---- */
+.builder-day-head { display: flex; gap: 10px; align-items: center; }
+.builder-day-head .select { flex: 1; }
+.builder-exercise {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.builder-ex-top { display: flex; align-items: center; gap: 10px; }
+.builder-ex-top .ex-name { flex: 1; }
+.builder-fields { display: flex; flex-wrap: wrap; gap: 8px; }
+.builder-fields label {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  gap: 3px;
+  flex: 1;
+  min-width: 64px;
+}
+.builder-fields input {
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 15px;
+  text-align: center;
+}
+
+/* ---- Exercise picker overlay ---- */
+.picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 16, 0.6);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 40;
+}
+.picker-sheet {
+  width: 100%;
+  max-width: var(--maxw);
+  background: var(--surface);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  border: 1px solid var(--border);
+  max-height: 80dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+}
+.picker-head { display: flex; gap: 10px; align-items: center; }
+.picker-head .text-input { flex: 1; }
+.picker-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.picker-item .ex-name { flex: 1; }
+.add-plus { font-size: 20px; color: var(--accent); font-weight: 700; }
+
+/* ---- Programs list ---- */
+.switch-row { flex-direction: row; gap: 10px; }
+.switch-row .btn { flex: 1; }
+.program-card.is-active { border-color: var(--accent); }
+.program-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.program-card-actions { display: flex; gap: 8px; }
+.active-badge {
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface));
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ---- Account ---- */
+.account-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.notice { border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
+
 .flow-actions {
   margin-top: auto;
   display: flex;

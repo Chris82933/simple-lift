@@ -7,7 +7,7 @@ import {
   DAYS_OPTIONS,
   SESSION_OPTIONS,
 } from '../data/options.js'
-import { saveProfile, saveProgram, loadProfile } from '../lib/storage.js'
+import { saveProfile, addProgram, loadProfile } from '../lib/storage.js'
 import { generateProgram } from '../lib/generator.js'
 
 const toggle = (arr, val) =>
@@ -53,7 +53,7 @@ export default function Onboarding() {
     if (isLast) {
       const profile = { ...draft, createdAt: new Date().toISOString() }
       saveProfile(profile)
-      saveProgram(generateProgram(profile))
+      addProgram(generateProgram(profile))
       navigate('/today')
     } else {
       setStep((s) => s + 1)

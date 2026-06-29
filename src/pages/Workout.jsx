@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { loadProgram, loadSettings, appendWorkout } from '../lib/storage.js'
+import { loadActiveProgram, loadSettings, appendWorkout } from '../lib/storage.js'
 import { repsLabel } from '../data/schemes.js'
-import { suggestLoad } from '../lib/progression.js'
+import { suggestProgress } from '../lib/progression.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import RestTimer from '../components/RestTimer.jsx'
 
@@ -16,21 +16,25 @@ function defaultDayIndex(program, stateIndex) {
 export default function Workout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const program = loadProgram()
+  const program = loadActiveProgram()
   const settings = loadSettings()
   const units = settings.units || 'lbs'
+  const goals = program?.goals || program?.meta?.goals || []
 
   const dayIndex = program ? defaultDayIndex(program, location.state?.dayIndex) : 0
   const session = program?.days[dayIndex]
 
-  // Per-exercise progression suggestions (computed once from history).
+  const prescriptionOf = (ex) => ({ sets: ex.sets, repLow: ex.repLow ?? ex.repHigh, repHigh: ex.repHigh })
+
+  // Per-exercise progression suggestions (computed once from history + goals).
   const suggestions = useMemo(() => {
     if (!session) return {}
     const out = {}
     for (const ex of session.exercises) {
-      out[ex.id] = suggestLoad(ex, { sets: ex.sets, repHigh: ex.repHigh }, units)
+      out[ex.id] = suggestProgress(ex, prescriptionOf(ex), units, goals)
     }
     return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, units])
 
   // Set-tracking state: { [exId]: [{ weight, reps, done }] }
@@ -38,12 +42,16 @@ export default function Workout() {
     const initial = {}
     if (session) {
       for (const ex of session.exercises) {
-        const sug = suggestLoad(ex, { sets: ex.sets, repHigh: ex.repHigh }, units)
-        initial[ex.id] = Array.from({ length: ex.sets }, () => ({
-          weight: ex.load !== false && sug?.suggestedWeight ? String(sug.suggestedWeight) : '',
-          reps: String(ex.repHigh),
-          done: false,
-        }))
+        const sug = suggestProgress(ex, prescriptionOf(ex), units, goals)
+        // Prefill weight from the suggestion, falling back to a custom start weight.
+        const weight =
+          ex.load !== false
+            ? sug?.suggestedWeight
+              ? String(sug.suggestedWeight)
+              : (ex.startWeight ? String(ex.startWeight) : '')
+            : ''
+        const reps = String(sug?.suggestedReps ?? ex.repHigh)
+        initial[ex.id] = Array.from({ length: ex.sets }, () => ({ weight, reps, done: false }))
       }
     }
     return initial
@@ -92,6 +100,7 @@ export default function Workout() {
     }))
     appendWorkout({
       date: new Date().toISOString(),
+      programId: program.id,
       sessionTitle: session.title,
       dayIndex,
       entries,

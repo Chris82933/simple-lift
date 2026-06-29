@@ -1,0 +1,78 @@
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  loadPrograms, getActiveProgramId, setActiveProgramId, deleteProgram,
+} from '../lib/storage.js'
+
+export default function Programs() {
+  const navigate = useNavigate()
+  const [, force] = useState(0)
+  const programs = loadPrograms()
+  const activeId = getActiveProgramId()
+
+  const refresh = () => force((n) => n + 1)
+
+  const makeActive = (id) => { setActiveProgramId(id); refresh() }
+  const remove = (id, name) => {
+    if (window.confirm(`Delete "${name}"? This can't be undone.`)) {
+      deleteProgram(id)
+      refresh()
+    }
+  }
+
+  return (
+    <section className="page">
+      <header className="page-header">
+        <h1>Programs</h1>
+        <p className="muted">Switch between programs, or build a new one.</p>
+      </header>
+
+      <div className="card">
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/builder')}>
+          ＋ Build custom program
+        </button>
+        <Link className="btn btn-ghost" to="/onboarding">Generate one from a few questions</Link>
+      </div>
+
+      {programs.length === 0 && (
+        <div className="card placeholder-card">
+          <p className="muted">No programs yet. Create one above.</p>
+        </div>
+      )}
+
+      {programs.map((p) => {
+        const isActive = p.id === activeId
+        const exCount = p.days.reduce((n, d) => n + d.exercises.length, 0)
+        return (
+          <div className={'card program-card' + (isActive ? ' is-active' : '')} key={p.id}>
+            <div className="program-card-head">
+              <div>
+                <p className="day-title">{p.name}</p>
+                <p className="muted small">
+                  {p.source === 'custom' ? 'Custom' : 'Generated'} · {p.days.length} days · {exCount} exercises
+                </p>
+              </div>
+              {isActive ? (
+                <span className="active-badge">Active</span>
+              ) : (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => makeActive(p.id)}>
+                  Set active
+                </button>
+              )}
+            </div>
+            <div className="program-card-actions">
+              {p.source === 'custom' && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/builder', { state: { id: p.id } })}>
+                  Edit
+                </button>
+              )}
+              <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => remove(p.id, p.name)}>
+                Delete
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </section>
+  )
+}

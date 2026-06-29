@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { loadProgram, loadHistory } from '../lib/storage.js'
+import { loadActiveProgram, loadHistory } from '../lib/storage.js'
 import { repsLabel } from '../data/schemes.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 
@@ -20,7 +20,7 @@ function pickSession(days, todayWeekday) {
 
 export default function Today() {
   const navigate = useNavigate()
-  const program = loadProgram()
+  const program = loadActiveProgram()
   const history = loadHistory()
 
   if (!program) {

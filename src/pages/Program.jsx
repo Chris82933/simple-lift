@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { loadProgram } from '../lib/storage.js'
+import { loadActiveProgram, loadPrograms } from '../lib/storage.js'
 import { repsLabel } from '../data/schemes.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 
@@ -10,7 +10,8 @@ const GOAL_LABEL = {
 
 export default function Program() {
   const navigate = useNavigate()
-  const program = loadProgram()
+  const program = loadActiveProgram()
+  const programCount = loadPrograms().length
 
   if (!program) {
     return (
@@ -19,26 +20,35 @@ export default function Program() {
         <div className="card placeholder-card">
           <p className="placeholder-title">Nothing here yet</p>
           <p className="muted">Build a program and your weekly split will show up here.</p>
-          <Link className="btn btn-primary" to="/onboarding">Build my program</Link>
+          <button className="btn btn-primary" onClick={() => navigate('/builder')}>Build custom program</button>
+          <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
         </div>
       </section>
     )
   }
 
-  const { meta } = program
+  const goals = program.goals || program.meta?.goals || []
 
   return (
     <section className="page">
       <header className="page-header">
-        <h1>Your program</h1>
+        <p className="eyebrow">Active program</p>
+        <h1>{program.name}</h1>
         <p className="muted">
-          {meta.daysPerWeek} days/week · ~{meta.sessionLength} min ·{' '}
-          {meta.goals.map((g) => GOAL_LABEL[g] || g).join(', ')}
+          {program.days.length} days/week
+          {goals.length ? ' · ' + goals.map((g) => GOAL_LABEL[g] || g).join(', ') : ''}
         </p>
       </header>
 
+      <div className="card switch-row">
+        <Link className="btn btn-ghost btn-sm" to="/programs">
+          Switch / manage{programCount > 1 ? ` (${programCount})` : ''}
+        </Link>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/builder')}>＋ New</button>
+      </div>
+
       {program.days.map((day, i) => (
-        <div className="card day-card" key={day.title}>
+        <div className="card day-card" key={i}>
           <div className="day-head">
             <div>
               <p className="eyebrow">{day.dayLabel}</p>
@@ -52,10 +62,10 @@ export default function Program() {
               Start
             </button>
           </div>
-          <p className="muted small balance-note">⚖️ {day.note}</p>
+          {day.note && <p className="muted small balance-note">⚖️ {day.note}</p>}
           <ul className="exercise-preview">
-            {day.exercises.map((ex) => (
-              <li key={ex.id}>
+            {day.exercises.map((ex, j) => (
+              <li key={j}>
                 <ExerciseFigure pattern={ex.pattern} size={40} />
                 <span className="ex-name">{ex.name}</span>
                 <span className="muted small">{ex.sets} × {repsLabel(ex)}</span>
@@ -65,10 +75,13 @@ export default function Program() {
         </div>
       ))}
 
-      <div className="card">
-        <p className="muted small">Want to change focus, equipment, or goals?</p>
-        <Link className="btn btn-ghost" to="/onboarding">Rebuild program</Link>
-      </div>
+      {program.source === 'custom' && (
+        <div className="card">
+          <button className="btn btn-ghost" onClick={() => navigate('/builder', { state: { id: program.id } })}>
+            Edit this program
+          </button>
+        </div>
+      )}
     </section>
   )
 }

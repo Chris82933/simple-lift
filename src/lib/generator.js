@@ -152,6 +152,9 @@ export function generateProgram(profile) {
   })
 
   return {
+    name: `${daysPerWeek}-Day Plan`,
+    source: 'generated',
+    goals, // used by progressive-overload suggestions
     createdAt: new Date().toISOString(),
     meta: { daysPerWeek, sessionLength, goals, focusAreas, trainOthers },
     scheme,
