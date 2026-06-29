@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { loadActiveProgram, loadSettings, appendWorkout } from '../lib/storage.js'
+import { loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation } from '../lib/storage.js'
 import { repsLabel } from '../data/schemes.js'
+import { EXERCISE_BY_ID } from '../data/exercises.js'
 import { suggestProgress } from '../lib/progression.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import RestTimer from '../components/RestTimer.jsx'
@@ -16,13 +17,19 @@ function defaultDayIndex(program, stateIndex) {
 export default function Workout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const program = loadActiveProgram()
   const settings = loadSettings()
   const units = settings.units || 'lbs'
-  const goals = program?.goals || program?.meta?.goals || []
 
-  const dayIndex = program ? defaultDayIndex(program, location.state?.dayIndex) : 0
-  const session = program?.days[dayIndex]
+  // Snapshot the program & session once at mount so mid-session edits (e.g.
+  // leveling up an exercise for next time) don't reload/break the live workout.
+  const stateDayIndex = location.state?.dayIndex
+  const [snapshot] = useState(() => {
+    const program = loadActiveProgram()
+    const dayIndex = program ? defaultDayIndex(program, stateDayIndex) : 0
+    return { program, dayIndex, session: program?.days[dayIndex] ?? null }
+  })
+  const { program, dayIndex, session } = snapshot
+  const goals = program?.goals || program?.meta?.goals || []
 
   const prescriptionOf = (ex) => ({ sets: ex.sets, repLow: ex.repLow ?? ex.repHigh, repHigh: ex.repHigh })
 
@@ -59,6 +66,27 @@ export default function Workout() {
 
   const [rest, setRest] = useState(null) // { seconds } | null
   const [finished, setFinished] = useState(false)
+  const [leveledUp, setLeveledUp] = useState({}) // exId -> new level name (for next session)
+
+  // Swap a bodyweight exercise up to the next ladder level for next time.
+  const levelUp = (ex, nextId) => {
+    const next = EXERCISE_BY_ID[nextId]
+    if (!next) return
+    const prog = loadActiveProgram()
+    const newEx = {
+      id: next.id, name: next.name, pattern: next.pattern, regions: next.regions,
+      compound: next.compound, load: next.load !== false, cues: next.cues,
+      ladderId: next.ladderId || null, nextId: next.nextId || null, prevId: next.prevId || null,
+      sets: ex.sets, repLow: ex.repLow ?? ex.repHigh, repHigh: ex.repHigh, restSec: ex.restSec, startWeight: '',
+    }
+    updateProgram({
+      ...prog,
+      days: prog.days.map((d, i) =>
+        i === dayIndex ? { ...d, exercises: d.exercises.map((e) => (e.id === ex.id ? newEx : e)) } : d,
+      ),
+    })
+    setLeveledUp((s) => ({ ...s, [ex.id]: next.name }))
+  }
 
   if (!program || !session) {
     return (
@@ -105,6 +133,8 @@ export default function Workout() {
       dayIndex,
       entries,
     })
+    // For rotation programs, advance to the next workout in the cycle.
+    advanceRotation(program.id, dayIndex)
     setFinished(true)
   }
 
@@ -158,7 +188,18 @@ export default function Workout() {
               </div>
 
               <p className="cue">💡 {ex.cues}</p>
-              {sug?.reason && <p className="suggestion">📈 {sug.reason}</p>}
+              {leveledUp[ex.id] ? (
+                <p className="suggestion">✓ Leveled up — next session you&apos;ll do {leveledUp[ex.id]}.</p>
+              ) : sug?.kind === 'levelUp' ? (
+                <div className="suggestion levelup">
+                  <span>🚀 {sug.reason}</span>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => levelUp(ex, sug.nextId)}>
+                    Level up
+                  </button>
+                </div>
+              ) : (
+                sug?.reason && <p className="suggestion">📈 {sug.reason}</p>
+              )}
 
               <div className={'set-table' + (tracksLoad ? '' : ' no-load')}>
                 <div className="set-head">

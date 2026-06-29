@@ -51,9 +51,25 @@ function migrateLegacy() {
   }
 }
 
+// Ensure every program has a schedule (older ones default to fixed weekdays).
+function normalizeProgram(p) {
+  if (!p.schedule) p.schedule = { mode: 'fixed' }
+  if (p.schedule.mode === 'rotation' && p.schedule.pointer == null) p.schedule.pointer = 0
+  return p
+}
+
 export function loadPrograms() {
   migrateLegacy()
-  return read(PROGRAMS_KEY, [])
+  return read(PROGRAMS_KEY, []).map(normalizeProgram)
+}
+
+// Advance a rotation program's pointer to the next workout after one is done.
+export function advanceRotation(programId, completedDayIndex) {
+  const programs = loadPrograms()
+  const p = programs.find((x) => x.id === programId)
+  if (!p || p.schedule?.mode !== 'rotation') return
+  p.schedule.pointer = (completedDayIndex + 1) % p.days.length
+  savePrograms(programs)
 }
 
 export const savePrograms = (arr) => write(PROGRAMS_KEY, arr)

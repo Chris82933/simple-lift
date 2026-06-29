@@ -20,7 +20,7 @@ export const PATTERNS = {
   CONDITIONING: 'conditioning',
 }
 
-export const EXERCISES = [
+const BASE_EXERCISES = [
   // ---- Squat ----
   { id: 'back_squat', name: 'Back Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell', 'rack'], compound: true, tags: ['running'], cues: 'Brace your core, sit between your hips, drive through mid-foot.' },
   { id: 'front_squat', name: 'Front Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell', 'rack'], compound: true, cues: 'Elbows high, upright torso, knees track over toes.' },
@@ -103,4 +103,23 @@ export const EXERCISES = [
   { id: 'mountain_climber', name: 'Mountain Climbers', pattern: 'conditioning', regions: ['core', 'legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Hips low, drive the knees quickly, steady breathing.' },
 ]
 
+// Merge in the bodyweight ladder variants, then stitch easy↔hard links onto
+// every exercise that's part of a ladder (base or variant).
+import { LADDER_EXERCISES, LADDERS } from './progressions.js'
+
+export const EXERCISES = [...BASE_EXERCISES, ...LADDER_EXERCISES]
 export const EXERCISE_BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]))
+
+for (const ladder of LADDERS) {
+  ladder.order.forEach((id, i) => {
+    const ex = EXERCISE_BY_ID[id]
+    if (!ex) return
+    ex.ladderId = ladder.id
+    ex.ladderName = ladder.name
+    ex.levelIndex = i
+    ex.prevId = ladder.order[i - 1] || null
+    ex.nextId = ladder.order[i + 1] || null
+  })
+}
+
+export { LADDERS }

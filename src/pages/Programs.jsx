@@ -28,7 +28,10 @@ export default function Programs() {
       </header>
 
       <div className="card">
-        <button type="button" className="btn btn-primary" onClick={() => navigate('/builder')}>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/templates')}>
+          📋 Browse templates (GZCLP, bodyweight…)
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/builder')}>
           ＋ Build custom program
         </button>
         <Link className="btn btn-ghost" to="/onboarding">Generate one from a few questions</Link>
@@ -61,6 +64,11 @@ export default function Programs() {
               )}
             </div>
             <div className="program-card-actions">
+              {isActive && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/schedule')}>
+                  Schedule
+                </button>
+              )}
               {p.source === 'custom' && (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/builder', { state: { id: p.id } })}>
                   Edit

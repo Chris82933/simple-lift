@@ -502,6 +502,43 @@ select.text-input { appearance: none; }
 .account-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .notice { border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
 
+/* ---- Templates ---- */
+.template-card { gap: 8px; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+/* ---- Schedule editor ---- */
+.assign-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.assign-row .ex-name { flex: 1; }
+.assign-row .select { flex: 1; max-width: 55%; }
+
+/* ---- Week header + rest note ---- */
+.week-head { display: flex; align-items: center; justify-content: space-between; }
+.link-sm { color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; }
+.rest-note {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 4px 0 0;
+}
+
+/* ---- Level-up suggestion ---- */
+.suggestion.levelup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+.suggestion.levelup span { flex: 1; }
+.suggestion.levelup .btn { flex: none; }
+
 .flow-actions {
   margin-top: auto;
   display: flex;

@@ -48,7 +48,9 @@ const slotsForLength = (minutes) => Math.min(8, Math.max(3, Math.round(minutes /
 
 function availableFor(equipment) {
   const have = new Set(equipment)
-  return EXERCISES.filter((e) => e.requires.every((r) => have.has(r)))
+  // Ladder-only variants are excluded from auto-generation — they're for
+  // templates and manual selection in the builder.
+  return EXERCISES.filter((e) => !e.ladderOnly && e.requires.every((r) => have.has(r)))
 }
 
 // Pick the best exercise for a pattern, given focus/goals and prior usage.

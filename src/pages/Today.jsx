@@ -1,22 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { loadActiveProgram, loadHistory } from '../lib/storage.js'
 import { repsLabel } from '../data/schemes.js'
+import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
-
-const WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-// Index of the next session to do, starting from today.
-function pickSession(days, todayWeekday) {
-  const todayIdx = days.findIndex((d) => d.weekday === todayWeekday)
-  if (todayIdx !== -1) return { index: todayIdx, isToday: true }
-  // nearest upcoming training day
-  let best = null
-  days.forEach((d, i) => {
-    const ahead = (d.weekday - todayWeekday + 7) % 7
-    if (best === null || ahead < best.ahead) best = { index: i, ahead }
-  })
-  return best ? { index: best.index, isToday: false } : null
-}
 
 export default function Today() {
   const navigate = useNavigate()
@@ -32,19 +18,21 @@ export default function Today() {
         <div className="card placeholder-card">
           <p className="placeholder-title">No program yet</p>
           <p className="muted">
-            Answer a few quick questions and Simple Lift will build a compound-lift
-            program around your goals, equipment, and schedule.
+            Build a program — pick a ready-made template, generate one from a few
+            questions, or design your own.
           </p>
-          <Link className="btn btn-primary" to="/onboarding">Build my program</Link>
+          <button className="btn btn-primary" onClick={() => navigate('/templates')}>Browse templates</button>
+          <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
         </div>
       </section>
     )
   }
 
   const todayWeekday = new Date().getDay()
-  const pick = pickSession(program.days, todayWeekday)
-  const session = program.days[pick.index]
-  const trainingWeekdays = new Set(program.days.map((d) => d.weekday))
+  const pick = pickSession(program, todayWeekday)
+  const session = pick.session
+  const trainWds = new Set(trainingWeekdays(program))
+  const warning = restWarnings(trainingWeekdays(program))
   const lastWorkout = history[0]
 
   return (
@@ -56,15 +44,16 @@ export default function Today() {
 
       {!pick.isToday && (
         <p className="muted" style={{ marginTop: -8 }}>
-          Today&apos;s a rest day. Your next session is {session.dayLabel}.
+          Today&apos;s a rest day. Your next session is{' '}
+          {pick.nextWeekday != null ? WEEKDAY_LABELS[pick.nextWeekday] : 'coming up'}.
         </p>
       )}
 
       <div className="card">
-        <p className="muted small">{session.note}</p>
+        {session.note && <p className="muted small">{session.note}</p>}
         <ul className="exercise-preview">
-          {session.exercises.map((ex) => (
-            <li key={ex.id}>
+          {session.exercises.map((ex, j) => (
+            <li key={j}>
               <ExerciseFigure pattern={ex.pattern} size={40} />
               <span className="ex-name">{ex.name}</span>
               <span className="muted small">{ex.sets} × {repsLabel(ex)}</span>
@@ -81,14 +70,17 @@ export default function Today() {
       </div>
 
       <div className="card">
-        <p className="group-label">This week</p>
+        <div className="week-head">
+          <p className="group-label" style={{ margin: 0 }}>This week</p>
+          <Link className="link-sm" to="/schedule">Edit days</Link>
+        </div>
         <div className="week-strip">
-          {WEEK.map((label, wd) => (
+          {WEEKDAY_SHORT.map((label, wd) => (
             <div
               key={label}
               className={
                 'day-chip' +
-                (trainingWeekdays.has(wd) ? ' is-training' : '') +
+                (trainWds.has(wd) ? ' is-training' : '') +
                 (wd === todayWeekday ? ' is-today' : '')
               }
             >
@@ -96,6 +88,7 @@ export default function Today() {
             </div>
           ))}
         </div>
+        {warning && <p className="muted small rest-note">💤 {warning}</p>}
         {lastWorkout && (
           <p className="muted small">
             Last workout: {lastWorkout.sessionTitle} · {new Date(lastWorkout.date).toLocaleDateString()}

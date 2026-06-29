@@ -20,7 +20,8 @@ export default function Program() {
         <div className="card placeholder-card">
           <p className="placeholder-title">Nothing here yet</p>
           <p className="muted">Build a program and your weekly split will show up here.</p>
-          <button className="btn btn-primary" onClick={() => navigate('/builder')}>Build custom program</button>
+          <button className="btn btn-primary" onClick={() => navigate('/templates')}>Browse templates</button>
+          <button className="btn btn-ghost" onClick={() => navigate('/builder')}>Build custom program</button>
           <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
         </div>
       </section>
@@ -44,7 +45,7 @@ export default function Program() {
         <Link className="btn btn-ghost btn-sm" to="/programs">
           Switch / manage{programCount > 1 ? ` (${programCount})` : ''}
         </Link>
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/builder')}>＋ New</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/schedule')}>📅 Schedule</button>
       </div>
 
       {program.days.map((day, i) => (

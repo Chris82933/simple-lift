@@ -1,4 +1,5 @@
 import { lastPerformance } from './storage.js'
+import { EXERCISE_BY_ID } from '../data/exercises.js'
 
 // Smallest sensible load jump per unit / movement size.
 const INCREMENT = {
@@ -69,8 +70,20 @@ export function suggestProgress(exercise, prescription, units = 'lbs', goals = [
   const hitTopReps = allSetsDone && completed.every((s) => Number(s.reps) >= repHigh)
   const inc = INCREMENT[units] || INCREMENT.lbs
 
-  // Bodyweight / unloaded: progress purely by reps.
+  // Bodyweight / unloaded: progress by reps, then up the ladder.
   if (!tracksLoad) {
+    const ownedIt = allSetsDone && lastMinReps >= repHigh
+    if (ownedIt && exercise.nextId) {
+      const next = EXERCISE_BY_ID[exercise.nextId]
+      return {
+        kind: 'levelUp',
+        nextId: exercise.nextId,
+        nextName: next?.name,
+        suggestedReps: repLow,
+        reason: `You owned every set — ready to level up to ${next?.name}.`,
+        progressed: true,
+      }
+    }
     if (allSetsDone) {
       return {
         kind: 'addReps',
