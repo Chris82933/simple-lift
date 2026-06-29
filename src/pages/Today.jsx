@@ -3,6 +3,7 @@ import { loadActiveProgram, loadHistory } from '../lib/storage.js'
 import { repsLabel } from '../data/schemes.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
+import FormCheckButton from '../components/FormCheckButton.jsx'
 
 export default function Today() {
   const navigate = useNavigate()
@@ -56,6 +57,7 @@ export default function Today() {
             <li key={j}>
               <ExerciseFigure pattern={ex.pattern} size={40} />
               <span className="ex-name">{ex.name}</span>
+              <FormCheckButton name={ex.name} compact />
               <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''}</span>
             </li>
           ))}

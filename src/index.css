@@ -604,6 +604,58 @@ select.text-input { appearance: none; }
 .tips li { font-size: 13px; color: var(--muted); line-height: 1.5; }
 .tips strong { color: var(--text); }
 
+/* ---- YouTube form-check button ---- */
+.form-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  flex: none;
+  line-height: 1;
+}
+.form-check:hover { border-color: #ff0000; }
+.form-check svg { display: block; }
+.form-check.compact { padding: 5px; }
+
+/* Exercise title + form button row (workout cards) */
+.exercise-headings { flex: 1; min-width: 0; }
+.ex-title-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.ex-title-row .ex-name { min-width: 0; }
+
+/* ---- End-of-session progression choices ---- */
+.review-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.review-row:last-child { border-bottom: none; }
+.review-name { font-weight: 600; font-size: 15px; }
+.choice-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  color: #fff;
+}
+
 .flow-actions {
   margin-top: auto;
   display: flex;
