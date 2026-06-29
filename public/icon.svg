@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Simple Lift">
+  <rect width="512" height="512" rx="112" fill="#0f172a"/>
+  <!-- Minimalist barbell -->
+  <g stroke="#38bdf8" stroke-width="26" stroke-linecap="round" fill="none">
+    <line x1="176" y1="256" x2="336" y2="256"/>
+  </g>
+  <g fill="#38bdf8">
+    <rect x="120" y="196" width="34" height="120" rx="14"/>
+    <rect x="86" y="216" width="30" height="80" rx="12"/>
+    <rect x="358" y="196" width="34" height="120" rx="14"/>
+    <rect x="396" y="216" width="30" height="80" rx="12"/>
+  </g>
+</svg>

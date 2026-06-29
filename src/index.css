@@ -1,0 +1,195 @@
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #273449;
+  --border: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-ink: #04222e;
+  --radius: 16px;
+  --maxw: 520px;
+
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  display: flex;
+  justify-content: center;
+}
+
+/* ---- App shell + bottom nav ---- */
+.app-shell {
+  width: 100%;
+  max-width: var(--maxw);
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 88px; /* clear the fixed nav */
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  max-width: var(--maxw);
+  display: flex;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 12px;
+  border-radius: 12px;
+  transition: color 0.15s, background 0.15s;
+}
+.nav-item.is-active { color: var(--accent); background: var(--surface-2); }
+.nav-icon { font-size: 20px; }
+
+/* ---- Pages ---- */
+.page {
+  padding: 24px 20px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.full-flow { min-height: 100dvh; }
+
+.page-header h1 { font-size: 26px; margin: 2px 0 6px; letter-spacing: -0.02em; }
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0;
+}
+.muted { color: var(--muted); margin: 4px 0; line-height: 1.5; }
+.small { font-size: 13px; }
+
+/* ---- Cards ---- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.placeholder-card { align-items: flex-start; }
+.placeholder-title { font-weight: 600; margin: 0; font-size: 16px; }
+
+/* ---- Buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
+
+/* ---- Onboarding region grid ---- */
+.region-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.region-tile {
+  padding: 22px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.region-tile:active { background: var(--surface-2); }
+
+.flow-actions {
+  margin-top: auto;
+  display: flex;
+  gap: 12px;
+  padding-top: 8px;
+}
+.flow-actions .btn { flex: 1; }
+
+/* ---- Program week strip ---- */
+.week-strip { display: flex; gap: 8px; }
+.day-chip {
+  flex: 1;
+  text-align: center;
+  padding: 10px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---- Profile settings ---- */
+.settings-list { list-style: none; margin: 0; padding: 0; }
+.settings-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.settings-list li:last-child { border-bottom: none; }
+
+/* ---- Workout set rows ---- */
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.set-row span:first-child { font-weight: 600; }
+.set-check {
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+}
