@@ -8,6 +8,7 @@ import Templates from './pages/Templates.jsx'
 import Schedule from './pages/Schedule.jsx'
 import OneRepMax from './pages/OneRepMax.jsx'
 import Progress from './pages/Progress.jsx'
+import CardioLog from './pages/CardioLog.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import Profile from './pages/Profile.jsx'
 import Workout from './pages/Workout.jsx'
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/builder" element={<Builder />} />
       <Route path="/schedule" element={<Schedule />} />
       <Route path="/one-rep-max" element={<OneRepMax />} />
+      <Route path="/cardio" element={<CardioLog />} />
 
       {/* Main app shell with bottom navigation */}
       <Route element={<AppLayout />}>

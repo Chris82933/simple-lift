@@ -69,6 +69,7 @@ export default function Today() {
         >
           {pick.isToday ? 'Start workout' : `Start ${session.title} now`}
         </button>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>❤️ Log cardio</button>
       </div>
 
       <div className="card">

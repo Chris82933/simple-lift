@@ -92,6 +92,9 @@ export default function Profile() {
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/one-rep-max')}>
           🏋️ 1RM &amp; working-weight finder
         </button>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>
+          ❤️ Log cardio
+        </button>
       </div>
 
       {/* ---- Units ---- */}

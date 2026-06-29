@@ -28,7 +28,10 @@ export default function RestTimer({ seconds, onDone }) {
         <span className="rest-label">Rest</span>
         <span className="rest-count">{fmt(Math.max(0, remaining))}</span>
         <div className="rest-actions">
-          <button type="button" className="rest-btn" onClick={() => setRemaining((r) => r + 15)}>
+          <button type="button" className="rest-btn" onClick={() => setRemaining((r) => Math.max(0, r - 15))} aria-label="Subtract 15 seconds">
+            −15s
+          </button>
+          <button type="button" className="rest-btn" onClick={() => setRemaining((r) => r + 15)} aria-label="Add 15 seconds">
             +15s
           </button>
           <button type="button" className="rest-btn primary" onClick={() => doneRef.current?.()}>

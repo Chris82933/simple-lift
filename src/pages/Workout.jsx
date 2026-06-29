@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation } from '../lib/storage.js'
-import { repsLabel } from '../data/schemes.js'
+import { loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation, addCardio } from '../lib/storage.js'
+import { repsLabel, schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { stageNote, applyStage } from '../lib/gzclp.js'
 import { reviewSession, applyChoices, INCREMENTS } from '../lib/sessionReview.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import RestTimer from '../components/RestTimer.jsx'
+import ExercisePicker from '../components/ExercisePicker.jsx'
+import CardioForm from '../components/CardioForm.jsx'
 
 function defaultDayIndex(program, stateIndex) {
   if (Number.isInteger(stateIndex)) return stateIndex
@@ -81,10 +83,45 @@ export default function Workout() {
     return initial
   })
 
+  // Live, editable exercise list (lets users add/remove/adjust mid-workout).
+  const [exercises, setExercises] = useState(() => (session ? session.exercises : []))
+  const [editMode, setEditMode] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [cardioOpen, setCardioOpen] = useState(false)
+  const [cardioSaved, setCardioSaved] = useState(0)
+
   const [rest, setRest] = useState(null)
   const [finished, setFinished] = useState(false)
   const [review, setReview] = useState({ autoNotes: [], suggestions: [] })
   const [choices, setChoices] = useState({})
+
+  // Add an exercise to this session (one-off — not saved to the program).
+  const addExercise = (ex) => {
+    if (exercises.some((e) => e.id === ex.id)) return // avoid dup ids/state collision
+    const scheme = schemeForGoals(goals)
+    const p = prescriptionFor(ex, scheme)
+    const entry = {
+      id: ex.id, name: ex.name, pattern: ex.pattern, regions: ex.regions,
+      compound: ex.compound, load: ex.load !== false, cues: ex.cues,
+      ladderId: ex.ladderId || null, nextId: ex.nextId || null,
+      sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec, startWeight: '', adhoc: true,
+    }
+    setExercises((list) => [...list, entry])
+    setSets((s) => ({
+      ...s,
+      [ex.id]: Array.from({ length: p.sets }, () => ({ weight: '', reps: String(p.repHigh), done: false })),
+    }))
+  }
+
+  const removeExercise = (exId) => {
+    setExercises((list) => list.filter((e) => e.id !== exId))
+    setSets((s) => { const n = { ...s }; delete n[exId]; return n })
+  }
+
+  const adjustRest = (exId, delta) =>
+    setExercises((list) => list.map((e) => (e.id === exId ? { ...e, restSec: Math.max(0, e.restSec + delta) } : e)))
+
+  const logCardio = (entry) => { addCardio(entry); setCardioSaved((n) => n + 1); setCardioOpen(false) }
 
   if (!program || !session) {
     return (
@@ -112,15 +149,19 @@ export default function Workout() {
       return { ...s, [exId]: s[exId].map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }
     })
 
-  const totalSets = session.exercises.reduce((n, ex) => n + ex.sets, 0)
+  const totalSets = exercises.reduce((n, ex) => n + (sets[ex.id]?.length || ex.sets), 0)
   const doneSets = Object.values(sets).flat().filter((r) => r.done).length
 
   const finish = () => {
-    const entries = session.exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, sets: sets[ex.id] }))
+    const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, sets: sets[ex.id] }))
     appendWorkout({ date: new Date().toISOString(), programId: program.id, sessionTitle: session.title, dayIndex, entries })
 
     // Carry values forward + auto-apply deloads; collect optional increase suggestions.
-    const result = reviewSession(session, sets, goals, units)
+    // Ad-hoc adds aren't in the program, so they can't persist/progress — exclude them.
+    const programIds = new Set(program.days[dayIndex].exercises.map((e) => e.id))
+    const result = reviewSession({ ...session, exercises }, sets, goals, units)
+    result.persist = result.persist.filter((p) => programIds.has(p.exId))
+    result.suggestions = result.suggestions.filter((s) => programIds.has(s.exId))
     const fresh = loadActiveProgram()
     if (fresh) updateProgram(applyPersist(fresh, dayIndex, result.persist))
     advanceRotation(program.id, dayIndex)
@@ -213,16 +254,21 @@ export default function Workout() {
   return (
     <section className="page full-flow workout">
       <header className="page-header">
-        <p className="eyebrow">{session.dayLabel} · Workout</p>
+        <div className="workout-head-row">
+          <p className="eyebrow">{session.dayLabel} · Workout</p>
+          <button type="button" className={'edit-toggle' + (editMode ? ' is-on' : '')} onClick={() => setEditMode((e) => !e)}>
+            {editMode ? 'Done editing' : '✎ Edit'}
+          </button>
+        </div>
         <h1>{session.title}</h1>
         <div className="progress-track" aria-hidden="true">
-          <div className="progress-fill" style={{ width: `${(doneSets / totalSets) * 100}%` }} />
+          <div className="progress-fill" style={{ width: `${(doneSets / Math.max(1, totalSets)) * 100}%` }} />
         </div>
         <p className="muted small">{doneSets} / {totalSets} sets done</p>
       </header>
 
       <div className="step-body">
-        {session.exercises.map((ex) => {
+        {exercises.map((ex) => {
           const tracksLoad = ex.load !== false
           return (
             <div className="card exercise-card" key={ex.id}>
@@ -230,8 +276,10 @@ export default function Workout() {
                 <ExerciseFigure pattern={ex.pattern} size={52} />
                 <div className="exercise-headings">
                   <div className="ex-title-row">
-                    <p className="ex-name big">{ex.name}</p>
-                    <FormCheckButton name={ex.name} />
+                    <p className="ex-name big">{ex.name}{ex.adhoc ? ' ＋' : ''}</p>
+                    {editMode
+                      ? <button type="button" className="icon-btn" onClick={() => removeExercise(ex.id)} aria-label={`Remove ${ex.name}`}>✕</button>
+                      : <FormCheckButton name={ex.name} />}
                   </div>
                   <p className="muted small">
                     {ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} reps · {ex.restSec}s rest
@@ -239,6 +287,17 @@ export default function Workout() {
                   </p>
                 </div>
               </div>
+
+              {editMode && (
+                <div className="rest-edit">
+                  <span className="muted small">Rest timer</span>
+                  <div className="rest-stepper">
+                    <button type="button" onClick={() => adjustRest(ex.id, -15)} aria-label="less rest">–</button>
+                    <span>{ex.restSec}s</span>
+                    <button type="button" onClick={() => adjustRest(ex.id, 15)} aria-label="more rest">+</button>
+                  </div>
+                </div>
+              )}
 
               <p className="cue">💡 {ex.cues}</p>
               {ex.progression && <p className="suggestion">🎯 {stageNote(ex, units)}</p>}
@@ -291,6 +350,12 @@ export default function Workout() {
             </div>
           )
         })}
+
+        <div className="add-row">
+          <button type="button" className="btn btn-ghost" onClick={() => setPickerOpen(true)}>＋ Add exercise</button>
+          <button type="button" className="btn btn-ghost" onClick={() => setCardioOpen(true)}>❤️ Log cardio</button>
+        </div>
+        {cardioSaved > 0 && <p className="muted small">✓ {cardioSaved} cardio session{cardioSaved === 1 ? '' : 's'} logged.</p>}
       </div>
 
       <div className="flow-actions">
@@ -299,6 +364,23 @@ export default function Workout() {
       </div>
 
       {rest && <RestTimer key={rest.key} seconds={rest.seconds} onDone={() => setRest(null)} />}
+
+      {pickerOpen && (
+        <ExercisePicker onPick={addExercise} onClose={() => setPickerOpen(false)} />
+      )}
+      {cardioOpen && (
+        <div className="picker-overlay" role="dialog" aria-label="Log cardio">
+          <div className="picker-sheet">
+            <div className="picker-head">
+              <p className="ex-name big" style={{ flex: 1 }}>Log cardio</p>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCardioOpen(false)}>Close</button>
+            </div>
+            <div className="picker-list">
+              <CardioForm onSaved={logCardio} units={units} />
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

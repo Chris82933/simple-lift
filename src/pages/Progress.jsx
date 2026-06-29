@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { loadHistory, loadSettings } from '../lib/storage.js'
+import { Link, useNavigate } from 'react-router-dom'
+import { loadHistory, loadSettings, loadCardio } from '../lib/storage.js'
+import { CARDIO_BY_ID } from '../data/cardio.js'
 import ProgressChart from '../components/ProgressChart.jsx'
 
 const PALETTE = ['#38bdf8', '#f472b6', '#4ade80', '#fbbf24', '#a78bfa', '#fb7185', '#22d3ee', '#facc15']
@@ -35,10 +36,34 @@ function topSet(entry) {
   return done.length ? `${done.length} × ${done[0].reps}` : '—'
 }
 
+const CARDIO_METRICS = [
+  { id: 'time', label: 'Time (min)', field: (c) => c.durationMin },
+  { id: 'distance', label: 'Distance', field: (c) => c.distance },
+  { id: 'calories', label: 'Calories', field: (c) => c.calories },
+]
+
+// Group cardio entries into per-machine series for the chosen metric.
+function buildCardioSeries(cardio, metricId) {
+  const metric = CARDIO_METRICS.find((m) => m.id === metricId)
+  const byMachine = {}
+  for (const c of [...cardio].reverse()) {
+    const v = Number(metric.field(c))
+    if (!v) continue
+    const m = CARDIO_BY_ID[c.machine]
+    if (!byMachine[c.machine]) byMachine[c.machine] = { id: c.machine, name: m?.name || c.machineName, color: m?.color || '#94a3b8', points: [] }
+    byMachine[c.machine].points.push({ t: new Date(c.date).getTime(), weight: v })
+  }
+  return Object.values(byMachine).filter((s) => s.points.length > 0)
+}
+
 export default function Progress() {
+  const navigate = useNavigate()
   const history = loadHistory()
+  const cardio = loadCardio()
   const units = loadSettings().units || 'lbs'
   const allSeries = useMemo(() => buildSeries(history), [history])
+  const [cardioMetric, setCardioMetric] = useState('time')
+  const cardioSeries = useMemo(() => buildCardioSeries(cardio, cardioMetric), [cardio, cardioMetric])
 
   // Default: show up to the 5 most-tracked exercises.
   const [hidden, setHidden] = useState(() => new Set(allSeries.slice(5).map((s) => s.id)))
@@ -49,14 +74,15 @@ export default function Progress() {
   })
   const visible = allSeries.filter((s) => !hidden.has(s.id))
 
-  if (history.length === 0) {
+  if (history.length === 0 && cardio.length === 0) {
     return (
       <section className="page">
         <header className="page-header"><h1>Progress</h1></header>
         <div className="card placeholder-card">
           <p className="placeholder-title">No sessions yet</p>
-          <p className="muted">Finish a workout and it&apos;ll show up here — with a chart of your weights climbing over time.</p>
+          <p className="muted">Finish a workout or log some cardio and it&apos;ll show up here — with charts of your progress over time.</p>
           <Link className="btn btn-primary" to="/today">Go to today</Link>
+          <button className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
         </div>
       </section>
     )
@@ -66,7 +92,7 @@ export default function Progress() {
     <section className="page">
       <header className="page-header">
         <h1>Progress</h1>
-        <p className="muted">{history.length} session{history.length === 1 ? '' : 's'} logged.</p>
+        <p className="muted">{history.length} session{history.length === 1 ? '' : 's'} · {cardio.length} cardio logged.</p>
       </header>
 
       <div className="card">
@@ -92,6 +118,51 @@ export default function Progress() {
         )}
       </div>
 
+      {/* ---- Cardio ---- */}
+      <div className="card">
+        <div className="week-head">
+          <p className="group-label" style={{ margin: 0 }}>Cardio over time</p>
+          <button className="link-sm" onClick={() => navigate('/cardio')}>＋ Log</button>
+        </div>
+        <div className="seg metric-seg">
+          {CARDIO_METRICS.map((m) => (
+            <button key={m.id} type="button" className={'seg-item' + (cardioMetric === m.id ? ' is-selected' : '')} onClick={() => setCardioMetric(m.id)}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {cardioSeries.length > 0 ? (
+          <>
+            <ProgressChart series={cardioSeries} />
+            <div className="legend">
+              {cardioSeries.map((s) => (
+                <span key={s.id} className="legend-item static">
+                  <span className="legend-swatch" style={{ background: s.color }} />{s.name}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="muted small">No cardio with this stat yet. <button className="link-btn" onClick={() => navigate('/cardio')}>Log some</button>.</p>
+        )}
+        {cardio.length > 0 && (
+          <div className="cardio-loglist">
+            {cardio.slice(0, 8).map((c) => {
+              const m = CARDIO_BY_ID[c.machine]
+              return (
+                <div className="log-row" key={c.id}>
+                  <span>{m?.icon} {c.machineName}</span>
+                  <span className="muted small">
+                    {c.durationMin}m{c.distance ? ` · ${c.distance}${c.distanceUnit}` : ''}{c.avgHr ? ` · ${c.avgHr}bpm` : ''} · {new Date(c.date).toLocaleDateString()}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {history.length > 0 && (
       <div className="card">
         <p className="group-label">Session log</p>
         {history.map((w, i) => (
@@ -111,6 +182,7 @@ export default function Progress() {
           </div>
         ))}
       </div>
+      )}
     </section>
   )
 }
