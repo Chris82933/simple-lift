@@ -4,6 +4,7 @@ import { loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceR
 import { repsLabel } from '../data/schemes.js'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 import { suggestProgress } from '../lib/progression.js'
+import { schemeOf, stageNote, evaluateProgression, applyStage } from '../lib/gzclp.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import RestTimer from '../components/RestTimer.jsx'
 
@@ -26,7 +27,12 @@ export default function Workout() {
   const [snapshot] = useState(() => {
     const program = loadActiveProgram()
     const dayIndex = program ? defaultDayIndex(program, stateDayIndex) : 0
-    return { program, dayIndex, session: program?.days[dayIndex] ?? null }
+    const raw = program?.days[dayIndex] ?? null
+    // Apply the current GZCLP stage so sets/reps shown match the progression.
+    const session = raw
+      ? { ...raw, exercises: raw.exercises.map((e) => (e.progression ? applyStage(e) : e)) }
+      : null
+    return { program, dayIndex, session }
   })
   const { program, dayIndex, session } = snapshot
   const goals = program?.goals || program?.meta?.goals || []
@@ -49,6 +55,12 @@ export default function Workout() {
     const initial = {}
     if (session) {
       for (const ex of session.exercises) {
+        // GZCLP exercises prefill from their tracked working weight.
+        if (ex.progression) {
+          const weight = ex.progression.weight != null ? String(ex.progression.weight) : ''
+          initial[ex.id] = Array.from({ length: ex.sets }, () => ({ weight, reps: String(ex.repHigh), done: false }))
+          continue
+        }
         const sug = suggestProgress(ex, prescriptionOf(ex), units, goals)
         // Prefill weight from the suggestion, falling back to a custom start weight.
         const weight =
@@ -66,6 +78,7 @@ export default function Workout() {
 
   const [rest, setRest] = useState(null) // { seconds } | null
   const [finished, setFinished] = useState(false)
+  const [progressNotes, setProgressNotes] = useState([]) // scheme progression messages
   const [leveledUp, setLeveledUp] = useState({}) // exId -> new level name (for next session)
 
   // Swap a bodyweight exercise up to the next ladder level for next time.
@@ -133,6 +146,29 @@ export default function Workout() {
       dayIndex,
       entries,
     })
+
+    // Apply scheme-based progression (e.g. GZCLP stages/weights) for next time.
+    const notes = []
+    const fresh = loadActiveProgram()
+    if (fresh) {
+      let changed = false
+      const updatedExercises = fresh.days[dayIndex].exercises.map((ex) => {
+        if (!ex.progression) return ex
+        const result = evaluateProgression(ex, sets[ex.id] || [], units)
+        if (!result) return ex
+        changed = true
+        notes.push(result.message)
+        return applyStage({ ...ex, progression: result.progression })
+      })
+      if (changed) {
+        updateProgram({
+          ...fresh,
+          days: fresh.days.map((d, i) => (i === dayIndex ? { ...d, exercises: updatedExercises } : d)),
+        })
+      }
+    }
+    setProgressNotes(notes)
+
     // For rotation programs, advance to the next workout in the cycle.
     advanceRotation(program.id, dayIndex)
     setFinished(true)
@@ -147,11 +183,16 @@ export default function Workout() {
         </header>
         <div className="card">
           <p className="placeholder-title">{session.title}</p>
-          <p className="muted">
-            {doneSets} of {totalSets} sets logged. Your progress is saved — next time
-            we&apos;ll use it to suggest your weights.
-          </p>
+          <p className="muted">{doneSets} of {totalSets} sets logged. Your progress is saved.</p>
         </div>
+        {progressNotes.length > 0 && (
+          <div className="card">
+            <p className="group-label">Next session</p>
+            {progressNotes.map((n, i) => (
+              <p className="muted small progress-note" key={i}>📈 {n}</p>
+            ))}
+          </div>
+        )}
         <div className="flow-actions">
           <button className="btn btn-primary" onClick={() => navigate('/today')}>Done</button>
         </div>
@@ -181,14 +222,16 @@ export default function Workout() {
                 <div>
                   <p className="ex-name big">{ex.name}</p>
                   <p className="muted small">
-                    {ex.sets} sets × {repsLabel(ex)} reps · {ex.restSec}s rest
+                    {ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} reps · {ex.restSec}s rest
                     {ex.compound ? ' · compound' : ''}
                   </p>
                 </div>
               </div>
 
               <p className="cue">💡 {ex.cues}</p>
-              {leveledUp[ex.id] ? (
+              {ex.progression ? (
+                <p className="suggestion">🎯 {stageNote(ex, units)}</p>
+              ) : leveledUp[ex.id] ? (
                 <p className="suggestion">✓ Leveled up — next session you&apos;ll do {leveledUp[ex.id]}.</p>
               ) : sug?.kind === 'levelUp' ? (
                 <div className="suggestion levelup">
@@ -208,9 +251,13 @@ export default function Workout() {
                   <span>reps</span>
                   <span>done</span>
                 </div>
-                {sets[ex.id].map((row, idx) => (
+                {sets[ex.id].map((row, idx) => {
+                  const isAmrapSet = ex.amrap && idx === sets[ex.id].length - 1
+                  return (
                   <div className={'set-line' + (row.done ? ' done' : '')} key={idx}>
-                    <span className="set-num">{idx + 1}</span>
+                    <span className="set-num" title={isAmrapSet ? 'AMRAP — as many reps as possible' : undefined}>
+                      {idx + 1}{isAmrapSet ? '+' : ''}
+                    </span>
                     {tracksLoad && (
                       <input
                         className="set-input"
@@ -239,7 +286,8 @@ export default function Workout() {
                       ✓
                     </button>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )

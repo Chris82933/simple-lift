@@ -16,6 +16,11 @@ function ex(id, sets, reps, rest, startWeight = '') {
   }
 }
 
+// GZCLP tier helpers — attach the authentic progression scheme to each lift.
+const t1 = (id) => ({ ...ex(id, 5, 3, 180), amrap: true, progression: { scheme: 't1', stage: 0, weight: null } })
+const t2 = (id) => ({ ...ex(id, 3, 10, 120), progression: { scheme: 't2', stage: 0, weight: null } })
+const t3 = (id) => ({ ...ex(id, 3, 15, 90), amrap: true, progression: { scheme: 't3', stage: 0, weight: null } })
+
 const day = (title, note, exercises) => ({
   title, note, weekday: null, dayLabel: title,
   regions: [...new Set(exercises.flatMap((e) => e.regions))],
@@ -34,16 +39,16 @@ export const TEMPLATES = [
     schedule: { mode: 'rotation', trainingDays: [1, 3, 5] },
     days: [
       day('A1 · Squat', 'T1 Squat 5×3+ · T2 Bench 3×10 · T3 Lat Pulldown 3×15+', [
-        ex('back_squat', 5, 3, 180), ex('bench_press', 3, 10, 120), ex('lat_pulldown', 3, 15, 90),
+        t1('back_squat'), t2('bench_press'), t3('lat_pulldown'),
       ]),
       day('B1 · OHP', 'T1 OHP 5×3+ · T2 Deadlift 3×10 · T3 Row 3×15+', [
-        ex('overhead_press', 5, 3, 180), ex('deadlift', 3, 10, 120), ex('db_row', 3, 15, 90),
+        t1('overhead_press'), t2('deadlift'), t3('db_row'),
       ]),
       day('A2 · Bench', 'T1 Bench 5×3+ · T2 Squat 3×10 · T3 Lat Pulldown 3×15+', [
-        ex('bench_press', 5, 3, 180), ex('back_squat', 3, 10, 120), ex('lat_pulldown', 3, 15, 90),
+        t1('bench_press'), t2('back_squat'), t3('lat_pulldown'),
       ]),
       day('B2 · Deadlift', 'T1 Deadlift 5×3+ · T2 OHP 3×10 · T3 Row 3×15+', [
-        ex('deadlift', 5, 3, 180), ex('overhead_press', 3, 10, 120), ex('db_row', 3, 15, 90),
+        t1('deadlift'), t2('overhead_press'), t3('db_row'),
       ]),
     ],
   },

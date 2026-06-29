@@ -56,7 +56,7 @@ export default function Today() {
             <li key={j}>
               <ExerciseFigure pattern={ex.pattern} size={40} />
               <span className="ex-name">{ex.name}</span>
-              <span className="muted small">{ex.sets} × {repsLabel(ex)}</span>
+              <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''}</span>
             </li>
           ))}
         </ul>
