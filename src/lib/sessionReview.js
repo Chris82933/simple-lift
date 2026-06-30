@@ -5,6 +5,7 @@
 //    default is always to keep the weight the same; a lift-appropriate
 //    increment is merely flagged as "recommended".
 import { schemeOf, evaluateProgression, applyStage } from './gzclp.js'
+import { isExtraScheme, evaluateExtra } from './progression.js'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 
 // Selectable weight increments per unit (smallest → largest).
@@ -37,11 +38,30 @@ export function reviewSession(session, setsMap, goals, units) {
     if (tracksLoad && entered > 0) base.startWeight = entered
 
     const scheme = schemeOf(ex)
+    const extra = isExtraScheme(ex.progression?.scheme) ? ex.progression.scheme : null
 
     // Nothing ticked → incomplete: keep everything, just remember the weight.
     if (doneSets.length === 0) {
-      if (scheme && entered > 0) base.progression = { ...ex.progression, weight: entered }
+      if ((scheme || extra) && entered > 0) base.progression = { ...ex.progression, weight: entered }
       persist.push(base)
+      continue
+    }
+
+    // --- Linear / Greyskull progression (lp, gslp) ---
+    if (extra) {
+      const result = evaluateExtra(ex, logged, units)
+      base.progression = result.progression
+      if (tracksLoad && result.progression.weight) base.startWeight = result.progression.weight
+      persist.push(base)
+      if (result.autoNote) autoNotes.push(result.autoNote)
+      if (result.kind === 'increase' && result.suggestion) {
+        suggestions.push({
+          exId: ex.id, name: ex.name, type: 'load',
+          base: result.suggestion.base, reps: null,
+          recommendedInc: result.suggestion.recommendedInc,
+          doubleJump: !!result.suggestion.doubleJump, isGzclp: false,
+        })
+      }
       continue
     }
 
@@ -118,7 +138,10 @@ export function applyChoices(program, dayIndex, suggestions, choices) {
     if (choice.startsWith('w')) {
       const inc = parseFloat(choice.slice(1))
       const newWeight = sug.base + inc
-      if (ex.progression) return applyStage({ ...ex, progression: { ...ex.progression, weight: newWeight } })
+      if (ex.progression) {
+        // Completing the jump clears any miss streak (lp) and re-stages (GZCLP).
+        return applyStage({ ...ex, progression: { ...ex.progression, weight: newWeight, fails: 0 }, startWeight: newWeight })
+      }
       return { ...ex, startWeight: newWeight }
     }
     return ex

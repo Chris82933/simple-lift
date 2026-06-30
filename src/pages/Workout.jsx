@@ -6,6 +6,7 @@ import {
 } from '../lib/storage.js'
 import { repsLabel, schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { stageNote, applyStage } from '../lib/gzclp.js'
+import { extraNote } from '../lib/progression.js'
 import { reviewSession, applyChoices, INCREMENTS } from '../lib/sessionReview.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
@@ -420,7 +421,7 @@ export default function Workout() {
               )}
 
               <p className="cue">💡 {ex.cues}</p>
-              {ex.progression && <p className="suggestion">🎯 {stageNote(ex, units)}</p>}
+              {ex.progression && <p className="suggestion">🎯 {stageNote(ex, units) || extraNote(ex, units)}</p>}
 
               <div className={'set-table' + (tracksLoad ? '' : ' no-load')}>
                 <div className="set-head">

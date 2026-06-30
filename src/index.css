@@ -612,6 +612,17 @@ select.text-input { appearance: none; }
 
 /* ---- Templates ---- */
 .template-card { gap: 8px; }
+.template-head { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.level-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag {
   font-size: 11px;
@@ -621,6 +632,14 @@ select.text-input { appearance: none; }
   background: var(--surface-2);
   color: var(--muted);
 }
+.progression-info { border-left: 3px solid var(--accent); padding-left: 8px; }
+.proscons { display: flex; flex-direction: column; gap: 6px; margin: 2px 0; }
+.proscons ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.proscons li { font-size: 13px; line-height: 1.35; padding-left: 22px; position: relative; }
+.proscons .pros li { color: var(--text); }
+.proscons .cons li { color: var(--muted); }
+.proscons .pros li::before { content: '✓'; position: absolute; left: 4px; color: var(--accent-4, #4ade80); font-weight: 800; }
+.proscons .cons li::before { content: '–'; position: absolute; left: 6px; color: #fb7185; font-weight: 800; }
 
 /* ---- Schedule editor ---- */
 .assign-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }

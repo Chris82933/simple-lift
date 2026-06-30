@@ -40,13 +40,37 @@ export default function Templates() {
 
       {TEMPLATES.map((t) => (
         <div className="card template-card" key={t.templateId}>
-          <p className="day-title">{t.name}</p>
+          <div className="template-head">
+            <p className="day-title">{t.name}</p>
+            {t.level && <span className="level-chip">{t.level}</span>}
+          </div>
           <div className="tag-row">
             {t.tags.map((tag) => <span className="tag" key={tag}>{tag}</span>)}
           </div>
           <p className="muted small">{t.description}</p>
+
+          {t.bestFor && <p className="muted small"><strong>Best for:</strong> {t.bestFor}</p>}
           <p className="muted small"><strong>Needs:</strong> {t.equipment}</p>
           <p className="muted small"><strong>Workouts:</strong> {t.days.map((d) => d.title).join(', ')}</p>
+          {t.progressionInfo && (
+            <p className="muted small progression-info">📈 <strong>How you progress:</strong> {t.progressionInfo}</p>
+          )}
+
+          {(t.pros || t.cons) && (
+            <div className="proscons">
+              {t.pros && (
+                <ul className="pros">
+                  {t.pros.map((p, i) => <li key={i}>{p}</li>)}
+                </ul>
+              )}
+              {t.cons && (
+                <ul className="cons">
+                  {t.cons.map((c, i) => <li key={i}>{c}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+
           <button type="button" className="btn btn-primary" onClick={() => use(t.templateId)}>
             Use this program
           </button>
