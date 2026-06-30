@@ -97,6 +97,23 @@ const BASE_EXERCISES = [
   { id: 'ab_wheel', name: 'Ab Rollout', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['climbing'], cues: 'Roll out only as far as you can keep the back flat.' },
   { id: 'russian_twist', name: 'Russian Twist', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, cues: 'Lean back slightly, rotate from the trunk, control the pace.' },
   { id: 'situp', name: 'Sit-Up', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, cues: 'Feet flat or anchored, curl up through the full range, lower with control.' },
+  { id: 'cable_crunch', name: 'Cable Crunch', pattern: 'core', regions: ['core'], requires: ['cable'], compound: false, cues: 'Kneel, rope by your head, crunch down with the abs — don’t just bow at the hips.' },
+
+  // ---- Popular additions (r/Fitness favorites) ----
+  { id: 'back_extension', name: 'Back Extension', pattern: 'hinge', regions: ['back', 'legs', 'core'], requires: ['flat_bench'], compound: false, load: false, tags: ['running'], cues: 'Hinge over the pad, squeeze glutes to rise to a straight line — don’t hyperextend.' },
+  { id: 'good_morning', name: 'Good Morning', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell', 'rack'], compound: true, cues: 'Bar on the back, soft knees, push hips back with a flat back, feel the hamstrings.' },
+  { id: 'leg_curl', name: 'Leg Curl', pattern: 'hinge', regions: ['legs'], requires: ['leg_curl_ext'], compound: false, tags: ['running'], cues: 'Curl the pad up by squeezing the hamstrings, lower slowly — no hip bouncing.' },
+  { id: 'leg_extension', name: 'Leg Extension', pattern: 'squat', regions: ['legs'], requires: ['leg_curl_ext'], compound: false, tags: ['running'], cues: 'Extend to nearly locked, squeeze the quads at the top, lower under control.' },
+  { id: 'incline_bench', name: 'Incline Bench Press', pattern: 'horiz_push', regions: ['chest', 'shoulders', 'arms'], requires: ['barbell', 'adj_bench'], compound: true, cues: 'Bench at ~30°, bar to the upper chest, drive up and slightly back.' },
+  { id: 'cable_fly', name: 'Cable Fly', pattern: 'horiz_push', regions: ['chest'], requires: ['cable'], compound: false, cues: 'Soft elbows, hug a wide arc, squeeze the chest at the front — slow on the stretch.' },
+  { id: 'arnold_press', name: 'Arnold Press', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: ['dumbbells'], compound: true, cues: 'Start palms-in at the chin, rotate as you press overhead, reverse on the way down.' },
+  { id: 'pendlay_row', name: 'Pendlay Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['barbell'], compound: true, tags: ['climbing'], cues: 'Flat back parallel to the floor, explode the bar to your lower chest, reset each rep on the floor.' },
+  { id: 'chest_supported_row', name: 'Chest-Supported Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['dumbbells', 'adj_bench'], compound: true, tags: ['climbing'], cues: 'Chest on an incline bench, row the bells to your hips, squeeze the mid-back.' },
+  { id: 'face_pull', name: 'Face Pull', pattern: 'horiz_pull', regions: ['back', 'shoulders'], requires: ['cable'], compound: false, cues: 'Rope to eye level, pull to your forehead with elbows high — great for shoulder health.' },
+  { id: 'barbell_curl', name: 'Barbell Curl', pattern: 'biceps', regions: ['arms'], requires: ['barbell'], compound: false, cues: 'Elbows pinned, curl the bar without swinging, control the lower.' },
+  { id: 'hammer_curl', name: 'Hammer Curl', pattern: 'biceps', regions: ['arms'], requires: ['dumbbells'], compound: false, cues: 'Neutral (palms-in) grip, curl without swinging — hits the forearms and biceps.' },
+  { id: 'cable_pushdown', name: 'Cable Triceps Pushdown', pattern: 'triceps', regions: ['arms'], requires: ['cable'], compound: false, cues: 'Pin your elbows to your sides, extend fully, resist on the way up.' },
+  { id: 'cable_lateral', name: 'Cable Lateral Raise', pattern: 'shoulder_iso', regions: ['shoulders'], requires: ['cable'], compound: false, cues: 'Low pulley across your body, lead with the elbow to shoulder height, no shrug.' },
 
   // ---- Conditioning ----
   { id: 'jump_rope', name: 'Jump Rope', pattern: 'conditioning', regions: ['legs', 'core'], requires: ['jump_rope'], compound: false, load: false, tags: ['running'], cues: 'Light bounces on the balls of your feet, wrists do the work.' },
