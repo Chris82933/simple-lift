@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation, addCardio } from '../lib/storage.js'
+import {
+  loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation,
+  addCardio, addProgram, updateWorkout,
+} from '../lib/storage.js'
 import { repsLabel, schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { stageNote, applyStage } from '../lib/gzclp.js'
 import { reviewSession, applyChoices, INCREMENTS } from '../lib/sessionReview.js'
@@ -9,6 +12,37 @@ import FormCheckButton from '../components/FormCheckButton.jsx'
 import RestTimer from '../components/RestTimer.jsx'
 import ExercisePicker from '../components/ExercisePicker.jsx'
 import CardioForm from '../components/CardioForm.jsx'
+import QuickOneRM from '../components/QuickOneRM.jsx'
+
+// Post-session difficulty ratings (saved to history).
+const DIFFICULTIES = [
+  { id: 'easy', label: '😎 Easy' },
+  { id: 'moderate', label: '🙂 Just right' },
+  { id: 'hard', label: '😤 Hard' },
+  { id: 'maxed', label: '🥵 Maxed out' },
+]
+
+// Did the user change the workout's structure (added/removed exercises or
+// edited rest times) relative to the program's saved version of this day?
+function isCustomized(originalExercises, liveExercises) {
+  if (liveExercises.length !== originalExercises.length) return true
+  return liveExercises.some((le) => {
+    const orig = originalExercises.find((o) => o.id === le.id)
+    return !orig || orig.restSec !== le.restSec
+  })
+}
+
+// Rebuild a program day's exercise list from the live (edited) one, preserving
+// each kept exercise's saved progression/weights and folding in rest changes
+// and any newly added exercises.
+function buildCustomDay(persistedExercises, liveExercises) {
+  return liveExercises.map((le) => {
+    const orig = persistedExercises.find((o) => o.id === le.id)
+    if (orig) return { ...orig, restSec: le.restSec }
+    const { adhoc, ...rest } = le // promote ad-hoc add into a real program entry
+    return rest
+  })
+}
 
 function defaultDayIndex(program, stateIndex) {
   if (Number.isInteger(stateIndex)) return stateIndex
@@ -88,12 +122,20 @@ export default function Workout() {
   const [editMode, setEditMode] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [cardioOpen, setCardioOpen] = useState(false)
+  const [oneRmOpen, setOneRmOpen] = useState(false)
   const [cardioSaved, setCardioSaved] = useState(0)
 
   const [rest, setRest] = useState(null)
   const [finished, setFinished] = useState(false)
+  const [finishedAt, setFinishedAt] = useState(null)
   const [review, setReview] = useState({ autoNotes: [], suggestions: [] })
   const [choices, setChoices] = useState({})
+
+  // Completion-screen extras: structural-edit save, difficulty, notes.
+  const [customized, setCustomized] = useState(false)
+  const [saveChoice, setSaveChoice] = useState('none') // 'none' | 'update' | 'new'
+  const [difficulty, setDifficulty] = useState(null)
+  const [notes, setNotes] = useState('')
 
   // Add an exercise to this session (one-off — not saved to the program).
   const addExercise = (ex) => {
@@ -145,7 +187,9 @@ export default function Workout() {
     setSets((s) => {
       const row = s[exId][idx]
       const nowDone = !row.done
-      if (nowDone) setRest({ seconds: restSec, key: `${exId}-${idx}-${Date.now()}` })
+      // No rest after the final set of an exercise — nothing left to rest for.
+      const isLastSet = idx === s[exId].length - 1
+      if (nowDone && !isLastSet) setRest({ seconds: restSec, key: `${exId}-${idx}-${Date.now()}` })
       return { ...s, [exId]: s[exId].map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }
     })
 
@@ -153,8 +197,10 @@ export default function Workout() {
   const doneSets = Object.values(sets).flat().filter((r) => r.done).length
 
   const finish = () => {
-    const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, sets: sets[ex.id] }))
-    appendWorkout({ date: new Date().toISOString(), programId: program.id, sessionTitle: session.title, dayIndex, entries })
+    const date = new Date().toISOString()
+    const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, sets: sets[ex.id] }))
+    appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries })
+    setFinishedAt(date)
 
     // Carry values forward + auto-apply deloads; collect optional increase suggestions.
     // Ad-hoc adds aren't in the program, so they can't persist/progress — exclude them.
@@ -166,6 +212,9 @@ export default function Workout() {
     if (fresh) updateProgram(applyPersist(fresh, dayIndex, result.persist))
     advanceRotation(program.id, dayIndex)
 
+    // Did they restructure the workout? If so, offer to save it.
+    setCustomized(isCustomized(session.exercises, exercises))
+
     // Default is always "keep the same" — increases are an explicit choice.
     const initChoices = {}
     result.suggestions.forEach((s) => { initChoices[s.exId] = 'keep' })
@@ -174,12 +223,35 @@ export default function Workout() {
     setFinished(true)
   }
 
-  // Apply the user's confirmed progression choices, then leave.
+  // Apply confirmed progression choices, save any customization & notes, leave.
   const done = () => {
+    // 1) Progression choices (weight/rep bumps) onto the active program.
     if (review.suggestions.length) {
       const fresh = loadActiveProgram()
       if (fresh) updateProgram(applyChoices(fresh, dayIndex, review.suggestions, choices))
     }
+
+    // 2) Save structural edits to the program, if the user chose to.
+    if (customized && saveChoice !== 'none') {
+      const fresh = loadActiveProgram()
+      if (fresh) {
+        const newExercises = buildCustomDay(fresh.days[dayIndex].exercises, exercises)
+        if (saveChoice === 'update') {
+          const days = fresh.days.map((d, i) => (i === dayIndex ? { ...d, exercises: newExercises } : d))
+          updateProgram({ ...fresh, days })
+        } else if (saveChoice === 'new') {
+          const days = fresh.days.map((d, i) => (i === dayIndex ? { ...d, exercises: newExercises } : d))
+          const { id, createdAt, ...rest } = fresh
+          addProgram({ ...rest, name: `${fresh.name} (custom)`, source: 'custom', days })
+        }
+      }
+    }
+
+    // 3) Difficulty + notes onto this session's history record.
+    if (difficulty || notes.trim()) {
+      updateWorkout(finishedAt, { difficulty, notes: notes.trim() })
+    }
+
     navigate('/today')
   }
 
@@ -194,6 +266,54 @@ export default function Workout() {
         <div className="card">
           <p className="placeholder-title">{session.title}</p>
           <p className="muted">{doneSets} of {totalSets} sets logged. Your weights are saved for next time.</p>
+        </div>
+
+        {/* ---- Save workout customizations ---- */}
+        {customized && (
+          <div className="card">
+            <p className="group-label">You changed this workout</p>
+            <p className="muted small">You added, removed, or re-timed exercises. Want to keep these changes?</p>
+            <div className="choice-chips save-choices">
+              {[
+                { key: 'none', label: 'Just this once' },
+                { key: 'update', label: 'Update this program' },
+                { key: 'new', label: 'Save as new program' },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  className={'chip' + (saveChoice === opt.key ? ' is-selected' : '')}
+                  onClick={() => setSaveChoice(opt.key)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ---- Difficulty + notes ---- */}
+        <div className="card">
+          <p className="group-label">How did it feel?</p>
+          <div className="choice-chips">
+            {DIFFICULTIES.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={'chip' + (difficulty === d.id ? ' is-selected' : '')}
+                onClick={() => setDifficulty((cur) => (cur === d.id ? null : d.id))}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+          <textarea
+            className="text-input notes-input"
+            placeholder="Notes — how it went, aches, PRs, what to try next time…"
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
         </div>
 
         {review.suggestions.length > 0 && (
@@ -354,8 +474,15 @@ export default function Workout() {
         <div className="add-row">
           <button type="button" className="btn btn-ghost" onClick={() => setPickerOpen(true)}>＋ Add exercise</button>
           <button type="button" className="btn btn-ghost" onClick={() => setCardioOpen(true)}>❤️ Log cardio</button>
+          <button type="button" className="btn btn-ghost" onClick={() => setOneRmOpen(true)}>🧮 1RM calc</button>
         </div>
         {cardioSaved > 0 && <p className="muted small">✓ {cardioSaved} cardio session{cardioSaved === 1 ? '' : 's'} logged.</p>}
+
+        {editMode && (
+          <button type="button" className="btn btn-primary done-editing-btn" onClick={() => setEditMode(false)}>
+            Done editing
+          </button>
+        )}
       </div>
 
       <div className="flow-actions">
@@ -367,6 +494,9 @@ export default function Workout() {
 
       {pickerOpen && (
         <ExercisePicker onPick={addExercise} onClose={() => setPickerOpen(false)} />
+      )}
+      {oneRmOpen && (
+        <QuickOneRM units={units} onClose={() => setOneRmOpen(false)} />
       )}
       {cardioOpen && (
         <div className="picker-overlay" role="dialog" aria-label="Log cardio">

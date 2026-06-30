@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { playRestDone } from '../lib/sound.js'
 
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
@@ -15,6 +16,7 @@ export default function RestTimer({ seconds, onDone }) {
 
   useEffect(() => {
     if (remaining <= 0) {
+      playRestDone() // happy "beep beep" — rest's over, get back to it
       doneRef.current?.()
       return
     }

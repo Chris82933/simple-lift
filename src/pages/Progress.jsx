@@ -36,6 +36,53 @@ function topSet(entry) {
   return done.length ? `${done.length} × ${done[0].reps}` : '—'
 }
 
+const DIFF_LABELS = {
+  easy: '😎 Easy', moderate: '🙂 Just right', hard: '😤 Hard', maxed: '🥵 Maxed out',
+}
+
+// One expandable session in the log — collapsed shows the top set per exercise,
+// expanded reveals every set logged. Also surfaces difficulty + notes.
+function SessionEntry({ workout, units }) {
+  const [open, setOpen] = useState(false)
+  const setCount = workout.entries.reduce((n, e) => n + (e.sets?.filter((s) => s.done).length || 0), 0)
+  return (
+    <div className="log-entry">
+      <div className="log-head">
+        <span className="ex-name">{workout.sessionTitle}</span>
+        <span className="muted small">{new Date(workout.date).toLocaleDateString()}</span>
+      </div>
+      <div className="log-meta">
+        {workout.difficulty && <span className="diff-badge">{DIFF_LABELS[workout.difficulty] || workout.difficulty}</span>}
+        <span className="muted small">{setCount} set{setCount === 1 ? '' : 's'} done</span>
+      </div>
+      <div className="log-exercises">
+        {workout.entries.map((e, j) => (
+          <div key={j}>
+            <div className="log-row">
+              <span>{e.name}{e.adhoc ? ' ＋' : ''}</span>
+              <span className="muted small">{topSet(e)} {units}</span>
+            </div>
+            {open && (
+              <div className="log-sets">
+                {(e.sets || []).map((s, k) => (
+                  <div className="log-set-row" key={k}>
+                    <span>Set {k + 1}{s.done ? ' ✓' : ''}</span>
+                    <span>{Number(s.weight) > 0 ? `${s.weight} ${units} × ` : ''}{s.reps || '–'} reps</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {workout.notes && <p className="muted small log-note">📝 {workout.notes}</p>}
+      <button type="button" className="log-toggle" onClick={() => setOpen((o) => !o)}>
+        {open ? '▴ Hide sets' : '▾ Show all sets'}
+      </button>
+    </div>
+  )
+}
+
 const CARDIO_METRICS = [
   { id: 'time', label: 'Time (min)', field: (c) => c.durationMin },
   { id: 'distance', label: 'Distance', field: (c) => c.distance },
@@ -166,20 +213,7 @@ export default function Progress() {
       <div className="card">
         <p className="group-label">Session log</p>
         {history.map((w, i) => (
-          <div className="log-entry" key={i}>
-            <div className="log-head">
-              <span className="ex-name">{w.sessionTitle}</span>
-              <span className="muted small">{new Date(w.date).toLocaleDateString()}</span>
-            </div>
-            <div className="log-exercises">
-              {w.entries.map((e, j) => (
-                <div className="log-row" key={j}>
-                  <span>{e.name}</span>
-                  <span className="muted small">{topSet(e)} {units}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <SessionEntry key={w.date || i} workout={w} units={units} />
         ))}
       </div>
       )}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   loadProfile, loadSettings, saveSettings, loadHistory, clearAll,
+  exportCode, importCode,
 } from '../lib/storage.js'
 import { REGIONS, EQUIPMENT_GROUPS, GOALS } from '../data/options.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -16,6 +17,38 @@ export default function Profile() {
   const history = loadHistory()
   const [settings, setSettings] = useState(loadSettings())
   const [signingIn, setSigningIn] = useState(false)
+
+  // ---- Backup & transfer (copy-paste code) ----
+  const [myCode, setMyCode] = useState('')
+  const [importText, setImportText] = useState('')
+  const [codeStatus, setCodeStatus] = useState(null) // { ok, msg }
+
+  const generateCode = () => {
+    try { setMyCode(exportCode()); setCodeStatus(null) }
+    catch { setCodeStatus({ ok: false, msg: 'Could not build a code.' }) }
+  }
+
+  const copyCode = async () => {
+    const code = myCode || exportCode()
+    if (!myCode) setMyCode(code)
+    try {
+      await navigator.clipboard.writeText(code)
+      setCodeStatus({ ok: true, msg: 'Copied! Paste it somewhere safe.' })
+    } catch {
+      setCodeStatus({ ok: true, msg: 'Select the code above and copy it manually.' })
+    }
+  }
+
+  const runImport = () => {
+    if (!window.confirm('Import this code? It will replace the programs, history, and settings on this device.')) return
+    try {
+      importCode(importText)
+      setCodeStatus({ ok: true, msg: 'Imported! Reloading…' })
+      setTimeout(() => window.location.reload(), 600)
+    } catch (e) {
+      setCodeStatus({ ok: false, msg: e?.message || 'Import failed.' })
+    }
+  }
 
   const setUnits = (units) => {
     const next = { ...settings, units }
@@ -144,6 +177,38 @@ export default function Profile() {
             <span className="muted small">{new Date(w.date).toLocaleDateString()}</span>
           </div>
         ))}
+      </div>
+
+      {/* ---- Backup & transfer ---- */}
+      <div className="card">
+        <p className="group-label">Backup &amp; transfer</p>
+        <p className="muted small">
+          Export a code with <strong>everything</strong> — programs, history, cardio, maxes, and
+          settings. Paste it on another device (or back here) to restore it. Great for moving
+          phones or keeping a manual backup.
+        </p>
+        <button type="button" className="btn btn-primary" onClick={copyCode}>📋 Copy my backup code</button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={generateCode}>Show code</button>
+        {myCode && (
+          <textarea className="text-input code-box" rows={4} readOnly value={myCode} onFocus={(e) => e.target.select()} />
+        )}
+
+        <p className="group-label" style={{ marginTop: 14 }}>Import a code</p>
+        <textarea
+          className="text-input code-box"
+          rows={4}
+          placeholder="Paste a backup code here…"
+          value={importText}
+          onChange={(e) => setImportText(e.target.value)}
+        />
+        <button type="button" className="btn btn-ghost" onClick={runImport} disabled={!importText.trim()}>
+          ⬇️ Import &amp; replace my data
+        </button>
+        {codeStatus && (
+          <p className={'muted small code-status ' + (codeStatus.ok ? 'ok' : 'err')}>
+            {codeStatus.ok ? '✓ ' : '⚠ '}{codeStatus.msg}
+          </p>
+        )}
       </div>
 
       <div className="card">

@@ -165,6 +165,16 @@ export function lastPerformance(exerciseId) {
   return null
 }
 
+// Patch the most recent workout (or one matched by date) with extra fields,
+// e.g. a post-session difficulty rating and notes.
+export function updateWorkout(date, patch) {
+  const history = loadHistory()
+  const idx = date ? history.findIndex((w) => w.date === date) : 0
+  if (idx === -1 || history.length === 0) return
+  history[idx] = { ...history[idx], ...patch }
+  write(HISTORY_KEY, history)
+}
+
 // ---- Sync snapshot ----
 export function exportData() {
   return {
@@ -193,6 +203,40 @@ export function importData(blob) {
 }
 
 export const getUpdatedAt = () => read(UPDATED_KEY, 0)
+
+// ---- Copy-paste backup codes ----
+// Encodes the full data snapshot into one portable string the user can copy
+// and paste back in (e.g. moving to a new phone). Unicode-safe base64.
+const CODE_PREFIX = 'SLIFT1:'
+
+export function exportCode() {
+  const json = JSON.stringify(exportData())
+  // encodeURIComponent → handles any non-Latin chars before base64.
+  const b64 = btoa(unescape(encodeURIComponent(json)))
+  return CODE_PREFIX + b64
+}
+
+// Returns true on success, throws an Error with a friendly message otherwise.
+export function importCode(code) {
+  if (!code || typeof code !== 'string') throw new Error('Paste your backup code first.')
+  let body = code.trim()
+  if (body.startsWith(CODE_PREFIX)) body = body.slice(CODE_PREFIX.length)
+  body = body.replace(/\s+/g, '')
+  let blob
+  try {
+    blob = JSON.parse(decodeURIComponent(escape(atob(body))))
+  } catch {
+    throw new Error('That code doesn’t look valid. Copy the whole thing and try again.')
+  }
+  if (!blob || typeof blob !== 'object' || (blob.programs === undefined && blob.profile === undefined)) {
+    throw new Error('That code doesn’t contain Simple Lift data.')
+  }
+  importData(blob)
+  // importData is silent; announce the change so the UI/sync layer refreshes.
+  localStorage.setItem(UPDATED_KEY, JSON.stringify(Date.now()))
+  window.dispatchEvent(new CustomEvent('sl-data-changed'))
+  return true
+}
 
 export function clearAll() {
   ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, UPDATED_KEY, LEGACY_PROGRAM_KEY].forEach(
