@@ -579,6 +579,26 @@ select.text-input { appearance: none; }
   font-size: 0.82rem; padding: 2px 0; color: var(--muted);
 }
 
+/* ---- Install to home screen (Profile) ---- */
+.install-card { border: 1px solid var(--accent); }
+.install-steps {
+  margin: 8px 0 4px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.install-steps li { padding-left: 2px; }
+.kbd {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
 /* ---- Data backup code (Profile) ---- */
 .code-box {
   width: 100%; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

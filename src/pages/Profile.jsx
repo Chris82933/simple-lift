@@ -6,6 +6,7 @@ import {
 } from '../lib/storage.js'
 import { REGIONS, EQUIPMENT_GROUPS, GOALS } from '../data/options.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import InstallApp from '../components/InstallApp.jsx'
 
 const ALL_EQUIP = EQUIPMENT_GROUPS.flatMap((g) => g.items)
 const labelsFor = (ids = [], src) => ids.map((id) => src.find((x) => x.id === id)?.label).filter(Boolean)
@@ -79,6 +80,9 @@ export default function Profile() {
   return (
     <section className="page">
       <header className="page-header"><h1>Profile</h1></header>
+
+      {/* ---- Install to home screen ---- */}
+      <InstallApp />
 
       {/* ---- Account / sync ---- */}
       <div className="card">
