@@ -22,7 +22,7 @@ function makeExercise(ex, scheme, inc) {
   return {
     id: ex.id, name: ex.name, pattern: ex.pattern, regions: ex.regions,
     compound: ex.compound, load: ex.load !== false, cues: ex.cues,
-    sets: tier.sets, reps: tier.repHigh, restSec: tier.rest,
+    sets: tier.sets, repLow: tier.repLow, repHigh: tier.repHigh, restSec: tier.rest,
     startWeight: max ? String(weightForReps(max.oneRM, tier.repHigh, inc)) : '',
   }
 }
@@ -40,11 +40,15 @@ export default function Builder() {
         return {
           name: existing.name,
           goals: existing.goals || [],
-          days: existing.days.map((d) => ({
-            weekday: d.weekday,
+          days: existing.days.map((d, i) => ({
+            // Rotation/template days have no fixed weekday — assign one so the
+            // Builder's weekday picker is a controlled input (not null).
+            weekday: d.weekday ?? WEEKDAY_ORDER[i % 7],
             title: d.title,
             exercises: d.exercises.map((e) => ({
-              ...e, reps: e.repHigh ?? e.reps ?? 8,
+              ...e,
+              repLow: e.repLow ?? e.reps ?? 8,
+              repHigh: e.repHigh ?? e.reps ?? 8,
             })),
           })),
         }
@@ -79,8 +83,12 @@ export default function Builder() {
   const removeExercise = (di, ei) =>
     updateDay(di, { exercises: draft.days[di].exercises.filter((_, j) => j !== ei) })
 
-  const addExerciseToDay = (di, ex) =>
+  // Block the same exercise twice in one day — duplicate ids collide with the
+  // live workout's per-exercise set tracking.
+  const addExerciseToDay = (di, ex) => {
+    if (draft.days[di].exercises.some((e) => e.id === ex.id)) return
     updateDay(di, { exercises: [...draft.days[di].exercises, makeExercise(ex, scheme, inc)] })
+  }
 
   const totalExercises = draft.days.reduce((n, d) => n + d.exercises.length, 0)
   const canSave = draft.name.trim() && draft.days.some((d) => d.exercises.length > 0)
@@ -100,15 +108,21 @@ export default function Builder() {
           title: d.title.trim() || WEEKDAY_LABELS[d.weekday],
           note: 'Your custom session.',
           regions: [...new Set(d.exercises.flatMap((e) => e.regions))],
-          exercises: d.exercises.map((e) => ({
-            id: e.id, name: e.name, pattern: e.pattern, regions: e.regions,
-            compound: e.compound, load: e.load, cues: e.cues,
-            sets: Number(e.sets) || 3,
-            repLow: Number(e.reps) || 8,
-            repHigh: Number(e.reps) || 8,
-            restSec: Number(e.restSec) || 90,
-            startWeight: e.startWeight || '',
-          })),
+          // Spread the original entry first so advanced fields (GZCLP
+          // progression, amrap, ladder links) survive an edit, then override
+          // the user-editable numbers.
+          exercises: d.exercises.map((e) => {
+            const repHigh = Number(e.repHigh) || Number(e.repLow) || 8
+            const repLow = Math.min(Number(e.repLow) || repHigh, repHigh)
+            return {
+              ...e,
+              sets: Number(e.sets) || 3,
+              repLow,
+              repHigh,
+              restSec: Number(e.restSec) || 90,
+              startWeight: e.startWeight || '',
+            }
+          }),
         })),
     }
     if (editId) updateProgram({ ...getProgram(editId), ...program })
@@ -116,9 +130,15 @@ export default function Builder() {
     navigate('/program')
   }
 
+  // Hide template-only ladder variants and conditioning moves (cardio is logged
+  // separately) from the manual picker.
   const filtered = EXERCISES.filter((e) =>
+    !e.ladderOnly && e.pattern !== 'conditioning' &&
     e.name.toLowerCase().includes(search.trim().toLowerCase()),
   )
+  const dayExIds = picker !== null
+    ? new Set(draft.days[picker].exercises.map((e) => e.id))
+    : new Set()
 
   return (
     <section className="page full-flow">
@@ -187,7 +207,8 @@ export default function Builder() {
                 </div>
                 <div className="builder-fields">
                   <label>Sets<input type="number" inputMode="numeric" value={ex.sets} onChange={(e) => updateExercise(di, ei, { sets: e.target.value })} /></label>
-                  <label>Reps<input type="number" inputMode="numeric" value={ex.reps} onChange={(e) => updateExercise(di, ei, { reps: e.target.value })} /></label>
+                  <label>Min reps<input type="number" inputMode="numeric" value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
+                  <label>Max reps<input type="number" inputMode="numeric" value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
                   <label>Rest s<input type="number" inputMode="numeric" value={ex.restSec} onChange={(e) => updateExercise(di, ei, { restSec: e.target.value })} /></label>
                   {ex.load && (
                     <label>Start wt<input type="number" inputMode="decimal" value={ex.startWeight} placeholder="–" onChange={(e) => updateExercise(di, ei, { startWeight: e.target.value })} /></label>
@@ -227,14 +248,23 @@ export default function Builder() {
               <button type="button" className="btn btn-primary btn-sm" onClick={() => setPicker(null)}>Done</button>
             </div>
             <div className="picker-list">
-              {filtered.map((ex) => (
-                <button key={ex.id} type="button" className="picker-item" onClick={() => addExerciseToDay(picker, ex)}>
-                  <ExerciseFigure pattern={ex.pattern} size={34} />
-                  <span className="ex-name">{ex.name}</span>
-                  <span className="muted small">{ex.compound ? 'compound' : 'accessory'}{ex.requires.length === 0 ? ' · bodyweight' : ''}</span>
-                  <span className="add-plus">+</span>
-                </button>
-              ))}
+              {filtered.map((ex) => {
+                const added = dayExIds.has(ex.id)
+                return (
+                  <button
+                    key={ex.id}
+                    type="button"
+                    className={'picker-item' + (added ? ' is-added' : '')}
+                    disabled={added}
+                    onClick={() => addExerciseToDay(picker, ex)}
+                  >
+                    <ExerciseFigure pattern={ex.pattern} size={34} />
+                    <span className="ex-name">{ex.name}</span>
+                    <span className="muted small">{ex.compound ? 'compound' : 'accessory'}{ex.requires.length === 0 ? ' · bodyweight' : ''}</span>
+                    <span className="add-plus">{added ? '✓' : '+'}</span>
+                  </button>
+                )
+              })}
               {filtered.length === 0 && <p className="muted">No matches.</p>}
             </div>
           </div>

@@ -7,7 +7,10 @@ import ExerciseFigure from './ExerciseFigure.jsx'
 export default function ExercisePicker({ onPick, onClose, title = 'Add exercise' }) {
   const [search, setSearch] = useState('')
   const q = search.trim().toLowerCase()
-  const filtered = EXERCISES.filter((e) => e.name.toLowerCase().includes(q))
+  // Hide template-only ladder variants and conditioning moves (logged via cardio).
+  const filtered = EXERCISES.filter(
+    (e) => !e.ladderOnly && e.pattern !== 'conditioning' && e.name.toLowerCase().includes(q),
+  )
 
   return (
     <div className="picker-overlay" role="dialog" aria-label={title}>

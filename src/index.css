@@ -163,6 +163,32 @@ body {
 }
 
 /* ---- Onboarding wizard ---- */
+.onb-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.skip-link {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.skip-link:hover { border-color: var(--accent); color: var(--accent); }
+.onb-alt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: -4px 0 4px;
+}
+.full-body-link { align-self: flex-start; margin-top: 2px; }
 .progress-track {
   height: 6px;
   background: var(--surface-2);
@@ -387,6 +413,18 @@ body {
   cursor: pointer;
 }
 .rest-btn.primary { background: var(--accent-ink); color: var(--accent); }
+/* "Go!" flash when rest ends */
+.rest-timer.is-go .rest-timer-inner {
+  background: var(--accent-4, #4ade80);
+  justify-content: center;
+  animation: rest-go-pop 0.85s ease;
+}
+.rest-go { font-size: 22px; font-weight: 800; color: #04222e; letter-spacing: 0.02em; }
+@keyframes rest-go-pop {
+  0% { transform: scale(0.94); }
+  35% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
 
 /* ---- History rows ---- */
 .history-row {
@@ -499,6 +537,8 @@ select.text-input { appearance: none; }
 }
 .picker-item .ex-name { flex: 1; }
 .add-plus { font-size: 20px; color: var(--accent); font-weight: 700; }
+.picker-item.is-added { opacity: 0.5; cursor: default; }
+.picker-item.is-added .add-plus { color: var(--accent-4, #4ade80); }
 
 /* ---- Quick 1RM modal ---- */
 .quick-1rm-row { display: flex; gap: 12px; }
@@ -870,10 +910,12 @@ select.text-input { appearance: none; }
 /* ---- Session log ---- */
 .log-entry { padding: 12px 0; border-bottom: 1px solid var(--border); }
 .log-entry:last-child { border-bottom: none; }
-.log-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.log-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.log-head .ex-name { flex: 1; }
 .log-exercises { display: flex; flex-direction: column; gap: 4px; }
-.log-row { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
-.log-row > span:last-child { white-space: nowrap; }
+.log-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+.log-row > span:nth-child(2) { white-space: nowrap; margin-left: auto; }
+.log-del { width: 26px; height: 26px; font-size: 13px; flex: none; }
 
 .flow-actions {
   margin-top: auto;

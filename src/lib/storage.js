@@ -156,6 +156,11 @@ export function appendWorkout(entry) {
   return history
 }
 
+// Remove a logged workout by its date stamp (its unique id).
+export function deleteWorkout(date) {
+  write(HISTORY_KEY, loadHistory().filter((w) => w.date !== date))
+}
+
 export function lastPerformance(exerciseId) {
   const history = loadHistory()
   for (const workout of history) {

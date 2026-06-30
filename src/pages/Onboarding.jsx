@@ -65,10 +65,21 @@ export default function Onboarding() {
     else setStep((s) => s - 1)
   }
 
+  // Expert escape hatch — skip the questions and design a program by hand.
+  const buildOwn = () => navigate('/builder')
+
+  // One-tap "train everything" so users who don't want to choose can keep moving.
+  const selectAllFocus = () => set({ focusAreas: REGIONS.map((r) => r.id) })
+
   return (
     <section className="page full-flow">
       <header className="page-header">
-        <p className="eyebrow">Step {step + 1} of {STEPS.length}</p>
+        <div className="onb-head-row">
+          <p className="eyebrow">Step {step + 1} of {STEPS.length}</p>
+          <button type="button" className="skip-link" onClick={buildOwn}>
+            Skip · build my own →
+          </button>
+        </div>
         <div className="progress-track" aria-hidden="true">
           <div
             className="progress-fill"
@@ -81,7 +92,13 @@ export default function Onboarding() {
         {STEPS[step] === 'focus' && (
           <>
             <h1>What do you want to focus on?</h1>
-            <p className="muted">Pick one or more. We&apos;ll balance the rest of your week around them.</p>
+            <p className="muted">Pick one or more, or just train everything. We&apos;ll balance the rest of your week around your choices.</p>
+            <div className="onb-alt">
+              <span className="muted small">Know exactly what you want?</span>
+              <button type="button" className="link-btn" onClick={() => navigate('/templates')}>Use a template</button>
+              <span className="muted small">·</span>
+              <button type="button" className="link-btn" onClick={buildOwn}>Build your own</button>
+            </div>
             <div className="region-grid">
               {REGIONS.map((r) => (
                 <button
@@ -95,6 +112,9 @@ export default function Onboarding() {
                 </button>
               ))}
             </div>
+            <button type="button" className="link-btn full-body-link" onClick={selectAllFocus}>
+              ⚡ Full body — select everything
+            </button>
           </>
         )}
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadHistory, loadSettings, loadCardio } from '../lib/storage.js'
+import { loadHistory, loadSettings, loadCardio, deleteWorkout, deleteCardio } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import ProgressChart from '../components/ProgressChart.jsx'
 
@@ -42,7 +42,7 @@ const DIFF_LABELS = {
 
 // One expandable session in the log — collapsed shows the top set per exercise,
 // expanded reveals every set logged. Also surfaces difficulty + notes.
-function SessionEntry({ workout, units }) {
+function SessionEntry({ workout, units, onDelete }) {
   const [open, setOpen] = useState(false)
   const setCount = workout.entries.reduce((n, e) => n + (e.sets?.filter((s) => s.done).length || 0), 0)
   return (
@@ -50,6 +50,7 @@ function SessionEntry({ workout, units }) {
       <div className="log-head">
         <span className="ex-name">{workout.sessionTitle}</span>
         <span className="muted small">{new Date(workout.date).toLocaleDateString()}</span>
+        <button type="button" className="icon-btn log-del" onClick={() => onDelete(workout)} aria-label="Delete this session">✕</button>
       </div>
       <div className="log-meta">
         {workout.difficulty && <span className="diff-badge">{DIFF_LABELS[workout.difficulty] || workout.difficulty}</span>}
@@ -105,9 +106,24 @@ function buildCardioSeries(cardio, metricId) {
 
 export default function Progress() {
   const navigate = useNavigate()
+  const [, setVersion] = useState(0)
+  const refresh = () => setVersion((v) => v + 1)
   const history = loadHistory()
   const cardio = loadCardio()
   const units = loadSettings().units || 'lbs'
+
+  const removeSession = (w) => {
+    if (window.confirm(`Delete "${w.sessionTitle}" from ${new Date(w.date).toLocaleDateString()}? This can't be undone.`)) {
+      deleteWorkout(w.date)
+      refresh()
+    }
+  }
+  const removeCardio = (c) => {
+    if (window.confirm('Delete this cardio entry?')) {
+      deleteCardio(c.id)
+      refresh()
+    }
+  }
   const allSeries = useMemo(() => buildSeries(history), [history])
   const [cardioMetric, setCardioMetric] = useState('time')
   const cardioSeries = useMemo(() => buildCardioSeries(cardio, cardioMetric), [cardio, cardioMetric])
@@ -202,6 +218,7 @@ export default function Progress() {
                   <span className="muted small">
                     {c.durationMin}m{c.distance ? ` · ${c.distance}${c.distanceUnit}` : ''}{c.avgHr ? ` · ${c.avgHr}bpm` : ''} · {new Date(c.date).toLocaleDateString()}
                   </span>
+                  <button type="button" className="icon-btn log-del" onClick={() => removeCardio(c)} aria-label="Delete this cardio entry">✕</button>
                 </div>
               )
             })}
@@ -213,7 +230,7 @@ export default function Progress() {
       <div className="card">
         <p className="group-label">Session log</p>
         {history.map((w, i) => (
-          <SessionEntry key={w.date || i} workout={w} units={units} />
+          <SessionEntry key={w.date || i} workout={w} units={units} onDelete={removeSession} />
         ))}
       </div>
       )}
