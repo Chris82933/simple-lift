@@ -1,31 +1,51 @@
 :root {
-  /* "Iris garden" palette — iris purple, deep plum, sage green, olive, on a
-     dark aubergine base. Source swatches: #A47DAB #692475 #82AB7D #6A6B4E. */
-  --bg: #17131e;
-  --surface: #221b2c;
-  --surface-2: #2e2639;
-  --border: #3d3349;
-  --text: #efeaf3;
-  --muted: #a99fb4;
-  --accent: #b393bb;          /* iris (brightened #A47DAB) */
-  --accent-ink: #1f1226;      /* dark plum — text on light accent fills */
-
-  /* Accent palette used across the UI (harmonised to the garden theme) */
-  --accent-2: #8e54a6;  /* deep purple (from #692475) */
-  --accent-3: #cf8ac4;  /* lilac-pink */
-  --accent-4: #82ab7d;  /* sage green */
-  --accent-5: #b8a45f;  /* gold-olive (from #6A6B4E) */
-  --accent-6: #cf7d8f;  /* dusty rose */
-  --grad-primary: linear-gradient(135deg, #5e2069 0%, #7e3596 52%, #9a55ad 100%);
-  --grad-accent: linear-gradient(135deg, #a47dab, #82ab7d);
-
   --radius: 16px;
   --maxw: 520px;
-
-  color-scheme: dark;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
+}
+
+/* "Sharp edge" palette — graphite + light gray + coral red + mint green.
+   Source swatches: #898989 #D9D9D9 #FF4D4D #4DFFBC.
+   Dark is the default; light mode overrides via [data-theme="light"]. */
+:root,
+:root[data-theme='dark'] {
+  --bg: #101012;
+  --surface: #1a1a1d;
+  --surface-2: #26262b;
+  --border: #36363c;
+  --text: #f4f4f5;
+  --muted: #898989;          /* palette gray */
+  --accent: #4dffbc;         /* mint */
+  --accent-ink: #04140f;     /* near-black — text on bright accent fills */
+  --accent-2: #ff4d4d;       /* coral */
+  --accent-3: #ff5c9d;       /* pink */
+  --accent-4: #34e6a8;       /* green */
+  --accent-5: #ffd84d;       /* yellow */
+  --accent-6: #4dd4ff;       /* cyan */
+  --grad-primary: linear-gradient(135deg, #4dffbc 0%, #4dd4ff 100%);
+  --grad-accent: linear-gradient(135deg, #4dffbc, #4dd4ff);
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #f4f4f5;
+  --surface: #ffffff;
+  --surface-2: #ececee;
+  --border: #d9d9d9;         /* palette light gray */
+  --text: #18181b;
+  --muted: #6b6b6b;
+  --accent: #0fb88a;         /* deeper mint — readable on white */
+  --accent-ink: #04231a;
+  --accent-2: #ef3e3e;       /* coral */
+  --accent-3: #e84393;       /* pink */
+  --accent-4: #1f9d57;       /* green */
+  --accent-5: #c99700;       /* amber */
+  --accent-6: #1f9fc4;       /* cyan */
+  --grad-primary: linear-gradient(135deg, #10c79a 0%, #1f9fc4 100%);
+  --grad-accent: linear-gradient(135deg, #0fb88a, #1f9fc4);
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -134,9 +154,9 @@ body {
 }
 .btn-primary {
   background: var(--grad-primary);
-  color: #fff;
+  color: var(--accent-ink);
   border: none;
-  box-shadow: 0 6px 18px -7px rgba(99, 102, 241, 0.65);
+  box-shadow: 0 6px 18px -7px rgba(0, 0, 0, 0.5);
 }
 .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 .btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
@@ -161,7 +181,7 @@ body {
 .region-tile.is-selected {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 16%, var(--surface));
-  color: #fff;
+  color: var(--text);
 }
 
 /* ---- Onboarding wizard ---- */
@@ -257,7 +277,7 @@ body {
 .check-pill.is-selected {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 18%, var(--surface));
-  color: #fff;
+  color: var(--text);
 }
 
 /* Segmented control (days / session length) */
@@ -284,13 +304,13 @@ body {
 
 /* ---- Buttons (small / danger) ---- */
 .btn-sm { padding: 8px 14px; font-size: 13px; }
-.btn.danger { color: #fca5a5; border-color: color-mix(in srgb, #fca5a5 40%, var(--border)); }
+.btn.danger { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 40%, var(--border)); }
 
 /* ---- Week strip states ---- */
 .day-chip.is-training { color: var(--text); border-color: var(--accent); }
 .day-chip.is-today {
   background: color-mix(in srgb, var(--accent) 20%, var(--surface));
-  color: #fff;
+  color: var(--text);
   font-weight: 700;
 }
 
@@ -421,7 +441,7 @@ body {
   justify-content: center;
   animation: rest-go-pop 0.85s ease;
 }
-.rest-go { font-size: 22px; font-weight: 800; color: #17131e; letter-spacing: 0.02em; }
+.rest-go { font-size: 22px; font-weight: 800; color: var(--accent-ink); letter-spacing: 0.02em; }
 @keyframes rest-go-pop {
   0% { transform: scale(0.94); }
   35% { transform: scale(1.04); }
@@ -610,7 +630,7 @@ select.text-input { appearance: none; }
 .code-actions .btn { flex: 1; min-width: 120px; }
 .code-status { margin-top: 6px; }
 .code-status.ok { color: var(--accent-4, #82ab7d); }
-.code-status.err { color: #e08a9a; }
+.code-status.err { color: var(--accent-2); }
 
 /* ---- Programs list ---- */
 .switch-row { flex-direction: row; gap: 10px; }
@@ -802,7 +822,7 @@ select.text-input { appearance: none; }
 .chip.is-selected {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 18%, var(--surface));
-  color: #fff;
+  color: var(--text);
 }
 
 /* ---- "When to increase" guide ---- */
@@ -932,7 +952,7 @@ select.text-input { appearance: none; }
 .bottom-nav .nav-item:nth-child(3).is-active { color: var(--accent-4); }
 .bottom-nav .nav-item:nth-child(4).is-active { color: var(--accent-3); }
 /* Colorful focus-region selections */
-.region-grid .region-tile.is-selected { color: #fff; }
+.region-grid .region-tile.is-selected { color: var(--text); }
 .region-grid .region-tile:nth-child(1).is-selected { border-color: var(--accent);   background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
 .region-grid .region-tile:nth-child(2).is-selected { border-color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 18%, var(--surface)); }
 .region-grid .region-tile:nth-child(3).is-selected { border-color: var(--accent-3); background: color-mix(in srgb, var(--accent-3) 18%, var(--surface)); }

@@ -4,8 +4,8 @@ import { loadHistory, loadSettings, loadCardio, deleteWorkout, deleteCardio } fr
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import ProgressChart from '../components/ProgressChart.jsx'
 
-// "Iris garden" chart palette — themed but kept distinguishable for multiple series.
-const PALETTE = ['#b393bb', '#82ab7d', '#9a55ad', '#b8a45f', '#cf8ac4', '#5b8f6a', '#7e6bb0', '#cf7d8f']
+// Chart palette — mid-tone hues that stay legible on both light and dark cards.
+const PALETTE = ['#10b981', '#ff4d4d', '#3b9fd6', '#e0a800', '#e84393', '#8b5cf6', '#14b8a6', '#f97316']
 
 // Build per-exercise weight series (top set per session) from history.
 function buildSeries(history) {

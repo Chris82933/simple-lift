@@ -7,6 +7,7 @@ import {
 import { REGIONS, EQUIPMENT_GROUPS, GOALS } from '../data/options.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import InstallApp from '../components/InstallApp.jsx'
+import { applyTheme } from '../lib/theme.js'
 
 const ALL_EQUIP = EQUIPMENT_GROUPS.flatMap((g) => g.items)
 const labelsFor = (ids = [], src) => ids.map((id) => src.find((x) => x.id === id)?.label).filter(Boolean)
@@ -55,6 +56,14 @@ export default function Profile() {
     const next = { ...settings, units }
     setSettings(next)
     saveSettings(next)
+  }
+
+  const theme = settings.theme || 'dark'
+  const setTheme = (t) => {
+    const next = { ...settings, theme: t }
+    setSettings(next)
+    saveSettings(next)
+    applyTheme(t)
   }
 
   const signIn = async () => {
@@ -132,6 +141,26 @@ export default function Profile() {
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>
           ❤️ Log cardio
         </button>
+      </div>
+
+      {/* ---- Appearance ---- */}
+      <div className="card">
+        <p className="group-label">Appearance</p>
+        <div className="seg">
+          {[
+            { id: 'dark', label: '🌙 Dark' },
+            { id: 'light', label: '☀️ Light' },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={'seg-item' + (theme === t.id ? ' is-selected' : '')}
+              onClick={() => setTheme(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ---- Units ---- */}
