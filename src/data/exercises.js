@@ -96,11 +96,13 @@ const BASE_EXERCISES = [
   { id: 'dead_bug', name: 'Dead Bug', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Low back pinned, extend opposite arm and leg slowly.' },
   { id: 'ab_wheel', name: 'Ab Rollout', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['climbing'], cues: 'Roll out only as far as you can keep the back flat.' },
   { id: 'russian_twist', name: 'Russian Twist', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, cues: 'Lean back slightly, rotate from the trunk, control the pace.' },
+  { id: 'situp', name: 'Sit-Up', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, cues: 'Feet flat or anchored, curl up through the full range, lower with control.' },
 
   // ---- Conditioning ----
   { id: 'jump_rope', name: 'Jump Rope', pattern: 'conditioning', regions: ['legs', 'core'], requires: ['jump_rope'], compound: false, load: false, tags: ['running'], cues: 'Light bounces on the balls of your feet, wrists do the work.' },
   { id: 'cardio_machine', name: 'Cardio Finisher', pattern: 'conditioning', regions: ['legs'], requires: ['cardio'], compound: false, load: false, tags: ['running'], cues: 'Steady, strong effort for the time — hold a pace you can sustain.' },
   { id: 'mountain_climber', name: 'Mountain Climbers', pattern: 'conditioning', regions: ['core', 'legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Hips low, drive the knees quickly, steady breathing.' },
+  { id: 'run_10k', name: '10km Run', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Aim for a steady, comfortable pace. Log your full run stats (distance, time, HR) in the Cardio tab!' },
 ]
 
 // Merge in the bodyweight ladder variants, then stitch easy↔hard links onto

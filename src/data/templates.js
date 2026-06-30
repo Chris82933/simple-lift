@@ -29,6 +29,25 @@ const day = (title, note, exercises) => ({
 
 export const TEMPLATES = [
   {
+    templateId: 'opm',
+    name: 'One Punch Man Challenge',
+    description: 'The legendary training routine of Saitama: 100 push-ups, 100 sit-ups, 100 squats, and a 10km run — every single day, no rest days. "Just 3 years of this and I became bald." Warning: this will be humbling.',
+    tags: ['Bodyweight', 'Daily', 'Endurance'],
+    equipment: 'None — just your body and your will',
+    source: 'template',
+    goals: ['endurance', 'general'],
+    schedule: { mode: 'rotation', trainingDays: [0, 1, 2, 3, 4, 5, 6] },
+    days: [
+      day("Saitama's Training", '100 reps of each. Every day. No days off. Log your 10km run in the Cardio tab.', [
+        ex('pushup', 10, 10, 30),
+        ex('situp', 10, 10, 30),
+        ex('bw_squat', 10, 10, 30),
+        ex('run_10k', 1, 1, 0),
+      ]),
+    ],
+  },
+
+  {
     templateId: 'gzclp',
     name: 'GZCLP',
     description: 'Cody Lefever’s GZCL Linear Progression — a barbell beginner program. 4 workouts rotated across your training days. T1 main lift 5×3+, T2 secondary 3×10, T3 accessory 3×15+.',
