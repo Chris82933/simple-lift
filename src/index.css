@@ -1,21 +1,23 @@
 :root {
-  --bg: #0e1426;
-  --surface: #1b2438;
-  --surface-2: #273349;
-  --border: #344056;
-  --text: #e8edf6;
-  --muted: #97a3b8;
-  --accent: #38bdf8;
-  --accent-ink: #04222e;
+  /* "Iris garden" palette — iris purple, deep plum, sage green, olive, on a
+     dark aubergine base. Source swatches: #A47DAB #692475 #82AB7D #6A6B4E. */
+  --bg: #17131e;
+  --surface: #221b2c;
+  --surface-2: #2e2639;
+  --border: #3d3349;
+  --text: #efeaf3;
+  --muted: #a99fb4;
+  --accent: #b393bb;          /* iris (brightened #A47DAB) */
+  --accent-ink: #1f1226;      /* dark plum — text on light accent fills */
 
-  /* Vibrant accent palette used across the UI */
-  --accent-2: #a78bfa;  /* violet */
-  --accent-3: #f472b6;  /* pink */
-  --accent-4: #4ade80;  /* green */
-  --accent-5: #fbbf24;  /* amber */
-  --accent-6: #fb923c;  /* orange */
-  --grad-primary: linear-gradient(135deg, #38bdf8 0%, #6366f1 55%, #a855f7 100%);
-  --grad-accent: linear-gradient(135deg, #38bdf8, #a78bfa);
+  /* Accent palette used across the UI (harmonised to the garden theme) */
+  --accent-2: #8e54a6;  /* deep purple (from #692475) */
+  --accent-3: #cf8ac4;  /* lilac-pink */
+  --accent-4: #82ab7d;  /* sage green */
+  --accent-5: #b8a45f;  /* gold-olive (from #6A6B4E) */
+  --accent-6: #cf7d8f;  /* dusty rose */
+  --grad-primary: linear-gradient(135deg, #5e2069 0%, #7e3596 52%, #9a55ad 100%);
+  --grad-accent: linear-gradient(135deg, #a47dab, #82ab7d);
 
   --radius: 16px;
   --maxw: 520px;
@@ -415,11 +417,11 @@ body {
 .rest-btn.primary { background: var(--accent-ink); color: var(--accent); }
 /* "Go!" flash when rest ends */
 .rest-timer.is-go .rest-timer-inner {
-  background: var(--accent-4, #4ade80);
+  background: var(--accent-4, #82ab7d);
   justify-content: center;
   animation: rest-go-pop 0.85s ease;
 }
-.rest-go { font-size: 22px; font-weight: 800; color: #04222e; letter-spacing: 0.02em; }
+.rest-go { font-size: 22px; font-weight: 800; color: #17131e; letter-spacing: 0.02em; }
 @keyframes rest-go-pop {
   0% { transform: scale(0.94); }
   35% { transform: scale(1.04); }
@@ -538,7 +540,7 @@ select.text-input { appearance: none; }
 .picker-item .ex-name { flex: 1; }
 .add-plus { font-size: 20px; color: var(--accent); font-weight: 700; }
 .picker-item.is-added { opacity: 0.5; cursor: default; }
-.picker-item.is-added .add-plus { color: var(--accent-4, #4ade80); }
+.picker-item.is-added .add-plus { color: var(--accent-4, #82ab7d); }
 
 /* ---- Quick 1RM modal ---- */
 .quick-1rm-row { display: flex; gap: 12px; }
@@ -607,8 +609,8 @@ select.text-input { appearance: none; }
 .code-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .code-actions .btn { flex: 1; min-width: 120px; }
 .code-status { margin-top: 6px; }
-.code-status.ok { color: var(--accent-4, #4ade80); }
-.code-status.err { color: #fb7185; }
+.code-status.ok { color: var(--accent-4, #82ab7d); }
+.code-status.err { color: #e08a9a; }
 
 /* ---- Programs list ---- */
 .switch-row { flex-direction: row; gap: 10px; }
@@ -658,8 +660,8 @@ select.text-input { appearance: none; }
 .proscons li { font-size: 13px; line-height: 1.35; padding-left: 22px; position: relative; }
 .proscons .pros li { color: var(--text); }
 .proscons .cons li { color: var(--muted); }
-.proscons .pros li::before { content: '✓'; position: absolute; left: 4px; color: var(--accent-4, #4ade80); font-weight: 800; }
-.proscons .cons li::before { content: '–'; position: absolute; left: 6px; color: #fb7185; font-weight: 800; }
+.proscons .pros li::before { content: '✓'; position: absolute; left: 4px; color: var(--accent-4, #82ab7d); font-weight: 800; }
+.proscons .cons li::before { content: '–'; position: absolute; left: 6px; color: var(--accent-6, #cf7d8f); font-weight: 800; }
 
 /* ---- Schedule editor ---- */
 .assign-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
