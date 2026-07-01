@@ -2,6 +2,8 @@
   "name": "simple-lift",
   "private": true,
   "version": "0.0.0",
+  "author": "Chris Yee",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "scripts": {
     "dev": "vite",

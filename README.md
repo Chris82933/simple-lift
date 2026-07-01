@@ -66,3 +66,9 @@ The app works fully on local/offline storage. Turning on Google sign-in lets use
 ## Data & privacy
 
 Without Google login, all data lives in the browser's local storage on one device. Clearing site data / cache, switching browsers, or using another device loses it. Signing in with Google backs it up and syncs it. This is surfaced to users on the Profile screen.
+
+## License
+
+**Source-available, not open source.** Simple Lift is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE): you may use, modify, and share it for **noncommercial** purposes only. **All commercial rights are reserved** by the author — you may not sell it, run it as a paid/ad-supported service, or otherwise use it commercially without a separate commercial license. For commercial licensing, contact the author.
+
+© 2026 Chris Yee. All rights reserved except as expressly granted in the license.
