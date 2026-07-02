@@ -1,5 +1,5 @@
-// Tiny Web Audio chime — no asset files needed. Used to signal "rest over,
-// get back to it." Synthesizes a quick two-note "beep beep" on the fly.
+// Tiny Web Audio chime — no asset files needed. Signals "rest over, get back to
+// it" with a warm, happy piano-style major arpeggio synthesized on the fly.
 //
 // Browsers block audio until the user interacts with the page; since the timer
 // only starts after the user taps a set as done, the AudioContext is already
@@ -14,29 +14,43 @@ function getCtx() {
   return ctx
 }
 
-function blip(ac, startAt, freq, dur = 0.12) {
-  const osc = ac.createOscillator()
-  const gain = ac.createGain()
-  osc.type = 'sine'
-  osc.frequency.value = freq
-  // Quick attack, smooth release so it sounds pleasant, not harsh.
-  gain.gain.setValueAtTime(0.0001, startAt)
-  gain.gain.exponentialRampToValueAtTime(0.25, startAt + 0.01)
-  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + dur)
-  osc.connect(gain).connect(ac.destination)
-  osc.start(startAt)
-  osc.stop(startAt + dur + 0.02)
+// One warm, piano-ish note: a few decaying harmonics through a soft low-pass,
+// with a fast attack and long exponential release (that "struck string" feel).
+function pianoNote(ac, freq, startAt, dur = 1.0, level = 0.2) {
+  const master = ac.createGain()
+  const lp = ac.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 2600
+  lp.Q.value = 0.6
+  master.connect(lp).connect(ac.destination)
+
+  master.gain.setValueAtTime(0.0001, startAt)
+  master.gain.exponentialRampToValueAtTime(level, startAt + 0.006)
+  master.gain.exponentialRampToValueAtTime(0.0001, startAt + dur)
+
+  // Fundamental + a few quieter overtones give it warmth and body.
+  const partials = [[1, 1, 'triangle'], [2, 0.32, 'sine'], [3, 0.14, 'sine'], [4, 0.07, 'sine']]
+  for (const [mult, amp, type] of partials) {
+    const osc = ac.createOscillator()
+    osc.type = type
+    osc.frequency.value = freq * mult
+    const g = ac.createGain()
+    g.gain.value = amp
+    osc.connect(g).connect(master)
+    osc.start(startAt)
+    osc.stop(startAt + dur + 0.05)
+  }
 }
 
-// Happy ascending "beep beep" (A5 → E6).
+// Bright, happy ascending C-major arpeggio (C5 · E5 · G5 · C6).
 export function playRestDone() {
   try {
     const ac = getCtx()
     if (!ac) return
     if (ac.state === 'suspended') ac.resume()
-    const t = ac.currentTime
-    blip(ac, t, 880)
-    blip(ac, t + 0.16, 1318.5)
+    const t = ac.currentTime + 0.02
+    const notes = [523.25, 659.25, 783.99, 1046.5]
+    notes.forEach((freq, i) => pianoNote(ac, freq, t + i * 0.1, i === notes.length - 1 ? 1.3 : 0.9, 0.2))
   } catch {
     // Audio is a nicety — never let it break the workout.
   }

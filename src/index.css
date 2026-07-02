@@ -427,6 +427,15 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   border-radius: 10px;
 }
 .plate-icon { font-size: 14px; flex: none; }
+.plate-set {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+}
 .plate-text { flex: 1; }
 .plate-approx { color: var(--accent-5); }
 .plate-gear {
@@ -521,6 +530,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   cursor: pointer;
 }
 .rest-btn.primary { background: var(--accent-ink); color: var(--accent); }
+.rest-btn.rest-mute { padding: 8px 10px; font-size: 15px; line-height: 1; }
 /* "Go!" flash when rest ends */
 .rest-timer.is-go .rest-timer-inner {
   background: var(--accent-4, #82ab7d);

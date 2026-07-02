@@ -4,7 +4,7 @@ import PlateSettings from './PlateSettings.jsx'
 
 // Inline "which plates go on the bar" readout for a barbell lift's working
 // weight, with a gear button to open the plate-availability settings.
-export default function PlateBreakdown({ weight, units }) {
+export default function PlateBreakdown({ weight, units, setNumber }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const target = Number(weight) || 0
   if (target <= 0) return null
@@ -19,6 +19,7 @@ export default function PlateBreakdown({ weight, units }) {
   return (
     <div className="plate-line">
       <span className="plate-icon" aria-hidden="true">🔩</span>
+      {setNumber ? <span className="plate-set">Set {setNumber}</span> : null}
       {result.barOnly ? (
         <span className="plate-text">Just the bar ({bar}{units})</span>
       ) : result.perSide.length === 0 ? (

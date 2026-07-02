@@ -21,13 +21,21 @@ import {
 } from '../lib/equipment.js'
 import { isBarbellLift } from '../lib/plates.js'
 
-// The weight to base the plate breakdown on: whatever's currently entered in
-// the set rows, falling back to the exercise's stored working weight.
-function currentWorkingWeight(ex, rows) {
-  const entered = (rows || []).map((r) => Number(r.weight)).find((w) => w > 0)
-  if (entered) return entered
-  const stored = ex.progression?.weight ?? ex.startWeight
-  return Number(stored) || 0
+// Which set the plate breakdown should load for: the set you're about to do —
+// i.e. the first one not yet marked done (or the last, once all are done). This
+// makes the plate math follow along as you complete sets (useful when sets ramp
+// in weight). Falls back to any entered / stored working weight.
+function nextSetTarget(ex, rows) {
+  const list = rows || []
+  const total = list.length
+  let idx = list.findIndex((r) => !r.done)
+  if (idx === -1) idx = Math.max(0, total - 1)
+  let weight = Number(list[idx]?.weight) || 0
+  if (weight <= 0) {
+    const entered = list.map((r) => Number(r.weight)).find((w) => w > 0)
+    weight = entered || Number(ex.progression?.weight ?? ex.startWeight) || 0
+  }
+  return { weight, setNumber: idx + 1, total }
 }
 
 // Post-session difficulty ratings (saved to history).
@@ -473,6 +481,7 @@ export default function Workout() {
           const tracksLoad = ex.load !== false
           const doable = isDoable(ex, availableSet)
           const sub = doable ? null : bestSubstitute(ex, availableSet)
+          const plateTarget = tracksLoad && isBarbellLift(ex) ? nextSetTarget(ex, sets[ex.id]) : null
           return (
             <div className={'card exercise-card' + (doable ? '' : ' is-unavailable')} key={ex.id}>
               <div className="exercise-top">
@@ -515,8 +524,12 @@ export default function Workout() {
 
               <p className="cue">💡 {ex.cues}</p>
               {ex.progression && <p className="suggestion">🎯 {stageNote(ex, units) || extraNote(ex, units)}</p>}
-              {tracksLoad && isBarbellLift(ex) && (
-                <PlateBreakdown weight={currentWorkingWeight(ex, sets[ex.id])} units={units} />
+              {plateTarget && (
+                <PlateBreakdown
+                  weight={plateTarget.weight}
+                  units={units}
+                  setNumber={plateTarget.total > 1 ? plateTarget.setNumber : null}
+                />
               )}
 
               <div className={'set-table' + (tracksLoad ? '' : ' no-load')}>
