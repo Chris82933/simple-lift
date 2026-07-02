@@ -601,6 +601,27 @@ select.text-input { appearance: none; }
   font-size: 0.82rem; padding: 2px 0; color: var(--muted);
 }
 
+/* ---- Home/Gym equipment mode ---- */
+.mode-row { display: flex; align-items: center; gap: 10px; margin: 6px 0 4px; }
+.mode-row .seg { flex: 1; }
+.seg-sm { padding: 3px; }
+.seg-sm .seg-item { padding: 6px 0; font-size: 13px; }
+.swap-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.swap-banner p { margin: 0; }
+.exercise-card.is-unavailable { opacity: 0.82; border: 1px solid color-mix(in srgb, var(--accent-5) 45%, var(--border)); }
+.swap-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-left: 3px solid var(--accent-5);
+  padding: 6px 0 6px 8px;
+  margin: 4px 0;
+}
+.picker-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 2px 8px; }
+.picker-filter .chip { padding: 5px 10px; font-size: 12px; }
+
 /* ---- Install to home screen (Profile) ---- */
 .install-card { border: 1px solid var(--accent); }
 .install-steps {

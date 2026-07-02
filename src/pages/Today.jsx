@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { loadActiveProgram, loadHistory } from '../lib/storage.js'
+import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS } from '../lib/equipment.js'
 import { repsLabel } from '../data/schemes.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
@@ -9,6 +11,8 @@ export default function Today() {
   const navigate = useNavigate()
   const program = loadActiveProgram()
   const history = loadHistory()
+  const [activeProfile, setActiveProfileState] = useState(() => getEquipment().active)
+  const switchProfile = (id) => { setActiveProfile(id); setActiveProfileState(id) }
 
   if (!program) {
     return (
@@ -36,6 +40,9 @@ export default function Today() {
   const warning = restWarnings(trainingWeekdays(program))
   const lastWorkout = history[0]
 
+  const availableSet = new Set(getEquipment().profiles[activeProfile])
+  const needSwap = session.exercises.filter((ex) => !isDoable(ex, availableSet)).length
+
   return (
     <section className="page">
       <header className="page-header">
@@ -51,6 +58,21 @@ export default function Today() {
       )}
 
       <div className="card">
+        <div className="mode-row">
+          <span className="muted small">Training at</span>
+          <div className="seg seg-sm">
+            {PROFILE_IDS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={'seg-item' + (activeProfile === id ? ' is-selected' : '')}
+                onClick={() => switchProfile(id)}
+              >
+                {profileMeta(id).icon} {profileMeta(id).name}
+              </button>
+            ))}
+          </div>
+        </div>
         {session.note && <p className="muted small">{session.note}</p>}
         <ul className="exercise-preview">
           {session.exercises.map((ex, j) => (
@@ -69,6 +91,11 @@ export default function Today() {
         >
           {pick.isToday ? 'Start workout' : `Start ${session.title} now`}
         </button>
+        {needSwap > 0 && (
+          <p className="muted small">
+            🏠 {needSwap} move{needSwap === 1 ? '' : 's'} need a swap in {profileMeta(activeProfile).name} mode — you can swap them one-tap during the workout.
+          </p>
+        )}
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>❤️ Log cardio</button>
       </div>
 

@@ -8,6 +8,10 @@ import { REGIONS, EQUIPMENT_GROUPS, GOALS } from '../data/options.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import InstallApp from '../components/InstallApp.jsx'
 import { applyTheme } from '../lib/theme.js'
+import {
+  getEquipment, setActiveProfile as storeSetActiveProfile, saveProfileEquipment,
+  profileMeta, PROFILE_IDS,
+} from '../lib/equipment.js'
 
 const ALL_EQUIP = EQUIPMENT_GROUPS.flatMap((g) => g.items)
 const labelsFor = (ids = [], src) => ids.map((id) => src.find((x) => x.id === id)?.label).filter(Boolean)
@@ -64,6 +68,22 @@ export default function Profile() {
     setSettings(next)
     saveSettings(next)
     applyTheme(t)
+  }
+
+  // ---- Training location (Home / Gym equipment profiles) ----
+  const [equip, setEquip] = useState(() => getEquipment())
+  const activeProfile = equip.active
+  const chooseProfile = (id) => {
+    setEquip((e) => ({ ...e, active: id }))
+    storeSetActiveProfile(id)
+  }
+  const toggleEquip = (itemId) => {
+    setEquip((e) => {
+      const cur = e.profiles[activeProfile]
+      const list = cur.includes(itemId) ? cur.filter((x) => x !== itemId) : [...cur, itemId]
+      saveProfileEquipment(activeProfile, list)
+      return { ...e, profiles: { ...e.profiles, [activeProfile]: list } }
+    })
   }
 
   const signIn = async () => {
@@ -141,6 +161,48 @@ export default function Profile() {
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>
           ❤️ Log cardio
         </button>
+      </div>
+
+      {/* ---- Training location (equipment profiles) ---- */}
+      <div className="card">
+        <p className="group-label">📍 Training location</p>
+        <p className="muted small">
+          Keep separate kit for home and the gym. During a workout, anything you can&apos;t do in the
+          current location gets a one-tap swap to a move you can.
+        </p>
+        <div className="seg">
+          {PROFILE_IDS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={'seg-item' + (activeProfile === id ? ' is-selected' : '')}
+              onClick={() => chooseProfile(id)}
+            >
+              {profileMeta(id).icon} {profileMeta(id).name}
+            </button>
+          ))}
+        </div>
+        <p className="group-label" style={{ marginTop: 12 }}>
+          What&apos;s available at {profileMeta(activeProfile).name.toLowerCase()}?
+        </p>
+        {EQUIPMENT_GROUPS.map((g) => (
+          <div className="equip-group" key={g.group}>
+            <p className="muted small">{g.group}</p>
+            <div className="check-grid">
+              {g.items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={'check-pill' + (equip.profiles[activeProfile].includes(item.id) ? ' is-selected' : '')}
+                  onClick={() => toggleEquip(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        <p className="muted small">Bodyweight moves are always available.</p>
       </div>
 
       {/* ---- Appearance ---- */}

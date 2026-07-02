@@ -14,6 +14,10 @@ import RestTimer from '../components/RestTimer.jsx'
 import ExercisePicker from '../components/ExercisePicker.jsx'
 import CardioForm from '../components/CardioForm.jsx'
 import QuickOneRM from '../components/QuickOneRM.jsx'
+import {
+  getEquipment, setActiveProfile as storeSetActiveProfile, isDoable, bestSubstitute,
+  missingEquipment, profileMeta, PROFILE_IDS,
+} from '../lib/equipment.js'
 
 // Post-session difficulty ratings (saved to history).
 const DIFFICULTIES = [
@@ -159,6 +163,43 @@ export default function Workout() {
   const removeExercise = (exId) => {
     setExercises((list) => list.filter((e) => e.id !== exId))
     setSets((s) => { const n = { ...s }; delete n[exId]; return n })
+  }
+
+  // ---- Home/Gym equipment mode + one-off exercise substitution ----
+  const equip = getEquipment(settings)
+  const [activeProfile, setActiveProfileState] = useState(equip.active)
+  const availableSet = new Set(equip.profiles[activeProfile])
+  const switchProfile = (id) => { storeSetActiveProfile(id); setActiveProfileState(id) }
+
+  // Replace an exercise you can't do here with a doable same-pattern alternative,
+  // for this session only (marked adhoc, so it never touches program progression).
+  const swapExercise = (exId, sub) => {
+    const p = prescriptionFor(sub, schemeForGoals(goals))
+    const entry = {
+      id: sub.id, name: sub.name, pattern: sub.pattern, regions: sub.regions,
+      compound: sub.compound, load: sub.load !== false, cues: sub.cues,
+      ladderId: sub.ladderId || null, nextId: sub.nextId || null,
+      sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec,
+      startWeight: '', adhoc: true,
+    }
+    setExercises((list) => {
+      if (list.some((e) => e.id === sub.id)) return list.filter((e) => e.id !== exId) // avoid dup id
+      return list.map((e) => (e.id === exId ? entry : e))
+    })
+    setSets((s) => {
+      const n = { ...s }
+      delete n[exId]
+      n[sub.id] = Array.from({ length: p.sets }, () => ({ weight: '', reps: String(p.repHigh), done: false }))
+      return n
+    })
+  }
+
+  const swapAllUnavailable = () => {
+    exercises.forEach((ex) => {
+      if (isDoable(ex, availableSet)) return
+      const sub = bestSubstitute(ex, availableSet)
+      if (sub) swapExercise(ex.id, sub)
+    })
   }
 
   const adjustRest = (exId, delta) =>
@@ -386,13 +427,43 @@ export default function Workout() {
           <div className="progress-fill" style={{ width: `${(doneSets / Math.max(1, totalSets)) * 100}%` }} />
         </div>
         <p className="muted small">{doneSets} / {totalSets} sets done</p>
+        <div className="mode-row">
+          <span className="muted small">Training at</span>
+          <div className="seg seg-sm">
+            {PROFILE_IDS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={'seg-item' + (activeProfile === id ? ' is-selected' : '')}
+                onClick={() => switchProfile(id)}
+              >
+                {profileMeta(id).icon} {profileMeta(id).name}
+              </button>
+            ))}
+          </div>
+        </div>
       </header>
 
       <div className="step-body">
+        {(() => {
+          const n = exercises.filter((ex) => !isDoable(ex, availableSet)).length
+          return n > 0 ? (
+            <div className="card notice swap-banner">
+              <p className="muted small">
+                🏠 {n} move{n === 1 ? '' : 's'} need gear you don&apos;t have in {profileMeta(activeProfile).name} mode.
+              </p>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={swapAllUnavailable}>
+                Swap all to what I can do
+              </button>
+            </div>
+          ) : null
+        })()}
         {exercises.map((ex) => {
           const tracksLoad = ex.load !== false
+          const doable = isDoable(ex, availableSet)
+          const sub = doable ? null : bestSubstitute(ex, availableSet)
           return (
-            <div className="card exercise-card" key={ex.id}>
+            <div className={'card exercise-card' + (doable ? '' : ' is-unavailable')} key={ex.id}>
               <div className="exercise-top">
                 <ExerciseFigure pattern={ex.pattern} size={52} />
                 <div className="exercise-headings">
@@ -417,6 +488,17 @@ export default function Workout() {
                     <span>{ex.restSec}s</span>
                     <button type="button" onClick={() => adjustRest(ex.id, 15)} aria-label="more rest">+</button>
                   </div>
+                </div>
+              )}
+
+              {!doable && (
+                <div className="swap-note">
+                  <span className="muted small">
+                    🏠 Needs {missingEquipment(ex, availableSet).join(', ')} — not in {profileMeta(activeProfile).name}.
+                  </span>
+                  {sub
+                    ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => swapExercise(ex.id, sub)}>Swap → {sub.name}</button>
+                    : <span className="muted small">No alternative with your current gear — swap gear or remove it.</span>}
                 </div>
               )}
 

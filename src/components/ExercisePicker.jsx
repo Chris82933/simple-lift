@@ -1,15 +1,22 @@
 import { useState } from 'react'
 import { EXERCISES } from '../data/exercises.js'
 import ExerciseFigure from './ExerciseFigure.jsx'
+import { getEquipment, activeEquipmentIds, isDoable, profileMeta } from '../lib/equipment.js'
 
 // Bottom-sheet exercise picker. Calls onPick(exercise) for each tap; stays open
-// so several can be added in a row. onClose dismisses it.
+// so several can be added in a row. onClose dismisses it. Defaults to showing
+// only exercises doable with the active location's equipment.
 export default function ExercisePicker({ onPick, onClose, title = 'Add exercise' }) {
   const [search, setSearch] = useState('')
+  const [showAll, setShowAll] = useState(false)
   const q = search.trim().toLowerCase()
-  // Hide template-only ladder variants and conditioning moves (logged via cardio).
+  const active = getEquipment().active
+  const availableSet = new Set(activeEquipmentIds())
+  // Hide template-only ladder variants and conditioning moves (logged via cardio),
+  // and (unless "Show all") anything you can't do with the current equipment.
   const filtered = EXERCISES.filter(
-    (e) => !e.ladderOnly && e.pattern !== 'conditioning' && e.name.toLowerCase().includes(q),
+    (e) => !e.ladderOnly && e.pattern !== 'conditioning' && e.name.toLowerCase().includes(q)
+      && (showAll || isDoable(e, availableSet)),
   )
 
   return (
@@ -24,6 +31,11 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
             autoFocus
           />
           <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>Done</button>
+        </div>
+        <div className="picker-filter">
+          <span className="muted small">{profileMeta(active).icon} {profileMeta(active).name} gear</span>
+          <button type="button" className={'chip' + (showAll ? '' : ' is-selected')} onClick={() => setShowAll(false)}>What I can do</button>
+          <button type="button" className={'chip' + (showAll ? ' is-selected' : '')} onClick={() => setShowAll(true)}>Show all</button>
         </div>
         <div className="picker-list">
           {filtered.map((ex) => (
