@@ -601,6 +601,44 @@ select.text-input { appearance: none; }
   font-size: 0.82rem; padding: 2px 0; color: var(--muted);
 }
 
+/* ---- Calisthenics skill tree ---- */
+.day-choice { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; }
+.day-choice .seg { flex: 1; }
+
+.char-sheet { align-items: center; text-align: center; }
+.skill-radar { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; }
+.radar-ring { fill: none; stroke: var(--border); stroke-width: 1; }
+.radar-axis { stroke: var(--border); stroke-width: 1; }
+.radar-label { fill: var(--text); font-size: 11px; font-weight: 700; }
+.radar-value { fill: var(--accent); font-size: 11px; font-weight: 800; }
+.radar-fill { fill: color-mix(in srgb, var(--accent) 30%, transparent); stroke: var(--accent); stroke-width: 2; }
+.radar-dot { fill: var(--accent); }
+.char-meta { margin-top: 4px; }
+.power-level {
+  font-size: 44px; font-weight: 800; line-height: 1; margin: 0;
+  background: var(--grad-accent); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.power-label { margin: 2px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.rank-badge {
+  display: inline-block; margin: 0; padding: 4px 14px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--accent); color: var(--accent);
+  font-weight: 800; font-size: 14px;
+}
+
+.skill-card.is-ready { border: 1px solid var(--accent); }
+.skill-head { display: flex; align-items: center; gap: 12px; }
+.skill-emoji { font-size: 30px; }
+.skill-headings { flex: 1; }
+.level-dots { display: flex; gap: 6px; margin: 8px 0 4px; }
+.level-dot { width: 22px; height: 6px; border-radius: 999px; background: var(--surface-2); }
+.level-dot.on { background: var(--grad-accent); }
+.skill-log { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.skill-log .set-input { width: 84px; }
+.advance-btn { width: 100%; margin-top: 8px; }
+.cal-row { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.cal-q { display: flex; align-items: center; gap: 10px; justify-content: space-between; font-size: 14px; }
+.cal-q .set-input { width: 90px; flex: none; }
+
 /* ---- Home/Gym equipment mode ---- */
 .mode-row { display: flex; align-items: center; gap: 10px; margin: 6px 0 4px; }
 .mode-row .seg { flex: 1; }

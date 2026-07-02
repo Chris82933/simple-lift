@@ -28,6 +28,7 @@ export default function Today() {
           </p>
           <button className="btn btn-primary" onClick={() => navigate('/templates')}>Browse templates</button>
           <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/skills')}>🤸 Or work on calisthenics skills</button>
         </div>
       </section>
     )
@@ -56,6 +57,14 @@ export default function Today() {
           {pick.nextWeekday != null ? WEEKDAY_LABELS[pick.nextWeekday] : 'coming up'}.
         </p>
       )}
+
+      <div className="day-choice">
+        <span className="muted small">Today I&apos;m doing</span>
+        <div className="seg seg-sm">
+          <button type="button" className="seg-item is-selected">🏋️ My program</button>
+          <button type="button" className="seg-item" onClick={() => navigate('/skills')}>🤸 Skills</button>
+        </div>
+      </div>
 
       <div className="card">
         <div className="mode-row">

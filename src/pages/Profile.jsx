@@ -161,6 +161,9 @@ export default function Profile() {
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>
           ❤️ Log cardio
         </button>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/skills')}>
+          🤸 Calisthenics skill tree
+        </button>
       </div>
 
       {/* ---- Training location (equipment profiles) ---- */}
