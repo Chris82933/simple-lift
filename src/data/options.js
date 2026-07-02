@@ -27,6 +27,7 @@ export const EQUIPMENT_GROUPS = [
       { id: 'flat_bench', label: 'Flat bench' },
       { id: 'adj_bench', label: 'Adjustable bench' },
       { id: 'pullup_bar', label: 'Pull-up bar' },
+      { id: 'rings', label: 'Gymnastic rings' },
       { id: 'dip_station', label: 'Dip station' },
     ],
   },

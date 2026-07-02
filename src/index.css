@@ -96,39 +96,106 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .app-main {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 88px; /* clear the fixed nav */
+  padding-bottom: 104px; /* clear the floating nav */
 }
 
+/* ---- Floating pill navigation ---- */
 .bottom-nav {
   position: fixed;
-  bottom: 0;
-  width: 100%;
-  max-width: var(--maxw);
+  left: 0;
+  right: 0;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  z-index: 30;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none; /* only the pill/menu catch taps */
+}
+.nav-pill {
+  pointer-events: auto;
+  width: calc(100% - 28px);
+  max-width: calc(var(--maxw) - 40px);
+  display: flex;
+  align-items: center;
   gap: 4px;
-  background: color-mix(in srgb, var(--surface) 80%, transparent);
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  border-top: 1px solid var(--border);
-  box-shadow: 0 -10px 30px -18px rgba(0, 0, 0, 0.6);
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  padding: 6px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
 }
 
 .nav-item {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 12px 0;
+  justify-content: center;
+  padding: 11px 0;
   text-decoration: none;
   color: var(--muted);
   font-size: 14px;
-  font-weight: 600;
-  border-radius: 12px;
+  font-weight: 650;
+  border-radius: 999px;
   transition: color 0.15s, background 0.15s;
 }
-.nav-item.is-active { color: var(--accent); background: var(--surface-2); }
+.nav-item.is-active { color: var(--accent-ink); background: var(--accent); }
+
+.nav-fab {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: var(--grad-primary);
+  color: var(--accent-ink);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--glow);
+  transition: transform 0.18s ease, filter 0.15s ease;
+}
+.nav-fab.is-open { transform: rotate(45deg); }
+.nav-fab:hover { filter: brightness(1.05); }
+
+/* Quick-action popover above the pill */
+.quick-backdrop { position: fixed; inset: 0; z-index: 29; }
+.quick-menu {
+  pointer-events: auto;
+  width: calc(100% - 28px);
+  max-width: calc(var(--maxw) - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  animation: quick-pop 0.16s ease;
+}
+@keyframes quick-pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.quick-item {
+  text-align: left;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.quick-item:hover { background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
 
 /* ---- Pages ---- */
 .page {
@@ -1088,11 +1155,6 @@ select.text-input { appearance: none; }
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-/* Per-tab nav colors */
-.bottom-nav .nav-item:nth-child(1).is-active { color: var(--accent); }
-.bottom-nav .nav-item:nth-child(2).is-active { color: var(--accent-2); }
-.bottom-nav .nav-item:nth-child(3).is-active { color: var(--accent-4); }
-.bottom-nav .nav-item:nth-child(4).is-active { color: var(--accent-3); }
 /* Colorful focus-region selections */
 .region-grid .region-tile.is-selected { color: var(--text); }
 .region-grid .region-tile:nth-child(1).is-selected { border-color: var(--accent);   background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }

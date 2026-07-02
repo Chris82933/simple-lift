@@ -273,6 +273,50 @@ export const TEMPLATES = [
   },
 
   {
+    templateId: 'climb_home',
+    name: 'Climbing Strength (Home)',
+    description: 'A rings-and-bar strength block for rock climbers, in the order coaches recommend: fingers and heavy pulling first while you’re fresh, core tension in the middle, and antagonist/prehab work last to keep elbows and shoulders healthy. Built around minimal home gear.',
+    tags: ['Climbing', 'Rings', '2 days/wk'],
+    level: 'Intermediate',
+    bestFor: 'Rock climbing',
+    equipment: 'Pull-up bar, gymnastic rings, one adjustable dumbbell',
+    progressionInfo: 'Double progression on the pulls (build reps, then add a little weight); grow hang and lock-off times as they get easy. Long rests on finger and max-pull work — quality over fatigue.',
+    pros: [
+      'Trains what climbing needs — grip, lock-off strength, pulling power, core tension',
+      'Balances hard pulling with antagonist push and forearm work to protect elbows',
+      'Only needs a bar, rings, and one adjustable dumbbell',
+    ],
+    cons: [
+      'Assumes healthy fingers — ease into the hangs, no maximal edges here',
+      'No substitute for climbing itself; pair it with 1–2 climbing days a week',
+      'Fingerboard-specific max strength still wants a hangboard (not included)',
+    ],
+    source: 'template',
+    goals: ['climbing'],
+    schedule: { mode: 'rotation', trainingDays: [1, 4] },
+    days: [
+      day('Pull & Fingers', 'Fingers and heavy pulling while fresh. Rest 2–3 min on the hard sets.', [
+        ex('dead_hang', 5, [10, 15], 150),
+        ex('weighted_pullup', 5, [3, 5], 150),
+        ex('lock_off', 3, [5, 10], 120),
+        ex('ring_row', 3, [8, 12], 90),
+        ex('toes_to_bar', 3, [6, 12], 90),
+        ex('ring_dip', 3, [8, 12], 90),
+      ]),
+      day('Power & Prehab', 'Explosive pulling, core tension, then forearm & shoulder prehab.', [
+        ex('dead_hang', 6, [7, 10], 120),
+        ex('pullup', 4, [5, 8], 120),
+        ex('typewriter_pullup', 3, [4, 6], 120),
+        ex('ring_support_hold', 3, [15, 30], 90),
+        ex('hanging_leg_raise', 3, [8, 12], 75),
+        ex('ring_pushup', 3, [8, 12], 75),
+        ex('wrist_curl', 3, [12, 15], 60),
+        ex('reverse_wrist_curl', 3, [12, 15], 60),
+      ]),
+    ],
+  },
+
+  {
     templateId: 'bw_foundations',
     name: 'Bodyweight Foundations',
     description: 'A full-body bodyweight routine done on each training day, built on progression ladders — start where you are and move up a level as each gets easy. Great with just a pull-up bar.',

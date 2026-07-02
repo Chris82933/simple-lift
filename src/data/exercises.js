@@ -90,6 +90,19 @@ const BASE_EXERCISES = [
   { id: 'db_calf_raise', name: 'Dumbbell Calf Raise', pattern: 'calf', regions: ['legs'], requires: ['dumbbells'], compound: false, tags: ['running'], cues: 'Full stretch at the bottom, rise onto the balls of your feet.' },
   { id: 'bw_calf_raise', name: 'Calf Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Up tall on your toes, pause, lower slowly for a stretch.' },
 
+  // ---- Rings & climbing-focused ----
+  { id: 'ring_row', name: 'Ring Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['rings'], compound: true, load: false, tags: ['climbing'], cues: 'Body straight, pull the rings to your chest, squeeze the shoulder blades. Lower your feet to make it harder.' },
+  { id: 'ring_pullup', name: 'Ring Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['rings'], compound: true, load: false, tags: ['climbing'], cues: 'Let the rings rotate naturally, pull to your chest, control the descent.' },
+  { id: 'ring_dip', name: 'Ring Dip', pattern: 'horiz_push', regions: ['chest', 'arms'], requires: ['rings'], compound: true, load: false, tags: ['climbing'], cues: 'Rings tight to the body — a key antagonist for climbers. Pause in the support hold at the top.' },
+  { id: 'ring_pushup', name: 'Ring Push-Up', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: ['rings'], compound: true, load: false, cues: 'Rings just off the floor, turn them out at the top; brace hard against the wobble.' },
+  { id: 'ring_support_hold', name: 'Ring Support Hold', pattern: 'core', regions: ['arms', 'core'], requires: ['rings'], compound: false, load: false, tags: ['climbing'], cues: 'Lock the elbows, depress the shoulders, rings turned slightly out. Hold for time — reps as seconds.' },
+  { id: 'skin_the_cat', name: 'Skin the Cat', pattern: 'core', regions: ['back', 'core'], requires: ['rings'], compound: true, load: false, tags: ['climbing'], cues: 'From a hang, roll backward through the shoulders and return under control — mobility + strength.' },
+  { id: 'lock_off', name: 'Lock-Off Hold', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, tags: ['climbing'], cues: 'Pull up and HOLD at ~90° (or higher) — the isometric pulling strength climbing demands. Reps as seconds.' },
+  { id: 'typewriter_pullup', name: 'Typewriter Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, tags: ['climbing'], cues: 'Pull up, then shift side to side along the bar keeping the chin high — builds one-arm strength.' },
+  { id: 'weighted_pullup', name: 'Weighted Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar', 'dumbbells'], compound: true, tags: ['climbing'], cues: 'Hang a dumbbell from a belt or squeeze it between your feet; full range, chin over the bar.' },
+  { id: 'wrist_curl', name: 'Wrist Curl', pattern: 'biceps', regions: ['arms'], requires: ['dumbbells'], compound: false, tags: ['climbing'], cues: 'Forearms on your thighs, curl the dumbbell with the wrist only — forearm/finger-flexor strength.' },
+  { id: 'reverse_wrist_curl', name: 'Reverse Wrist Curl', pattern: 'biceps', regions: ['arms'], requires: ['dumbbells'], compound: false, tags: ['climbing'], cues: 'Palms down, lift the dumbbell with the wrist — balances the forearms and protects the elbows.' },
+
   // ---- Core ----
   { id: 'plank', name: 'Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['climbing', 'running'], cues: 'Straight line, squeeze glutes and abs, breathe — hold for reps as seconds.' },
   { id: 'hanging_leg_raise', name: 'Hanging Leg Raise', pattern: 'core', regions: ['core'], requires: ['pullup_bar'], compound: false, load: false, tags: ['climbing'], cues: 'No swinging, lift the legs with the abs, lower slow.' },
