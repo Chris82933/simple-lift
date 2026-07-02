@@ -626,9 +626,11 @@ select.text-input { appearance: none; }
 }
 
 .skill-card.is-ready { border: 1px solid var(--accent); }
-.skill-head { display: flex; align-items: center; gap: 12px; }
-.skill-emoji { font-size: 30px; }
+.skill-head { display: flex; align-items: center; gap: 10px; }
+.skill-figure { flex: none; }
 .skill-headings { flex: 1; }
+.cal-label { display: flex; align-items: center; gap: 8px; }
+.cal-label .skill-figure { flex: none; }
 .level-dots { display: flex; gap: 6px; margin: 8px 0 4px; }
 .level-dot { width: 22px; height: 6px; border-radius: 999px; background: var(--surface-2); }
 .level-dot.on { background: var(--grad-accent); }

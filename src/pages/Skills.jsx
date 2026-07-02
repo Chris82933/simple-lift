@@ -5,6 +5,7 @@ import {
   SKILLS, computeStats, powerLevel, rankFor, calibrateLevel, readyToAdvance, maxIndex,
 } from '../data/skills.js'
 import SkillRadar from '../components/SkillRadar.jsx'
+import SkillFigure from '../components/SkillFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 
 export default function Skills() {
@@ -93,7 +94,7 @@ export default function Skills() {
           return (
             <div className={'card skill-card' + (ready ? ' is-ready' : '')} key={sk.id}>
               <div className="skill-head">
-                <span className="skill-emoji" aria-hidden="true">{sk.emoji}</span>
+                <SkillFigure pose={sk.id} size={52} />
                 <div className="skill-headings">
                   <p className="ex-name big">{level.name}</p>
                   <p className="muted small">{sk.name} · Level {idx + 1}/{sk.levels.length}</p>
@@ -155,7 +156,7 @@ export default function Skills() {
               {SKILLS.map((sk) => (
                 <div className="cal-row" key={sk.id}>
                   <label className="cal-q">
-                    <span>{sk.emoji} {sk.benchmark}</span>
+                    <span className="cal-label"><SkillFigure pose={sk.id} size={30} /> {sk.benchmark}</span>
                     <input
                       className="set-input"
                       type="number"
