@@ -1,10 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom'
 
 const tabs = [
-  { to: '/today', label: 'Today', icon: '🏋️' },
-  { to: '/program', label: 'Program', icon: '🗓️' },
-  { to: '/progress', label: 'Progress', icon: '📈' },
-  { to: '/profile', label: 'Profile', icon: '👤' },
+  { to: '/today', label: 'Today' },
+  { to: '/program', label: 'Program' },
+  { to: '/progress', label: 'Progress' },
+  { to: '/profile', label: 'Profile' },
 ]
 
 export default function AppLayout() {
@@ -20,7 +20,6 @@ export default function AppLayout() {
             to={tab.to}
             className={({ isActive }) => 'nav-item' + (isActive ? ' is-active' : '')}
           >
-            <span className="nav-icon" aria-hidden="true">{tab.icon}</span>
             <span className="nav-label">{tab.label}</span>
           </NavLink>
         ))}
