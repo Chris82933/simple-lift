@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { loadSkills, updateSkill } from '../lib/storage.js'
 import {
   SKILLS, computeStats, powerLevel, rankFor, calibrateLevel, readyToAdvance, maxIndex,
+  planLabel, advanceLabel,
 } from '../data/skills.js'
 import SkillRadar from '../components/SkillRadar.jsx'
 import SkillFigure from '../components/SkillFigure.jsx'
@@ -16,9 +17,11 @@ export default function Skills() {
   const [answers, setAnswers] = useState({})
 
   const stats = computeStats(skills)
+  const baseline = computeStats(skills, 'baseline')
   const power = powerLevel(stats)
   const rank = rankFor(power)
   const started = Object.keys(skills).length > 0
+  const grown = stats.some((s, i) => s.value > baseline[i].value)
 
   const logSkill = (sk) => {
     const v = Number(drafts[sk.id]) || 0
@@ -47,7 +50,10 @@ export default function Skills() {
     for (const sk of SKILLS) {
       const raw = answers[sk.id]
       if (raw === undefined || raw === '') continue
-      next = updateSkill(sk.id, { level: calibrateLevel(sk, raw), best: 0, log: skills[sk.id]?.log || [] })
+      // Record the calibrated level as the baseline too — the radar's grey shape
+      // is your starting point; progress pushes the accent shape past it.
+      const lvl = calibrateLevel(sk, raw)
+      next = updateSkill(sk.id, { level: lvl, baseline: lvl, best: 0, log: skills[sk.id]?.log || [] })
     }
     setSkills(next)
     setCalOpen(false)
@@ -67,12 +73,18 @@ export default function Skills() {
       <div className="step-body">
         {/* ---- Character sheet ---- */}
         <div className="card char-sheet">
-          <SkillRadar stats={stats} />
+          <SkillRadar stats={stats} baseline={baseline} />
           <div className="char-meta">
             <p className="power-level">{power}</p>
             <p className="power-label">Power level</p>
             <p className="rank-badge">{rank}</p>
           </div>
+          {started && (
+            <p className="radar-legend">
+              <span className="swatch now" /> now
+              <span className="swatch start" /> start{grown ? ' · look how far you’ve come 💪' : ''}
+            </p>
+          )}
         </div>
 
         <button type="button" className="btn btn-primary" onClick={() => { setAnswers({}); setCalOpen(true) }}>
@@ -90,7 +102,7 @@ export default function Skills() {
           const best = cur.best || 0
           const ready = readyToAdvance(sk, idx, best)
           const atTop = idx >= maxIndex(sk)
-          const mastered = atTop && best >= level.target
+          const mastered = atTop && best >= level.hi
           return (
             <div className={'card skill-card' + (ready ? ' is-ready' : '')} key={sk.id}>
               <div className="skill-head">
@@ -107,9 +119,10 @@ export default function Skills() {
               </div>
 
               <p className="cue">💡 {level.cues}</p>
+              <p className="plan-line">📋 Do <strong>{planLabel(sk, level)}</strong></p>
               {mastered
                 ? <p className="suggestion">🏆 Skill mastered — you own the hardest level.</p>
-                : <p className="suggestion">🎯 Advance goal: {level.goalLabel}</p>}
+                : <p className="suggestion">🎯 Advance when you hit <strong>{advanceLabel(sk, level)}</strong> → {sk.levels[idx + 1].name}</p>}
 
               <div className="skill-log">
                 <input

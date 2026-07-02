@@ -1,25 +1,94 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadActiveProgram, loadHistory } from '../lib/storage.js'
+import {
+  loadPrograms, getActiveProgramId, setActiveProgramId, loadHistory, loadSettings, saveSettings, loadSkills,
+} from '../lib/storage.js'
 import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS } from '../lib/equipment.js'
+import { computeStats, powerLevel, rankFor } from '../data/skills.js'
 import { repsLabel } from '../data/schemes.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
+import SkillRadar from '../components/SkillRadar.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
+
+const SKILLS_FOCUS = 'skills'
 
 export default function Today() {
   const navigate = useNavigate()
-  const program = loadActiveProgram()
+  const programs = loadPrograms()
   const history = loadHistory()
+
+  const [mode, setMode] = useState(() => (loadSettings().activeMode === SKILLS_FOCUS ? SKILLS_FOCUS : 'program'))
+  const [activeId, setActiveId] = useState(() => getActiveProgramId())
   const [activeProfile, setActiveProfileState] = useState(() => getEquipment().active)
   const switchProfile = (id) => { setActiveProfile(id); setActiveProfileState(id) }
+
+  const program = programs.find((p) => p.id === activeId) || programs[0] || null
+
+  // Choose today's focus: a saved program, or the calisthenics skill tree.
+  const chooseFocus = (val) => {
+    const s = loadSettings()
+    if (val === SKILLS_FOCUS) {
+      saveSettings({ ...s, activeMode: SKILLS_FOCUS })
+      setMode(SKILLS_FOCUS)
+    } else {
+      setActiveProgramId(val)
+      saveSettings({ ...s, activeMode: 'program' })
+      setActiveId(val)
+      setMode('program')
+    }
+  }
+
+  // The focus selector — makes calisthenics feel like just another program.
+  const FocusPicker = () => (
+    <div className="day-choice">
+      <span className="muted small">Today&apos;s focus</span>
+      <select
+        className="text-input select"
+        value={mode === SKILLS_FOCUS ? SKILLS_FOCUS : (program?.id || '')}
+        onChange={(e) => chooseFocus(e.target.value)}
+      >
+        {programs.map((p) => (
+          <option key={p.id} value={p.id}>{p.name}</option>
+        ))}
+        <option value={SKILLS_FOCUS}>🤸 Calisthenics</option>
+      </select>
+    </div>
+  )
+
+  // ---- Calisthenics focus ----
+  if (mode === SKILLS_FOCUS) {
+    const skills = loadSkills()
+    const started = Object.keys(skills).length > 0
+    const stats = computeStats(skills)
+    const baseline = computeStats(skills, 'baseline')
+    const power = powerLevel(stats)
+    return (
+      <section className="page">
+        <header className="page-header">
+          <p className="eyebrow">Today</p>
+          <h1>Calisthenics</h1>
+        </header>
+        {programs.length > 0 && <FocusPicker />}
+        <div className="card char-sheet">
+          <SkillRadar stats={stats} baseline={baseline} />
+          <div className="char-meta">
+            <p className="power-level">{power}</p>
+            <p className="power-label">Power level · {rankFor(power)}</p>
+          </div>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/skills')}>
+            {started ? 'Open skill tree' : '🎯 Find my levels'}
+          </button>
+          {!started && <p className="muted small">Calibrate once and we&apos;ll set every skill to the right starting level.</p>}
+        </div>
+      </section>
+    )
+  }
 
   if (!program) {
     return (
       <section className="page">
-        <header className="page-header">
-          <h1>Today&apos;s session</h1>
-        </header>
+        <header className="page-header"><h1>Today&apos;s session</h1></header>
         <div className="card placeholder-card">
           <p className="placeholder-title">No program yet</p>
           <p className="muted">
@@ -28,7 +97,7 @@ export default function Today() {
           </p>
           <button className="btn btn-primary" onClick={() => navigate('/templates')}>Browse templates</button>
           <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/skills')}>🤸 Or work on calisthenics skills</button>
+          <button type="button" className="btn btn-ghost" onClick={() => chooseFocus(SKILLS_FOCUS)}>🤸 Or work on calisthenics skills</button>
         </div>
       </section>
     )
@@ -58,13 +127,7 @@ export default function Today() {
         </p>
       )}
 
-      <div className="day-choice">
-        <span className="muted small">Today I&apos;m doing</span>
-        <div className="seg seg-sm">
-          <button type="button" className="seg-item is-selected">🏋️ My program</button>
-          <button type="button" className="seg-item" onClick={() => navigate('/skills')}>🤸 Skills</button>
-        </div>
-      </div>
+      <FocusPicker />
 
       <div className="card">
         <div className="mode-row">

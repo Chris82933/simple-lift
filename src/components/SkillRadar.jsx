@@ -1,6 +1,8 @@
 // Dependency-free SVG radar / spider chart for the calisthenics "character
-// sheet". `stats` is [{ id, label, value }] with value 0–100.
-export default function SkillRadar({ stats, size = 260 }) {
+// sheet". `stats` is [{ id, label, value }] with value 0–100. Optional
+// `baseline` (same shape) is drawn as a grey polygon behind the accent one, so
+// the bright shape shows how far you've come from your starting measurements.
+export default function SkillRadar({ stats, baseline, size = 260 }) {
   const cx = size / 2
   const cy = size / 2
   const r = size / 2 - 34
@@ -14,7 +16,9 @@ export default function SkillRadar({ stats, size = 260 }) {
   const angle = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / n
   const point = (i, frac) => [cx + r * frac * Math.cos(angle(i)), cy + r * frac * Math.sin(angle(i))]
   const poly = (frac) => stats.map((_, i) => point(i, frac).join(',')).join(' ')
-  const valuePoly = stats.map((s, i) => point(i, Math.max(0.02, (s.value || 0) / 100)).join(',')).join(' ')
+  const shapePoly = (arr) => arr.map((s, i) => point(i, Math.max(0.02, (s.value || 0) / 100)).join(',')).join(' ')
+  const valuePoly = shapePoly(stats)
+  const hasBaseline = Array.isArray(baseline) && baseline.length === n
 
   return (
     <svg
@@ -55,7 +59,9 @@ export default function SkillRadar({ stats, size = 260 }) {
           </g>
         )
       })}
-      {/* value polygon */}
+      {/* baseline (starting) polygon in grey */}
+      {hasBaseline && <polygon points={shapePoly(baseline)} className="radar-baseline" />}
+      {/* current value polygon */}
       <polygon points={valuePoly} className="radar-fill" />
       {stats.map((s, i) => {
         const [x, y] = point(i, Math.max(0.02, (s.value || 0) / 100))
