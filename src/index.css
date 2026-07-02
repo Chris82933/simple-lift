@@ -1,7 +1,8 @@
 :root {
-  --radius: 16px;
+  --radius: 18px;
+  --radius-sm: 12px;
   --maxw: 520px;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter var', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
 }
@@ -26,6 +27,12 @@
   --accent-6: #4dd4ff;       /* cyan */
   --grad-primary: linear-gradient(135deg, #4dffbc 0%, #4dd4ff 100%);
   --grad-accent: linear-gradient(135deg, #4dffbc, #4dd4ff);
+  --shadow-sm: 0 2px 10px -4px rgba(0, 0, 0, 0.65);
+  --shadow: 0 14px 38px -16px rgba(0, 0, 0, 0.75);
+  --ring: color-mix(in srgb, var(--accent) 45%, transparent);
+  --glow: 0 10px 26px -12px color-mix(in srgb, var(--accent) 60%, transparent);
+  --hairline: color-mix(in srgb, #ffffff 6%, transparent);
+  --bg-glow: color-mix(in srgb, var(--accent) 9%, transparent);
   color-scheme: dark;
 }
 
@@ -45,6 +52,12 @@
   --accent-6: #1f9fc4;       /* cyan */
   --grad-primary: linear-gradient(135deg, #10c79a 0%, #1f9fc4 100%);
   --grad-accent: linear-gradient(135deg, #0fb88a, #1f9fc4);
+  --shadow-sm: 0 2px 10px -5px rgba(20, 20, 25, 0.18);
+  --shadow: 0 16px 40px -18px rgba(20, 20, 25, 0.28);
+  --ring: color-mix(in srgb, var(--accent) 35%, transparent);
+  --glow: 0 10px 26px -14px color-mix(in srgb, var(--accent) 45%, transparent);
+  --hairline: color-mix(in srgb, #ffffff 70%, transparent);
+  --bg-glow: color-mix(in srgb, var(--accent) 7%, transparent);
   color-scheme: light;
 }
 
@@ -53,9 +66,18 @@
 html, body, #root { height: 100%; margin: 0; }
 
 body {
-  background: var(--bg);
+  /* Subtle glow at the top for depth — colours stay from the palette. */
+  background:
+    radial-gradient(1100px 620px at 50% -220px, var(--bg-glow), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+/* Consistent keyboard focus ring across interactive elements. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button, a, input, select, textarea { outline-color: var(--accent); }
 
 #root {
   display: flex;
@@ -83,10 +105,13 @@ body {
   width: 100%;
   max-width: var(--maxw);
   display: flex;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(12px);
+  gap: 4px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
   border-top: 1px solid var(--border);
-  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  box-shadow: 0 -10px 30px -18px rgba(0, 0, 0, 0.6);
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
 }
 
 .nav-item {
@@ -114,7 +139,7 @@ body {
 }
 .full-flow { min-height: 100dvh; }
 
-.page-header h1 { font-size: 26px; margin: 2px 0 6px; letter-spacing: -0.02em; }
+.page-header h1 { font-size: 28px; font-weight: 800; margin: 2px 0 6px; letter-spacing: -0.03em; line-height: 1.12; }
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -128,13 +153,25 @@ body {
 
 /* ---- Cards ---- */
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: var(--shadow-sm);
+}
+/* Faint top hairline for a modern layered look. */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(90deg, transparent, var(--hairline), transparent);
+  pointer-events: none;
 }
 .placeholder-card { align-items: flex-start; }
 .placeholder-title { font-weight: 600; margin: 0; font-size: 16px; }
@@ -144,22 +181,26 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 18px;
-  border-radius: 12px;
+  padding: 13px 18px;
+  border-radius: var(--radius-sm);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 650;
   text-decoration: none;
   border: 1px solid transparent;
   cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease, opacity 0.15s ease;
 }
+.btn:active { transform: translateY(1px) scale(0.99); }
 .btn-primary {
   background: var(--grad-primary);
   color: var(--accent-ink);
   border: none;
-  box-shadow: 0 6px 18px -7px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--glow);
 }
-.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.btn-primary:hover { filter: brightness(1.04); }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
 .btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
+.btn-ghost:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 /* ---- Onboarding region grid ---- */
 .region-grid {
@@ -299,8 +340,9 @@ body {
   font-weight: 600;
   border-radius: 9px;
   cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
 }
-.seg-item.is-selected { background: var(--accent); color: var(--accent-ink); }
+.seg-item.is-selected { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
 
 /* ---- Buttons (small / danger) ---- */
 .btn-sm { padding: 8px 14px; font-size: 13px; }
@@ -388,7 +430,7 @@ body {
   font-size: 15px;
   text-align: center;
 }
-.set-input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+.set-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 .set-line.done .set-input { opacity: 0.6; }
 .set-check {
   width: 40px;
@@ -460,14 +502,15 @@ body {
 /* ---- Inputs ---- */
 .text-input {
   width: 100%;
-  padding: 11px 12px;
+  padding: 12px 13px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   color: var(--text);
   font-size: 15px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.text-input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+.text-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 select.text-input { appearance: none; }
 .icon-btn {
   border: none;
