@@ -605,6 +605,28 @@ select.text-input { appearance: none; }
 .day-choice { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; }
 .day-choice .seg { flex: 1; }
 
+/* Today's-focus tiles — each saved program + calisthenics as a tappable card */
+.focus-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
+.focus-tab {
+  flex: 1 1 auto;
+  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--text);
+}
+.focus-tab-name { font-weight: 700; font-size: 14px; }
+.focus-tab.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+
 .char-sheet { align-items: center; text-align: center; }
 .skill-radar { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; }
 .radar-ring { fill: none; stroke: var(--border); stroke-width: 1; }

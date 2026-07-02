@@ -4,7 +4,8 @@ import {
   loadPrograms, getActiveProgramId, setActiveProgramId, loadHistory, loadSettings, saveSettings, loadSkills,
 } from '../lib/storage.js'
 import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS } from '../lib/equipment.js'
-import { computeStats, powerLevel, rankFor } from '../data/skills.js'
+import { SKILLS, computeStats, powerLevel, rankFor, planLabel } from '../data/skills.js'
+import SkillFigure from '../components/SkillFigure.jsx'
 import { repsLabel } from '../data/schemes.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
@@ -39,24 +40,36 @@ export default function Today() {
     }
   }
 
-  // The focus selector — makes calisthenics feel like just another program.
-  const FocusPicker = () => (
-    <div className="day-choice">
-      <span className="muted small">Today&apos;s focus</span>
-      <select
-        className="text-input select"
-        value={mode === SKILLS_FOCUS ? SKILLS_FOCUS : (program?.id || '')}
-        onChange={(e) => chooseFocus(e.target.value)}
-      >
+  // The focus selector — tappable tiles so calisthenics is just another program.
+  // Only shown when there's more than one thing to choose between.
+  const FocusTiles = () => {
+    if (programs.length === 0) return null
+    return (
+      <div className="focus-tabs">
         {programs.map((p) => (
-          <option key={p.id} value={p.id}>{p.name}</option>
+          <button
+            key={p.id}
+            type="button"
+            className={'focus-tab' + (mode !== SKILLS_FOCUS && program?.id === p.id ? ' is-selected' : '')}
+            onClick={() => chooseFocus(p.id)}
+          >
+            <span className="focus-tab-name">{p.name}</span>
+            <span className="muted small">{p.source === 'custom' ? 'Custom' : 'Program'} · {p.days.length} day{p.days.length === 1 ? '' : 's'}</span>
+          </button>
         ))}
-        <option value={SKILLS_FOCUS}>🤸 Calisthenics</option>
-      </select>
-    </div>
-  )
+        <button
+          type="button"
+          className={'focus-tab' + (mode === SKILLS_FOCUS ? ' is-selected' : '')}
+          onClick={() => chooseFocus(SKILLS_FOCUS)}
+        >
+          <span className="focus-tab-name">🤸 Calisthenics</span>
+          <span className="muted small">Skill tree</span>
+        </button>
+      </div>
+    )
+  }
 
-  // ---- Calisthenics focus ----
+  // ---- Calisthenics focus (mirrors the gym session card layout) ----
   if (mode === SKILLS_FOCUS) {
     const skills = loadSkills()
     const started = Object.keys(skills).length > 0
@@ -69,17 +82,42 @@ export default function Today() {
           <p className="eyebrow">Today</p>
           <h1>Calisthenics</h1>
         </header>
-        {programs.length > 0 && <FocusPicker />}
+        <FocusTiles />
+
+        <div className="card">
+          {started ? (
+            <>
+              <p className="muted small">Train a skill or two — log your best set, and level up when you hit the target.</p>
+              <ul className="exercise-preview">
+                {SKILLS.map((sk) => {
+                  const idx = skills[sk.id]?.level || 0
+                  const level = sk.levels[idx]
+                  return (
+                    <li key={sk.id}>
+                      <SkillFigure pose={sk.id} size={40} />
+                      <span className="ex-name">{level.name}</span>
+                      <span className="muted small">{planLabel(sk, level)}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/skills')}>Open skill tree</button>
+            </>
+          ) : (
+            <>
+              <p className="placeholder-title">Calisthenics skill tree</p>
+              <p className="muted">Work toward pull-ups, the front lever, planche, handstands and more — with a level for wherever you&apos;re at.</p>
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/skills')}>🎯 Find my levels</button>
+            </>
+          )}
+        </div>
+
         <div className="card char-sheet">
           <SkillRadar stats={stats} baseline={baseline} />
           <div className="char-meta">
             <p className="power-level">{power}</p>
             <p className="power-label">Power level · {rankFor(power)}</p>
           </div>
-          <button type="button" className="btn btn-primary" onClick={() => navigate('/skills')}>
-            {started ? 'Open skill tree' : '🎯 Find my levels'}
-          </button>
-          {!started && <p className="muted small">Calibrate once and we&apos;ll set every skill to the right starting level.</p>}
         </div>
       </section>
     )
@@ -127,7 +165,7 @@ export default function Today() {
         </p>
       )}
 
-      <FocusPicker />
+      <FocusTiles />
 
       <div className="card">
         <div className="mode-row">
