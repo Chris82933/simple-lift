@@ -1,65 +1,75 @@
-import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 
-const tabsLeft = [
-  { to: '/today', label: 'Today' },
-  { to: '/program', label: 'Program' },
-]
-const tabsRight = [
-  { to: '/progress', label: 'Progress' },
-  { to: '/profile', label: 'Profile' },
+// Simple, minimal line icons (stroke uses currentColor so they match the tab).
+const ICONS = {
+  today: (
+    <>
+      <line x1="3" y1="9.5" x2="3" y2="14.5" /><line x1="6" y1="7" x2="6" y2="17" />
+      <line x1="18" y1="7" x2="18" y2="17" /><line x1="21" y1="9.5" x2="21" y2="14.5" />
+      <line x1="6" y1="12" x2="18" y2="12" />
+    </>
+  ),
+  program: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" />
+      <line x1="3.5" y1="9" x2="20.5" y2="9" />
+      <line x1="8" y1="2.5" x2="8" y2="6" /><line x1="16" y1="2.5" x2="16" y2="6" />
+    </>
+  ),
+  progress: (
+    <>
+      <polyline points="3 16.5 9 10.5 13 14 21 6" />
+      <polyline points="15 6 21 6 21 12" />
+    </>
+  ),
+  profile: (
+    <>
+      <circle cx="12" cy="8" r="3.6" />
+      <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+    </>
+  ),
+}
+
+const tabs = [
+  { to: '/today', label: 'Today', icon: 'today' },
+  { to: '/program', label: 'Program', icon: 'program' },
+  { to: '/progress', label: 'Progress', icon: 'progress' },
+  { to: '/profile', label: 'Profile', icon: 'profile' },
 ]
 
-// Utility screens folded into the center "+" so they're reachable everywhere
-// instead of being scattered as page buttons.
-const quickActions = [
-  { to: '/cardio', label: '❤️ Log cardio' },
-  { to: '/one-rep-max', label: '🧮 1RM calculator' },
-  { to: '/skills', label: '🤸 Skill tree' },
-]
+function NavIcon({ name }) {
+  return (
+    <svg
+      className="nav-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {ICONS[name]}
+    </svg>
+  )
+}
 
 export default function AppLayout() {
-  const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
-  const go = (to) => { setOpen(false); navigate(to) }
-
-  const navClass = ({ isActive }) => 'nav-item' + (isActive ? ' is-active' : '')
-
   return (
     <div className="app-shell">
       <main className="app-main">
         <Outlet />
       </main>
 
-      {open && <div className="quick-backdrop" onClick={() => setOpen(false)} />}
-
       <div className="bottom-nav">
-        {open && (
-          <div className="quick-menu" role="menu">
-            {quickActions.map((a) => (
-              <button key={a.to} type="button" className="quick-item" role="menuitem" onClick={() => go(a.to)}>
-                {a.label}
-              </button>
-            ))}
-          </div>
-        )}
         <nav className="nav-pill" aria-label="Primary">
-          {tabsLeft.map((tab) => (
-            <NavLink key={tab.to} to={tab.to} className={navClass}>
-              <span className="nav-label">{tab.label}</span>
-            </NavLink>
-          ))}
-          <button
-            type="button"
-            className={'nav-fab' + (open ? ' is-open' : '')}
-            aria-label="Quick actions"
-            aria-expanded={open}
-            onClick={() => setOpen((o) => !o)}
-          >
-            +
-          </button>
-          {tabsRight.map((tab) => (
-            <NavLink key={tab.to} to={tab.to} className={navClass}>
+          {tabs.map((tab) => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              className={({ isActive }) => 'nav-item' + (isActive ? ' is-active' : '')}
+            >
+              <NavIcon name={tab.icon} />
               <span className="nav-label">{tab.label}</span>
             </NavLink>
           ))}
