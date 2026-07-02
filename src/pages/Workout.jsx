@@ -14,10 +14,21 @@ import RestTimer from '../components/RestTimer.jsx'
 import ExercisePicker from '../components/ExercisePicker.jsx'
 import CardioForm from '../components/CardioForm.jsx'
 import QuickOneRM from '../components/QuickOneRM.jsx'
+import PlateBreakdown from '../components/PlateBreakdown.jsx'
 import {
   getEquipment, setActiveProfile as storeSetActiveProfile, isDoable, bestSubstitute,
   missingEquipment, profileMeta, PROFILE_IDS,
 } from '../lib/equipment.js'
+import { isBarbellLift } from '../lib/plates.js'
+
+// The weight to base the plate breakdown on: whatever's currently entered in
+// the set rows, falling back to the exercise's stored working weight.
+function currentWorkingWeight(ex, rows) {
+  const entered = (rows || []).map((r) => Number(r.weight)).find((w) => w > 0)
+  if (entered) return entered
+  const stored = ex.progression?.weight ?? ex.startWeight
+  return Number(stored) || 0
+}
 
 // Post-session difficulty ratings (saved to history).
 const DIFFICULTIES = [
@@ -504,6 +515,9 @@ export default function Workout() {
 
               <p className="cue">💡 {ex.cues}</p>
               {ex.progression && <p className="suggestion">🎯 {stageNote(ex, units) || extraNote(ex, units)}</p>}
+              {tracksLoad && isBarbellLift(ex) && (
+                <PlateBreakdown weight={currentWorkingWeight(ex, sets[ex.id])} units={units} />
+              )}
 
               <div className={'set-table' + (tracksLoad ? '' : ' no-load')}>
                 <div className="set-head">

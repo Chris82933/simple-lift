@@ -12,6 +12,7 @@ import {
   getEquipment, setActiveProfile as storeSetActiveProfile, saveProfileEquipment,
   profileMeta, PROFILE_IDS,
 } from '../lib/equipment.js'
+import PlateSettings from '../components/PlateSettings.jsx'
 
 const ALL_EQUIP = EQUIPMENT_GROUPS.flatMap((g) => g.items)
 const labelsFor = (ids = [], src) => ids.map((id) => src.find((x) => x.id === id)?.label).filter(Boolean)
@@ -23,6 +24,7 @@ export default function Profile() {
   const history = loadHistory()
   const [settings, setSettings] = useState(loadSettings())
   const [signingIn, setSigningIn] = useState(false)
+  const [plateSettingsOpen, setPlateSettingsOpen] = useState(false)
 
   // ---- Backup & transfer (copy-paste code) ----
   const [myCode, setMyCode] = useState('')
@@ -164,7 +166,14 @@ export default function Profile() {
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/skills')}>
           🤸 Calisthenics skill tree
         </button>
+        <button type="button" className="btn btn-ghost" onClick={() => setPlateSettingsOpen(true)}>
+          🔩 Plate calculator settings
+        </button>
       </div>
+
+      {plateSettingsOpen && (
+        <PlateSettings initialUnits={settings.units || 'lbs'} onClose={() => setPlateSettingsOpen(false)} />
+      )}
 
       {/* ---- Training location (equipment profiles) ---- */}
       <div className="card">
