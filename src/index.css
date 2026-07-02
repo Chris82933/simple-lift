@@ -663,8 +663,17 @@ select.text-input { appearance: none; }
 .level-dots { display: flex; gap: 6px; margin: 8px 0 4px; }
 .level-dot { width: 22px; height: 6px; border-radius: 999px; background: var(--surface-2); }
 .level-dot.on { background: var(--grad-accent); }
-.skill-log { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
-.skill-log .set-input { width: 84px; }
+.skill-log { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.skill-log-label { font-size: 13px; color: var(--muted); flex: 1 0 100%; }
+.rep-stepper { display: flex; align-items: center; gap: 8px; }
+.rep-stepper button {
+  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: 20px; font-weight: 700; cursor: pointer;
+}
+.rep-stepper .set-input { width: 64px; text-align: center; }
+.save-flash { color: var(--accent-4); font-weight: 700; font-size: 13px; }
+.skill-progress { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.skill-progress .progress-track { height: 8px; }
 .advance-btn { width: 100%; margin-top: 8px; }
 .cal-row { padding: 6px 0; border-bottom: 1px solid var(--border); }
 .cal-q { display: flex; align-items: center; gap: 10px; justify-content: space-between; font-size: 14px; }

@@ -1,127 +1,22 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import {
-  loadPrograms, getActiveProgramId, setActiveProgramId, loadHistory, loadSettings, saveSettings, loadSkills,
-} from '../lib/storage.js'
+import { loadPrograms, getActiveProgramId, loadHistory } from '../lib/storage.js'
 import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS } from '../lib/equipment.js'
-import { SKILLS, computeStats, powerLevel, rankFor, planLabel } from '../data/skills.js'
-import SkillFigure from '../components/SkillFigure.jsx'
 import { repsLabel } from '../data/schemes.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
-import SkillRadar from '../components/SkillRadar.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
-
-const SKILLS_FOCUS = 'skills'
+import FocusTiles from '../components/FocusTiles.jsx'
 
 export default function Today() {
   const navigate = useNavigate()
   const programs = loadPrograms()
   const history = loadHistory()
-
-  const [mode, setMode] = useState(() => (loadSettings().activeMode === SKILLS_FOCUS ? SKILLS_FOCUS : 'program'))
   const [activeId, setActiveId] = useState(() => getActiveProgramId())
   const [activeProfile, setActiveProfileState] = useState(() => getEquipment().active)
   const switchProfile = (id) => { setActiveProfile(id); setActiveProfileState(id) }
 
   const program = programs.find((p) => p.id === activeId) || programs[0] || null
-
-  // Choose today's focus: a saved program, or the calisthenics skill tree.
-  const chooseFocus = (val) => {
-    const s = loadSettings()
-    if (val === SKILLS_FOCUS) {
-      saveSettings({ ...s, activeMode: SKILLS_FOCUS })
-      setMode(SKILLS_FOCUS)
-    } else {
-      setActiveProgramId(val)
-      saveSettings({ ...s, activeMode: 'program' })
-      setActiveId(val)
-      setMode('program')
-    }
-  }
-
-  // The focus selector — tappable tiles so calisthenics is just another program.
-  // Only shown when there's more than one thing to choose between.
-  const FocusTiles = () => {
-    if (programs.length === 0) return null
-    return (
-      <div className="focus-tabs">
-        {programs.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={'focus-tab' + (mode !== SKILLS_FOCUS && program?.id === p.id ? ' is-selected' : '')}
-            onClick={() => chooseFocus(p.id)}
-          >
-            <span className="focus-tab-name">{p.name}</span>
-            <span className="muted small">{p.source === 'custom' ? 'Custom' : 'Program'} · {p.days.length} day{p.days.length === 1 ? '' : 's'}</span>
-          </button>
-        ))}
-        <button
-          type="button"
-          className={'focus-tab' + (mode === SKILLS_FOCUS ? ' is-selected' : '')}
-          onClick={() => chooseFocus(SKILLS_FOCUS)}
-        >
-          <span className="focus-tab-name">🤸 Calisthenics</span>
-          <span className="muted small">Skill tree</span>
-        </button>
-      </div>
-    )
-  }
-
-  // ---- Calisthenics focus (mirrors the gym session card layout) ----
-  if (mode === SKILLS_FOCUS) {
-    const skills = loadSkills()
-    const started = Object.keys(skills).length > 0
-    const stats = computeStats(skills)
-    const baseline = computeStats(skills, 'baseline')
-    const power = powerLevel(stats)
-    return (
-      <section className="page">
-        <header className="page-header">
-          <p className="eyebrow">Today</p>
-          <h1>Calisthenics</h1>
-        </header>
-        <FocusTiles />
-
-        <div className="card">
-          {started ? (
-            <>
-              <p className="muted small">Train a skill or two — log your best set, and level up when you hit the target.</p>
-              <ul className="exercise-preview">
-                {SKILLS.map((sk) => {
-                  const idx = skills[sk.id]?.level || 0
-                  const level = sk.levels[idx]
-                  return (
-                    <li key={sk.id}>
-                      <SkillFigure pose={sk.id} size={40} />
-                      <span className="ex-name">{level.name}</span>
-                      <span className="muted small">{planLabel(sk, level)}</span>
-                    </li>
-                  )
-                })}
-              </ul>
-              <button type="button" className="btn btn-primary" onClick={() => navigate('/skills')}>Open skill tree</button>
-            </>
-          ) : (
-            <>
-              <p className="placeholder-title">Calisthenics skill tree</p>
-              <p className="muted">Work toward pull-ups, the front lever, planche, handstands and more — with a level for wherever you&apos;re at.</p>
-              <button type="button" className="btn btn-primary" onClick={() => navigate('/skills')}>🎯 Find my levels</button>
-            </>
-          )}
-        </div>
-
-        <div className="card char-sheet">
-          <SkillRadar stats={stats} baseline={baseline} />
-          <div className="char-meta">
-            <p className="power-level">{power}</p>
-            <p className="power-label">Power level · {rankFor(power)}</p>
-          </div>
-        </div>
-      </section>
-    )
-  }
 
   if (!program) {
     return (
@@ -135,7 +30,7 @@ export default function Today() {
           </p>
           <button className="btn btn-primary" onClick={() => navigate('/templates')}>Browse templates</button>
           <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
-          <button type="button" className="btn btn-ghost" onClick={() => chooseFocus(SKILLS_FOCUS)}>🤸 Or work on calisthenics skills</button>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/skills')}>🤸 Or work on calisthenics skills</button>
         </div>
       </section>
     )
@@ -165,7 +60,7 @@ export default function Today() {
         </p>
       )}
 
-      <FocusTiles />
+      <FocusTiles current="program" onPickProgram={setActiveId} />
 
       <div className="card">
         <div className="mode-row">

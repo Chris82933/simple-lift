@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { loadSkills, updateSkill } from '../lib/storage.js'
 import {
@@ -8,13 +8,23 @@ import {
 import SkillRadar from '../components/SkillRadar.jsx'
 import SkillFigure from '../components/SkillFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
+import FocusTiles from '../components/FocusTiles.jsx'
 
 export default function Skills() {
   const navigate = useNavigate()
   const [skills, setSkills] = useState(() => loadSkills())
   const [drafts, setDrafts] = useState({}) // per-skill log input
+  const [flash, setFlash] = useState(null) // { id, best } — transient "saved" feedback
+  const flashTimer = useRef()
   const [calOpen, setCalOpen] = useState(false)
   const [answers, setAnswers] = useState({})
+
+  // Quick +/- on the log input (step by 1 rep, or 5 seconds for holds).
+  const bump = (sk, dir) => setDrafts((d) => {
+    const step = sk.type === 'hold' ? 5 : 1
+    const next = Math.max(0, (Number(d[sk.id]) || 0) + dir * step)
+    return { ...d, [sk.id]: String(next) }
+  })
 
   const stats = computeStats(skills)
   const baseline = computeStats(skills, 'baseline')
@@ -27,6 +37,7 @@ export default function Skills() {
     const v = Number(drafts[sk.id]) || 0
     if (v <= 0) return
     const cur = skills[sk.id] || { level: 0, best: 0, log: [] }
+    const isBest = v > (cur.best || 0)
     const best = Math.max(cur.best || 0, v)
     setSkills(updateSkill(sk.id, {
       level: cur.level || 0,
@@ -34,6 +45,9 @@ export default function Skills() {
       log: [...(cur.log || []).slice(-24), { date: new Date().toISOString(), value: v }],
     }))
     setDrafts((d) => ({ ...d, [sk.id]: '' }))
+    setFlash({ id: sk.id, best: isBest })
+    clearTimeout(flashTimer.current)
+    flashTimer.current = setTimeout(() => setFlash(null), 1800)
   }
 
   const advance = (sk) => {
@@ -71,6 +85,7 @@ export default function Skills() {
       </header>
 
       <div className="step-body">
+        <FocusTiles current="skills" />
         {/* ---- Character sheet ---- */}
         <div className="card char-sheet">
           <SkillRadar stats={stats} baseline={baseline} />
@@ -97,12 +112,15 @@ export default function Skills() {
         {/* ---- Skills ---- */}
         {SKILLS.map((sk) => {
           const cur = skills[sk.id] || { level: 0, best: 0 }
-          const idx = cur.level || 0
+          // Clamp so stale/overflow data can never index past the last level.
+          const idx = Math.min(Math.max(0, cur.level || 0), maxIndex(sk))
           const level = sk.levels[idx]
           const best = cur.best || 0
           const ready = readyToAdvance(sk, idx, best)
           const atTop = idx >= maxIndex(sk)
           const mastered = atTop && best >= level.hi
+          const pct = Math.min(100, Math.round((100 * best) / level.hi))
+          const fl = flash && flash.id === sk.id
           return (
             <div className={'card skill-card' + (ready ? ' is-ready' : '')} key={sk.id}>
               <div className="skill-head">
@@ -120,23 +138,37 @@ export default function Skills() {
 
               <p className="cue">💡 {level.cues}</p>
               <p className="plan-line">📋 Do <strong>{planLabel(sk, level)}</strong></p>
-              {mastered
-                ? <p className="suggestion">🏆 Skill mastered — you own the hardest level.</p>
-                : <p className="suggestion">🎯 Advance when you hit <strong>{advanceLabel(sk, level)}</strong> → {sk.levels[idx + 1].name}</p>}
+              {mastered ? (
+                <p className="suggestion">🏆 Skill mastered — you own the hardest level.</p>
+              ) : atTop ? (
+                <p className="suggestion">🎯 Top level. Hit <strong>{advanceLabel(sk, level)}</strong> to master it.</p>
+              ) : (
+                <p className="suggestion">🎯 Advance when you hit <strong>{advanceLabel(sk, level)}</strong> → {sk.levels[idx + 1].name}</p>
+              )}
 
               <div className="skill-log">
-                <input
-                  className="set-input"
-                  type="number"
-                  inputMode="numeric"
-                  placeholder={sk.unit}
-                  value={drafts[sk.id] ?? ''}
-                  onChange={(e) => setDrafts((d) => ({ ...d, [sk.id]: e.target.value }))}
-                />
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => logSkill(sk)}>
-                  Log best {sk.unit}
-                </button>
-                <span className="muted small">Best: {best} {sk.unit}</span>
+                <span className="skill-log-label">Best {sk.type === 'hold' ? 'hold' : 'set'} today</span>
+                <div className="rep-stepper">
+                  <button type="button" onClick={() => bump(sk, -1)} aria-label={`less ${sk.unit}`}>−</button>
+                  <input
+                    className="set-input"
+                    type="number"
+                    inputMode="numeric"
+                    placeholder={sk.unit}
+                    value={drafts[sk.id] ?? ''}
+                    onChange={(e) => setDrafts((d) => ({ ...d, [sk.id]: e.target.value }))}
+                  />
+                  <button type="button" onClick={() => bump(sk, 1)} aria-label={`more ${sk.unit}`}>+</button>
+                </div>
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => logSkill(sk)}>Save</button>
+                {fl && <span className="save-flash">{flash.best ? 'New best! 🎉' : 'Saved ✓'}</span>}
+              </div>
+
+              <div className="skill-progress">
+                <div className="progress-track" aria-hidden="true">
+                  <div className="progress-fill" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="muted small">Best {best}/{level.hi}{sk.type === 'hold' ? 's' : ''} · goal {advanceLabel(sk, level)}</span>
               </div>
 
               {ready && (
