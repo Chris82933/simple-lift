@@ -18,8 +18,7 @@ export default function PlateBreakdown({ weight, units, setNumber }) {
 
   return (
     <div className="plate-line">
-      <span className="plate-icon" aria-hidden="true">🔩</span>
-      {setNumber ? <span className="plate-set">Set {setNumber}</span> : null}
+      {setNumber ? <span className="plate-set">Set {setNumber}</span> : <span className="plate-label">Load</span>}
       {result.barOnly ? (
         <span className="plate-text">Just the bar ({bar}{units})</span>
       ) : result.perSide.length === 0 ? (
@@ -38,7 +37,7 @@ export default function PlateBreakdown({ weight, units, setNumber }) {
         aria-label="Plate settings"
         onClick={() => setSettingsOpen(true)}
       >
-        ⚙
+        Edit
       </button>
       {settingsOpen && <PlateSettings initialUnits={units} onClose={() => setSettingsOpen(false)} />}
     </div>

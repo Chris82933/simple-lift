@@ -426,7 +426,6 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   background: var(--surface-2);
   border-radius: 10px;
 }
-.plate-icon { font-size: 14px; flex: none; }
 .plate-set {
   flex: none;
   font-size: 11px;
@@ -436,19 +435,21 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   background: color-mix(in srgb, var(--accent) 16%, var(--surface));
   color: var(--accent);
 }
+.plate-label { flex: none; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .plate-text { flex: 1; }
 .plate-approx { color: var(--accent-5); }
 .plate-gear {
   flex: none;
   border: none;
   background: transparent;
-  color: var(--muted);
-  font-size: 15px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 2px 6px;
   border-radius: 6px;
 }
-.plate-gear:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.plate-gear:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .bar-custom { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 14px; }
 .plate-head-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
 .plate-quick-btns { display: flex; gap: 10px; }

@@ -523,7 +523,7 @@ export default function Workout() {
               )}
 
               <p className="cue">💡 {ex.cues}</p>
-              {ex.progression && <p className="suggestion">🎯 {stageNote(ex, units) || extraNote(ex, units)}</p>}
+              {ex.progression && <p className="suggestion">{stageNote(ex, units) || extraNote(ex, units)}</p>}
               {plateTarget && (
                 <PlateBreakdown
                   weight={plateTarget.weight}

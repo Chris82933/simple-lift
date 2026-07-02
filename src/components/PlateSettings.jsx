@@ -43,7 +43,7 @@ export default function PlateSettings({ initialUnits = 'lbs', onClose }) {
     <div className="picker-overlay" role="dialog" aria-label="Plate settings">
       <div className="picker-sheet">
         <div className="picker-head">
-          <p className="ex-name big" style={{ flex: 1 }}>🔩 Plate settings</p>
+          <p className="ex-name big" style={{ flex: 1 }}>Plate settings</p>
           <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>Done</button>
         </div>
         <div className="picker-list">

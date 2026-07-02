@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  loadProfile, loadSettings, saveSettings, loadHistory, clearAll,
+  loadProfile, loadSettings, saveSettings, clearAll,
   exportCode, importCode,
 } from '../lib/storage.js'
 import { REGIONS, EQUIPMENT_GROUPS, GOALS } from '../data/options.js'
@@ -21,7 +21,6 @@ export default function Profile() {
   const navigate = useNavigate()
   const auth = useAuth()
   const profile = loadProfile()
-  const history = loadHistory()
   const [settings, setSettings] = useState(loadSettings())
   const [signingIn, setSigningIn] = useState(false)
   const [plateSettingsOpen, setPlateSettingsOpen] = useState(false)
@@ -120,8 +119,8 @@ export default function Profile() {
         <p className="group-label">Account</p>
         {!auth?.configured && (
           <p className="muted small">
-            Google sign-in isn&apos;t set up for this app yet. Everything is saved locally
-            on this device (see below).
+            <strong>Coming soon.</strong> Accounts and cloud sync are on the way. For now,
+            everything is saved on this device (see below).
           </p>
         )}
         {auth?.configured && !signedIn && (
@@ -145,7 +144,7 @@ export default function Profile() {
 
       {/* ---- Privacy / data-loss notice ---- */}
       <div className="card notice">
-        <p className="placeholder-title">📦 Where your data lives</p>
+        <p className="placeholder-title">Where your data lives</p>
         <p className="muted small">
           {signedIn
             ? 'Your data is backed up to your Google account and synced to this browser. Clearing this browser is safe — sign back in to restore it.'
@@ -158,16 +157,16 @@ export default function Profile() {
       <div className="card">
         <p className="group-label">Tools</p>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/one-rep-max')}>
-          🏋️ 1RM &amp; working-weight finder
+          1RM &amp; working-weight finder
         </button>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>
-          ❤️ Log cardio
+          Log cardio
         </button>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/skills')}>
-          🤸 Calisthenics skill tree
+          Calisthenics skill tree
         </button>
         <button type="button" className="btn btn-ghost" onClick={() => setPlateSettingsOpen(true)}>
-          🔩 Plate calculator settings
+          Plate calculator settings
         </button>
       </div>
 
@@ -177,44 +176,42 @@ export default function Profile() {
 
       {/* ---- Training location (equipment profiles) ---- */}
       <div className="card">
-        <p className="group-label">📍 Training location</p>
-        <p className="muted small">
-          Keep separate kit for home and the gym. During a workout, anything you can&apos;t do in the
-          current location gets a one-tap swap to a move you can.
-        </p>
-        <div className="seg">
-          {PROFILE_IDS.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={'seg-item' + (activeProfile === id ? ' is-selected' : '')}
-              onClick={() => chooseProfile(id)}
-            >
-              {profileMeta(id).icon} {profileMeta(id).name}
-            </button>
-          ))}
-        </div>
-        <p className="group-label" style={{ marginTop: 12 }}>
-          What&apos;s available at {profileMeta(activeProfile).name.toLowerCase()}?
-        </p>
-        {EQUIPMENT_GROUPS.map((g) => (
-          <div className="equip-group" key={g.group}>
-            <p className="muted small">{g.group}</p>
-            <div className="check-grid">
-              {g.items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={'check-pill' + (equip.profiles[activeProfile].includes(item.id) ? ' is-selected' : '')}
-                  onClick={() => toggleEquip(item.id)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+        <div className="mode-row">
+          <span className="group-label" style={{ margin: 0 }}>Training location</span>
+          <div className="seg seg-sm">
+            {PROFILE_IDS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={'seg-item' + (activeProfile === id ? ' is-selected' : '')}
+                onClick={() => chooseProfile(id)}
+              >
+                {profileMeta(id).name}
+              </button>
+            ))}
           </div>
-        ))}
-        <p className="muted small">Bodyweight moves are always available.</p>
+        </div>
+        <details className="guide">
+          <summary>Edit {profileMeta(activeProfile).name.toLowerCase()} equipment</summary>
+          {EQUIPMENT_GROUPS.map((g) => (
+            <div className="equip-group" key={g.group}>
+              <p className="muted small">{g.group}</p>
+              <div className="check-grid">
+                {g.items.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={'check-pill' + (equip.profiles[activeProfile].includes(item.id) ? ' is-selected' : '')}
+                    onClick={() => toggleEquip(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <p className="muted small">Bodyweight moves are always available.</p>
+        </details>
       </div>
 
       {/* ---- Appearance ---- */}
@@ -273,18 +270,6 @@ export default function Profile() {
           <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
         </div>
       )}
-
-      {/* ---- Activity ---- */}
-      <div className="card">
-        <p className="group-label">Activity</p>
-        <p className="muted">{history.length} workout{history.length === 1 ? '' : 's'} logged.</p>
-        {history.slice(0, 6).map((w, i) => (
-          <div className="history-row" key={i}>
-            <span>{w.sessionTitle}</span>
-            <span className="muted small">{new Date(w.date).toLocaleDateString()}</span>
-          </div>
-        ))}
-      </div>
 
       {/* ---- Backup & transfer ---- */}
       <div className="card">

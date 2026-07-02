@@ -24,7 +24,7 @@ export default function InstallApp() {
     return (
       <div className="card install-card">
         <p className="group-label">Install</p>
-        <p className="muted small">✓ You&apos;re running Simple Lift as an installed app. Nice. 💪</p>
+        <p className="muted small">You&apos;re running Simple Lift as an installed app. Nice.</p>
       </div>
     )
   }
@@ -36,7 +36,7 @@ export default function InstallApp() {
 
   return (
     <div className="card install-card">
-      <p className="group-label">📲 Install Simple Lift</p>
+      <p className="group-label">Install Simple Lift</p>
       <p className="muted small">
         Add it to your home screen for a full-screen, app-like experience that opens in one
         tap and works offline.
@@ -57,7 +57,7 @@ export default function InstallApp() {
           </button>
           {showSteps && (
             <ol className="install-steps">
-              <li>Tap the <strong>Share</strong> icon <span className="kbd">⬆️</span> in Safari&apos;s toolbar.</li>
+              <li>Tap the <strong>Share</strong> icon in Safari&apos;s toolbar.</li>
               <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
               <li>Tap <strong>Add</strong> — Simple Lift lands on your home screen like any app.</li>
             </ol>
