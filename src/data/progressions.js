@@ -17,7 +17,7 @@ export const LADDER_EXERCISES = [
   { id: 'one_arm_pull', name: 'One-Arm Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, ladderOnly: true, cues: 'The peak: one hand on the bar, full pull. Years in the making — be patient.' },
 
   // ---- Horizontal pull (rows) ----
-  { id: 'incline_row', name: 'Incline Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, ladderOnly: true, cues: 'High bar, body fairly upright — easier the more upright you are.' },
+  { id: 'incline_row', name: 'Incline Bodyweight Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, ladderOnly: true, cues: 'Grab a waist-high bar, rings, or the edge of a sturdy table. Body straight, lean back and pull your chest to your hands — the more upright you stand, the easier. Bodyweight only, no weights.' },
   { id: 'feet_elev_row', name: 'Feet-Elevated Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, ladderOnly: true, cues: 'Feet up on a box so your torso is past horizontal — harder than a flat row.' },
   { id: 'one_arm_inverted_row', name: 'One-Arm Inverted Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, ladderOnly: true, cues: 'Row with one hand, body in a tight plank — control the rotation.' },
 

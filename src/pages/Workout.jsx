@@ -20,6 +20,7 @@ import {
   missingEquipment, profileMeta, PROFILE_IDS,
 } from '../lib/equipment.js'
 import { isBarbellLift } from '../lib/plates.js'
+import { ladderInfo } from '../lib/ladder.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
 // i.e. the first one not yet marked done (or the last, once all are done). This
@@ -482,6 +483,8 @@ export default function Workout() {
           const doable = isDoable(ex, availableSet)
           const sub = doable ? null : bestSubstitute(ex, availableSet)
           const plateTarget = tracksLoad && isBarbellLift(ex) ? nextSetTarget(ex, sets[ex.id]) : null
+          // Bodyweight moves progress by variation — show where they sit in the ladder.
+          const lad = !tracksLoad ? ladderInfo(ex.id) : null
           return (
             <div className={'card exercise-card' + (doable ? '' : ' is-unavailable')} key={ex.id}>
               <div className="exercise-top">
@@ -524,6 +527,14 @@ export default function Workout() {
 
               <p className="cue">💡 {ex.cues}</p>
               {ex.progression && <p className="suggestion">{stageNote(ex, units) || extraNote(ex, units)}</p>}
+              {lad && lad.length > 1 && (
+                <p className="suggestion ladder-hint">
+                  Progression ladder · step {lad.index + 1} of {lad.length}
+                  {lad.nextName
+                    ? ` — next: ${lad.nextName}. Hit the top of every set and you'll be offered the level-up.`
+                    : " — you're at the hardest step. Keep adding reps."}
+                </p>
+              )}
               {plateTarget && (
                 <PlateBreakdown
                   weight={plateTarget.weight}
