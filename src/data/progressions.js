@@ -9,7 +9,7 @@
 
 export const LADDER_EXERCISES = [
   // ---- Vertical pull (toward the one-arm pull-up) ----
-  { id: 'dead_hang', name: 'Dead Hang', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: false, load: false, ladderOnly: true, cues: 'Just hang with straight arms and active shoulders — count reps as seconds.' },
+  { id: 'dead_hang', name: 'Dead Hang', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: false, load: false, hold: true, ladderOnly: true, cues: 'Just hang with straight arms and active shoulders. Hold for time.' },
   { id: 'scap_pull', name: 'Scapular Pull', pattern: 'vert_pull', regions: ['back'], requires: ['pullup_bar'], compound: false, load: false, ladderOnly: true, cues: 'From a dead hang, pull your shoulder blades down without bending the elbows.' },
   { id: 'pull_negative', name: 'Negative Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, ladderOnly: true, cues: 'Jump to the top, then lower yourself as slowly as you can (aim 3–5s).' },
   { id: 'pull_band_assist', name: 'Band-Assisted Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar', 'bands'], compound: true, load: false, ladderOnly: true, cues: 'Loop a band under your feet/knee for help; full range, chin over bar.' },
@@ -45,7 +45,7 @@ export const LADDER_EXERCISES = [
   { id: 'toes_to_bar', name: 'Toes-to-Bar', pattern: 'core', regions: ['core'], requires: ['pullup_bar'], compound: false, load: false, ladderOnly: true, cues: 'Straight-ish legs all the way up to touch the bar — control the descent.' },
 
   // ---- Core: anti-extension ----
-  { id: 'long_lever_plank', name: 'Long-Lever Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, ladderOnly: true, cues: 'Elbows further forward of the shoulders — much harder anti-extension hold.' },
+  { id: 'long_lever_plank', name: 'Long-Lever Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, ladderOnly: true, cues: 'Elbows further forward of the shoulders — much harder anti-extension hold.' },
 ]
 
 // Ordered easy → hard. Ids may reference base-library exercises too.
@@ -58,4 +58,5 @@ export const LADDERS = [
   { id: 'hinge_prog', name: 'Hamstring Progression', order: ['glute_bridge', 'single_leg_glute_bridge', 'single_leg_rdl', 'nordic_negative', 'nordic_curl'] },
   { id: 'core_comp', name: 'Leg-Raise Progression', order: ['lying_leg_raise', 'hanging_knee_raise', 'hanging_leg_raise', 'toes_to_bar'] },
   { id: 'core_brace', name: 'Plank Progression', order: ['plank', 'long_lever_plank', 'ab_wheel'] },
+  { id: 'calf_prog', name: 'Calf Progression', order: ['wall_sit_calf_raise', 'bw_calf_raise', 'single_leg_calf_raise'] },
 ]

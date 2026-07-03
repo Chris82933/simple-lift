@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { EXERCISES } from '../data/exercises.js'
+import { EXERCISES, isHold, holdUnit } from '../data/exercises.js'
 import { GOALS } from '../data/options.js'
 import { schemeForGoals } from '../data/schemes.js'
 import { WEEKDAY_LABELS } from '../lib/generator.js'
@@ -19,10 +19,16 @@ const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...a
 function makeExercise(ex, scheme, inc) {
   const tier = ex.compound ? scheme.compound : scheme.accessory
   const max = ex.load !== false ? getMax(ex.id) : null
+  const hold = ex.hold === true
+  // Holds/cardio are prescribed by time; give a sensible default range in the
+  // right unit instead of a rep range.
+  const [lo, hi] = hold ? (ex.unit === 'min' ? [10, 20] : [20, 45]) : [tier.repLow, tier.repHigh]
   return {
     id: ex.id, name: ex.name, pattern: ex.pattern, regions: ex.regions,
     compound: ex.compound, load: ex.load !== false, cues: ex.cues,
-    sets: tier.sets, repLow: tier.repLow, repHigh: tier.repHigh, restSec: tier.rest,
+    ladderId: ex.ladderId || null, nextId: ex.nextId || null, prevId: ex.prevId || null,
+    hold, unit: ex.unit || (hold ? 'sec' : undefined),
+    sets: hold && ex.unit === 'min' ? 1 : tier.sets, repLow: lo, repHigh: hi, restSec: tier.rest,
     startWeight: max ? String(weightForReps(max.oneRM, tier.repHigh, inc)) : '',
   }
 }
@@ -130,11 +136,10 @@ export default function Builder() {
     navigate('/program')
   }
 
-  // Hide template-only ladder variants and conditioning moves (cardio is logged
-  // separately) from the manual picker.
+  // Hide only the template-only ladder variants; conditioning/cardio moves ARE
+  // allowed so people can add a warm-up (e.g. 15 min zone-2) to a lifting day.
   const filtered = EXERCISES.filter((e) =>
-    !e.ladderOnly && e.pattern !== 'conditioning' &&
-    e.name.toLowerCase().includes(search.trim().toLowerCase()),
+    !e.ladderOnly && e.name.toLowerCase().includes(search.trim().toLowerCase()),
   )
   const dayExIds = picker !== null
     ? new Set(draft.days[picker].exercises.map((e) => e.id))
@@ -207,8 +212,17 @@ export default function Builder() {
                 </div>
                 <div className="builder-fields">
                   <label>Sets<input type="number" inputMode="numeric" value={ex.sets} onChange={(e) => updateExercise(di, ei, { sets: e.target.value })} /></label>
-                  <label>Min reps<input type="number" inputMode="numeric" value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
-                  <label>Max reps<input type="number" inputMode="numeric" value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
+                  {isHold(ex) ? (
+                    <>
+                      <label>Min ({holdUnit(ex)})<input type="number" inputMode="numeric" value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
+                      <label>Max ({holdUnit(ex)})<input type="number" inputMode="numeric" value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
+                    </>
+                  ) : (
+                    <>
+                      <label>Min reps<input type="number" inputMode="numeric" value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
+                      <label>Max reps<input type="number" inputMode="numeric" value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
+                    </>
+                  )}
                   <label>Rest s<input type="number" inputMode="numeric" value={ex.restSec} onChange={(e) => updateExercise(di, ei, { restSec: e.target.value })} /></label>
                   {ex.load && (
                     <label>Start wt<input type="number" inputMode="decimal" value={ex.startWeight} placeholder="–" onChange={(e) => updateExercise(di, ei, { startWeight: e.target.value })} /></label>

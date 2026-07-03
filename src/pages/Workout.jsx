@@ -21,6 +21,7 @@ import {
 } from '../lib/equipment.js'
 import { isBarbellLift } from '../lib/plates.js'
 import { ladderInfo } from '../lib/ladder.js'
+import { isHold, holdUnit } from '../data/exercises.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
 // i.e. the first one not yet marked done (or the last, once all are done). This
@@ -497,7 +498,7 @@ export default function Workout() {
                       : <FormCheckButton name={ex.name} />}
                   </div>
                   <p className="muted small">
-                    {ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} reps · {ex.restSec}s rest
+                    {ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} {isHold(ex) ? `${holdUnit(ex)} hold` : 'reps'} · {ex.restSec}s rest
                     {ex.compound ? ' · compound' : ''}
                   </p>
                 </div>
@@ -547,7 +548,7 @@ export default function Workout() {
                 <div className="set-head">
                   <span>Set</span>
                   {tracksLoad && <span>{units}</span>}
-                  <span>reps</span>
+                  <span>{isHold(ex) ? holdUnit(ex) : 'reps'}</span>
                   <span>done</span>
                 </div>
                 {sets[ex.id].map((row, idx) => {

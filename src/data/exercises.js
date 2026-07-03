@@ -43,6 +43,8 @@ const BASE_EXERCISES = [
   { id: 'bw_lunge', name: 'Bodyweight Lunge', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Step forward, drop straight down, keep your torso tall.' },
   { id: 'bulgarian_split', name: 'Bulgarian Split Squat', pattern: 'lunge', regions: ['legs', 'core'], requires: ['flat_bench'], compound: true, tags: ['running'], cues: 'Rear foot on the bench, lower straight down, front-leg focus.' },
   { id: 'step_up', name: 'Step-Up', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Full foot on the box, drive up without pushing off the back leg.' },
+  { id: 'reverse_lunge', name: 'Reverse Lunge', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Step straight back, drop the back knee toward the floor, drive through the front heel to stand — gentler on the knees than forward lunges. Reps per leg.' },
+  { id: 'peterson_step_down', name: 'Peterson Step Down', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, cues: 'Stand on a low step; on one leg, slowly lower the other heel to tap the floor with the standing knee tracking over the toes — bulletproofs the knee (VMO). Reps per leg.' },
 
   // ---- Horizontal push ----
   { id: 'bench_press', name: 'Bench Press', pattern: 'horiz_push', regions: ['chest', 'arms', 'shoulders'], requires: ['barbell', 'flat_bench'], compound: true, cues: 'Shoulder blades pinched, bar to mid-chest, drive up evenly.' },
@@ -89,22 +91,27 @@ const BASE_EXERCISES = [
   // ---- Calves ----
   { id: 'db_calf_raise', name: 'Dumbbell Calf Raise', pattern: 'calf', regions: ['legs'], requires: ['dumbbells'], compound: false, tags: ['running'], cues: 'Full stretch at the bottom, rise onto the balls of your feet.' },
   { id: 'bw_calf_raise', name: 'Calf Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Up tall on your toes, pause, lower slowly for a stretch.' },
+  { id: 'wall_sit_calf_raise', name: 'Wall Sit Calf Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, load: false, cues: 'Hold a wall sit at 90°, then rise onto the balls of your feet and lower slowly — calves under a steady load.' },
+  { id: 'single_leg_calf_raise', name: 'Single-Leg Calf Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'On one foot (hold a wall for balance), rise all the way up and lower slowly for a deep stretch. Reps per leg.' },
+  { id: 'tibialis_raise', name: 'Tibialis Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Heels planted, back against a wall, lift your toes toward your shins as high as you can — strengthens the tibialis for knee and ankle health.' },
 
   // ---- Rings & climbing-focused ----
   { id: 'ring_row', name: 'Ring Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['rings'], compound: true, load: false, tags: ['climbing'], cues: 'Body straight, pull the rings to your chest, squeeze the shoulder blades. Lower your feet to make it harder.' },
   { id: 'ring_pullup', name: 'Ring Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['rings'], compound: true, load: false, tags: ['climbing'], cues: 'Let the rings rotate naturally, pull to your chest, control the descent.' },
   { id: 'ring_dip', name: 'Ring Dip', pattern: 'horiz_push', regions: ['chest', 'arms'], requires: ['rings'], compound: true, load: false, tags: ['climbing'], cues: 'Rings tight to the body — a key antagonist for climbers. Pause in the support hold at the top.' },
   { id: 'ring_pushup', name: 'Ring Push-Up', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: ['rings'], compound: true, load: false, cues: 'Rings just off the floor, turn them out at the top; brace hard against the wobble.' },
-  { id: 'ring_support_hold', name: 'Ring Support Hold', pattern: 'core', regions: ['arms', 'core'], requires: ['rings'], compound: false, load: false, tags: ['climbing'], cues: 'Lock the elbows, depress the shoulders, rings turned slightly out. Hold for time — reps as seconds.' },
+  { id: 'ring_support_hold', name: 'Ring Support Hold', pattern: 'core', regions: ['arms', 'core'], requires: ['rings'], compound: false, load: false, hold: true, tags: ['climbing'], cues: 'Lock the elbows, depress the shoulders, rings turned slightly out. Hold for time.' },
   { id: 'skin_the_cat', name: 'Skin the Cat', pattern: 'core', regions: ['back', 'core'], requires: ['rings'], compound: true, load: false, tags: ['climbing'], cues: 'From a hang, roll backward through the shoulders and return under control — mobility + strength.' },
-  { id: 'lock_off', name: 'Lock-Off Hold', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, tags: ['climbing'], cues: 'Pull up and HOLD at ~90° (or higher) — the isometric pulling strength climbing demands. Reps as seconds.' },
+  { id: 'lock_off', name: 'Lock-Off Hold', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, hold: true, tags: ['climbing'], cues: 'Pull up and HOLD at ~90° (or higher) — the isometric pulling strength climbing demands. Hold for time.' },
   { id: 'typewriter_pullup', name: 'Typewriter Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, tags: ['climbing'], cues: 'Pull up, then shift side to side along the bar keeping the chin high — builds one-arm strength.' },
   { id: 'weighted_pullup', name: 'Weighted Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar', 'dumbbells'], compound: true, tags: ['climbing'], cues: 'Hang a dumbbell from a belt or squeeze it between your feet; full range, chin over the bar.' },
   { id: 'wrist_curl', name: 'Wrist Curl', pattern: 'biceps', regions: ['arms'], requires: ['dumbbells'], compound: false, tags: ['climbing'], cues: 'Forearms on your thighs, curl the dumbbell with the wrist only — forearm/finger-flexor strength.' },
   { id: 'reverse_wrist_curl', name: 'Reverse Wrist Curl', pattern: 'biceps', regions: ['arms'], requires: ['dumbbells'], compound: false, tags: ['climbing'], cues: 'Palms down, lift the dumbbell with the wrist — balances the forearms and protects the elbows.' },
 
   // ---- Core ----
-  { id: 'plank', name: 'Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['climbing', 'running'], cues: 'Straight line, squeeze glutes and abs, breathe — hold for reps as seconds.' },
+  { id: 'plank', name: 'Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, tags: ['climbing', 'running'], cues: 'Straight line, squeeze glutes and abs, breathe. Hold for time.' },
+  { id: 'side_plank_leg_lift', name: 'Side Plank + Leg Lift', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, cues: 'Hold a side plank and raise the top leg with control — hits the obliques and hip abductors. Reps per side.' },
+  { id: 'hollow_hold', name: 'Hollow Body Hold', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, cues: 'Low back pressed flat, shoulders and legs off the floor in a shallow banana. Hold for time — the foundation for levers and handstands.' },
   { id: 'hanging_leg_raise', name: 'Hanging Leg Raise', pattern: 'core', regions: ['core'], requires: ['pullup_bar'], compound: false, load: false, tags: ['climbing'], cues: 'No swinging, lift the legs with the abs, lower slow.' },
   { id: 'dead_bug', name: 'Dead Bug', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Low back pinned, extend opposite arm and leg slowly.' },
   { id: 'ab_wheel', name: 'Ab Rollout', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['climbing'], cues: 'Roll out only as far as you can keep the back flat.' },
@@ -129,8 +136,9 @@ const BASE_EXERCISES = [
   { id: 'cable_lateral', name: 'Cable Lateral Raise', pattern: 'shoulder_iso', regions: ['shoulders'], requires: ['cable'], compound: false, cues: 'Low pulley across your body, lead with the elbow to shoulder height, no shrug.' },
 
   // ---- Conditioning ----
+  { id: 'zone2_cardio', name: 'Zone 2 Cardio', pattern: 'conditioning', regions: ['legs'], requires: [], compound: false, load: false, hold: true, unit: 'min', tags: ['running'], cues: 'Easy, conversational pace — walk, jog, bike, or row. You should still be able to talk. Great as a warm-up or a recovery day.' },
   { id: 'jump_rope', name: 'Jump Rope', pattern: 'conditioning', regions: ['legs', 'core'], requires: ['jump_rope'], compound: false, load: false, tags: ['running'], cues: 'Light bounces on the balls of your feet, wrists do the work.' },
-  { id: 'cardio_machine', name: 'Cardio Finisher', pattern: 'conditioning', regions: ['legs'], requires: ['cardio'], compound: false, load: false, tags: ['running'], cues: 'Steady, strong effort for the time — hold a pace you can sustain.' },
+  { id: 'cardio_machine', name: 'Cardio Finisher', pattern: 'conditioning', regions: ['legs'], requires: ['cardio'], compound: false, load: false, hold: true, unit: 'min', tags: ['running'], cues: 'Steady, strong effort for the time — hold a pace you can sustain.' },
   { id: 'mountain_climber', name: 'Mountain Climbers', pattern: 'conditioning', regions: ['core', 'legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Hips low, drive the knees quickly, steady breathing.' },
   { id: 'run_10k', name: '10km Run', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Aim for a steady, comfortable pace. Log your full run stats (distance, time, HR) in the Cardio tab!' },
 ]
@@ -141,6 +149,12 @@ import { LADDER_EXERCISES, LADDERS } from './progressions.js'
 
 export const EXERCISES = [...BASE_EXERCISES, ...LADDER_EXERCISES]
 export const EXERCISE_BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]))
+
+// Timed "holding position" exercises (planks, hollow holds, cardio blocks) ask
+// for time, not reps. Resolve from the library by id (program-exercise objects
+// may not carry the flag). `unit` is 'sec' by default, 'min' for cardio blocks.
+export const isHold = (ex) => !!(EXERCISE_BY_ID[ex?.id]?.hold ?? ex?.hold)
+export const holdUnit = (ex) => (EXERCISE_BY_ID[ex?.id]?.unit ?? ex?.unit) || 'sec'
 
 for (const ladder of LADDERS) {
   ladder.order.forEach((id, i) => {
