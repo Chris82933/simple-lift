@@ -422,7 +422,7 @@ export const TEMPLATES = [
         ex('pushup', 10, 10, 30),
         ex('situp', 10, 10, 30),
         ex('bw_squat', 10, 10, 30),
-        ex('run_10k', 1, 1, 0),
+        ex('run_10k', 1, 10, 0),
       ]),
     ],
   },

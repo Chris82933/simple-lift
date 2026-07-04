@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { loadPrograms, getActiveProgramId, loadHistory } from '../lib/storage.js'
 import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS } from '../lib/equipment.js'
 import { repsLabel } from '../data/schemes.js'
+import { measureUnit } from '../data/exercises.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
@@ -85,7 +86,7 @@ export default function Today() {
               <ExerciseFigure pattern={ex.pattern} size={40} />
               <span className="ex-name">{ex.name}</span>
               <FormCheckButton name={ex.name} compact />
-              <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''}</span>
+              <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)}</span>
             </li>
           ))}
         </ul>

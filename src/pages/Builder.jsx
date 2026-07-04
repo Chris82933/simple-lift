@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { EXERCISES, isHold, holdUnit } from '../data/exercises.js'
+import { EXERCISES, exMeasure } from '../data/exercises.js'
 import { GOALS } from '../data/options.js'
 import { schemeForGoals } from '../data/schemes.js'
 import { WEEKDAY_LABELS } from '../lib/generator.js'
@@ -19,16 +19,19 @@ const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...a
 function makeExercise(ex, scheme, inc) {
   const tier = ex.compound ? scheme.compound : scheme.accessory
   const max = ex.load !== false ? getMax(ex.id) : null
-  const hold = ex.hold === true
-  // Holds/cardio are prescribed by time; give a sensible default range in the
-  // right unit instead of a rep range.
-  const [lo, hi] = hold ? (ex.unit === 'min' ? [10, 20] : [20, 45]) : [tier.repLow, tier.repHigh]
+  // Prescribe in the exercise's own measure: reps, time, or distance — with a
+  // sensible default range and set count for each (a run/cardio block is 1 set).
+  const m = exMeasure(ex)
+  let lo, hi, sets = tier.sets
+  if (m.type === 'distance') { lo = 3; hi = 5; sets = 1 }
+  else if (m.type === 'time') { [lo, hi] = m.unit === 'min' ? [10, 20] : [20, 45]; if (m.unit === 'min') sets = 1 }
+  else { lo = tier.repLow; hi = tier.repHigh }
   return {
     id: ex.id, name: ex.name, pattern: ex.pattern, regions: ex.regions,
     compound: ex.compound, load: ex.load !== false, cues: ex.cues,
     ladderId: ex.ladderId || null, nextId: ex.nextId || null, prevId: ex.prevId || null,
-    hold, unit: ex.unit || (hold ? 'sec' : undefined),
-    sets: hold && ex.unit === 'min' ? 1 : tier.sets, repLow: lo, repHigh: hi, restSec: tier.rest,
+    hold: ex.hold || undefined, distance: ex.distance || undefined, unit: ex.unit || undefined,
+    sets, repLow: lo, repHigh: hi, restSec: tier.rest,
     startWeight: max ? String(weightForReps(max.oneRM, tier.repHigh, inc)) : '',
   }
 }
@@ -212,15 +215,15 @@ export default function Builder() {
                 </div>
                 <div className="builder-fields">
                   <label>Sets<input type="number" inputMode="numeric" value={ex.sets} onChange={(e) => updateExercise(di, ei, { sets: e.target.value })} /></label>
-                  {isHold(ex) ? (
-                    <>
-                      <label>Min ({holdUnit(ex)})<input type="number" inputMode="numeric" value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
-                      <label>Max ({holdUnit(ex)})<input type="number" inputMode="numeric" value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
-                    </>
-                  ) : (
+                  {exMeasure(ex).type === 'reps' ? (
                     <>
                       <label>Min reps<input type="number" inputMode="numeric" value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
                       <label>Max reps<input type="number" inputMode="numeric" value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
+                    </>
+                  ) : (
+                    <>
+                      <label>Min ({exMeasure(ex).unit})<input type="number" inputMode="numeric" value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
+                      <label>Max ({exMeasure(ex).unit})<input type="number" inputMode="numeric" value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
                     </>
                   )}
                   <label>Rest s<input type="number" inputMode="numeric" value={ex.restSec} onChange={(e) => updateExercise(di, ei, { restSec: e.target.value })} /></label>

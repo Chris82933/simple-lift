@@ -139,8 +139,18 @@ const BASE_EXERCISES = [
   { id: 'zone2_cardio', name: 'Zone 2 Cardio', pattern: 'conditioning', regions: ['legs'], requires: [], compound: false, load: false, hold: true, unit: 'min', tags: ['running'], cues: 'Easy, conversational pace — walk, jog, bike, or row. You should still be able to talk. Great as a warm-up or a recovery day.' },
   { id: 'jump_rope', name: 'Jump Rope', pattern: 'conditioning', regions: ['legs', 'core'], requires: ['jump_rope'], compound: false, load: false, tags: ['running'], cues: 'Light bounces on the balls of your feet, wrists do the work.' },
   { id: 'cardio_machine', name: 'Cardio Finisher', pattern: 'conditioning', regions: ['legs'], requires: ['cardio'], compound: false, load: false, hold: true, unit: 'min', tags: ['running'], cues: 'Steady, strong effort for the time — hold a pace you can sustain.' },
-  { id: 'mountain_climber', name: 'Mountain Climbers', pattern: 'conditioning', regions: ['core', 'legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Hips low, drive the knees quickly, steady breathing.' },
-  { id: 'run_10k', name: '10km Run', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Aim for a steady, comfortable pace. Log your full run stats (distance, time, HR) in the Cardio tab!' },
+  { id: 'mountain_climber', name: 'Mountain Climbers', pattern: 'conditioning', regions: ['core', 'legs'], requires: [], compound: false, load: false, hold: true, unit: 'sec', tags: ['running'], cues: 'Hips low, drive the knees quickly, steady breathing.' },
+  { id: 'run_10k', name: '10km Run', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, distance: true, unit: 'km', tags: ['running'], cues: 'Aim for a steady, comfortable pace. Log your full run stats (distance, time, HR) in the Cardio tab!' },
+
+  // ---- HIIT / plyometric bodyweight ----
+  { id: 'burpee', name: 'Burpees', pattern: 'conditioning', regions: ['chest', 'legs', 'core'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Chest to the floor, jump the feet in, then explode up with a small hop. Full-body conditioning.' },
+  { id: 'jumping_jack', name: 'Jumping Jacks', pattern: 'conditioning', regions: ['legs', 'shoulders', 'core'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Jump the feet wide as the arms sweep overhead, then back — light and rhythmic.' },
+  { id: 'high_knees', name: 'High Knees', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: false, load: false, hold: true, unit: 'sec', tags: ['running'], cues: 'Run in place driving the knees to hip height, fast turnover, on the balls of your feet. For time.' },
+  { id: 'butt_kick', name: 'Butt Kicks', pattern: 'conditioning', regions: ['legs'], requires: [], compound: false, load: false, hold: true, unit: 'sec', tags: ['running'], cues: 'Jog in place kicking your heels up toward your glutes — quick and light. For time.' },
+  { id: 'squat_jump', name: 'Squat Jumps', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Sink to a squat, jump as high as you can, land soft and absorb into the next rep.' },
+  { id: 'skater_jump', name: 'Skater Jumps', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Bound side to side, landing on one leg with the other swept behind — control the landing. Count each side.' },
+  { id: 'plank_jack', name: 'Plank Jacks', pattern: 'conditioning', regions: ['core', 'shoulders'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Hold a strong plank and jump the feet wide and back together — brace so the hips stay level.' },
+  { id: 'bear_crawl', name: 'Bear Crawl', pattern: 'conditioning', regions: ['core', 'shoulders', 'legs'], requires: [], compound: true, load: false, hold: true, unit: 'sec', tags: ['running'], cues: 'On hands and toes, knees just off the floor, crawl with opposite hand/foot — keep the hips low and steady. For time.' },
 ]
 
 // Merge in the bodyweight ladder variants, then stitch easy↔hard links onto
@@ -150,11 +160,25 @@ import { LADDER_EXERCISES, LADDERS } from './progressions.js'
 export const EXERCISES = [...BASE_EXERCISES, ...LADDER_EXERCISES]
 export const EXERCISE_BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]))
 
-// Timed "holding position" exercises (planks, hollow holds, cardio blocks) ask
-// for time, not reps. Resolve from the library by id (program-exercise objects
-// may not carry the flag). `unit` is 'sec' by default, 'min' for cardio blocks.
-export const isHold = (ex) => !!(EXERCISE_BY_ID[ex?.id]?.hold ?? ex?.hold)
-export const holdUnit = (ex) => (EXERCISE_BY_ID[ex?.id]?.unit ?? ex?.unit) || 'sec'
+// How an exercise is measured so inputs adapt to it (context-aware):
+//   • 'reps'     — sets × reps (× weight when load-tracked)
+//   • 'time'     — sets × a duration (planks, holds, timed cardio) — unit sec/min
+//   • 'distance' — sets × a distance (runs) — unit km/mi
+// Resolve from the library by id (program-exercise objects may not carry flags).
+export function exMeasure(ex) {
+  const b = EXERCISE_BY_ID[ex?.id] || {}
+  const distance = b.distance ?? ex?.distance
+  const hold = b.hold ?? ex?.hold
+  const unit = b.unit ?? ex?.unit
+  if (distance) return { type: 'distance', unit: unit || 'km' }
+  if (hold) return { type: 'time', unit: unit || 'sec' }
+  return { type: 'reps', unit: 'reps' }
+}
+// The unit word for the set column / previews ('reps' | 'sec' | 'min' | 'km').
+export const measureUnit = (ex) => exMeasure(ex).unit
+// Kept for existing callers.
+export const isHold = (ex) => exMeasure(ex).type === 'time'
+export const holdUnit = (ex) => exMeasure(ex).unit
 
 for (const ladder of LADDERS) {
   ladder.order.forEach((id, i) => {

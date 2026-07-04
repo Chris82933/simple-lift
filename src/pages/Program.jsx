@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { loadActiveProgram, loadPrograms } from '../lib/storage.js'
 import { repsLabel } from '../data/schemes.js'
+import { measureUnit } from '../data/exercises.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 
@@ -71,7 +72,7 @@ export default function Program() {
                 <ExerciseFigure pattern={ex.pattern} size={40} />
                 <span className="ex-name">{ex.name}</span>
                 <FormCheckButton name={ex.name} compact />
-                <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''}</span>
+                <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)}</span>
               </li>
             ))}
           </ul>
