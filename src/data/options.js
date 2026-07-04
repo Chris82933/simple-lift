@@ -39,6 +39,7 @@ export const EQUIPMENT_GROUPS = [
       { id: 'leg_press', label: 'Leg press' },
       { id: 'smith', label: 'Smith machine' },
       { id: 'leg_curl_ext', label: 'Leg curl / extension' },
+      { id: 'machines', label: 'Selectorized machines (pec deck, shoulder press…)' },
     ],
   },
   {
