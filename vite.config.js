@@ -34,7 +34,13 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Precache every built asset so the app is fully usable with no network.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff,woff2}'],
+        // Include the large lazy chunks (e.g. Firebase) so cloud users work offline too.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Any in-app (hash) route falls back to the cached shell when offline.
         navigateFallback: `/${REPO}/index.html`,
+        cleanupOutdatedCaches: true,
       },
       devOptions: {
         // Keep the service worker out of dev — it interferes with HMR/tooling.
