@@ -21,7 +21,7 @@ export function recommendedInc(ex, units) {
 
 const maxEntered = (logged) => Math.max(0, ...logged.map((s) => Number(s.weight) || 0))
 
-export function reviewSession(session, setsMap, goals, units) {
+export function reviewSession(session, setsMap, goals, units, method = 'manual') {
   const persist = []
   const autoNotes = []
   const suggestions = []
@@ -95,17 +95,21 @@ export function reviewSession(session, setsMap, goals, units) {
       continue
     }
 
-    // --- Generic exercises ---
+    // --- Generic exercises (progression method drives when/what to suggest) ---
     persist.push(base)
-    if (completedAll) {
+    // Linear & RPE progress once you complete the prescribed sets; double
+    // progression (and manual) waits until you top the rep range.
+    const didSets = doneSets.length >= ex.sets
+    const progresses = (method === 'linear' || method === 'rpe') ? didSets : completedAll
+    if (progresses) {
       if (tracksLoad && entered > 0) {
         suggestions.push({
           exId: ex.id, name: ex.name, type: 'load',
-          base: entered, reps: { to: target + 1 },
+          base: entered, reps: { to: target + 1 }, hitTop: completedAll,
           recommendedInc: recommendedInc(ex, units), isGzclp: false,
         })
       } else {
-        suggestions.push({ exId: ex.id, name: ex.name, type: 'reps', reps: { to: target + 1 } })
+        suggestions.push({ exId: ex.id, name: ex.name, type: 'reps', reps: { to: target + 1 }, hitTop: completedAll })
       }
     }
   }

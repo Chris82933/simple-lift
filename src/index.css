@@ -876,6 +876,22 @@ select.text-input { appearance: none; }
   color: var(--muted);
 }
 .progression-info { border-left: 3px solid var(--accent); padding-left: 8px; }
+
+/* ---- Progression method selector ---- */
+.rec-badge {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  vertical-align: middle;
+}
+.method-detail { margin-top: 4px; display: flex; flex-direction: column; gap: 8px; }
+.chip.is-recommended { border-color: var(--accent); }
 .proscons { display: flex; flex-direction: column; gap: 6px; margin: 2px 0; }
 .proscons ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .proscons li { font-size: 13px; line-height: 1.35; padding-left: 22px; position: relative; }

@@ -8,6 +8,7 @@ import { repsLabel, schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { stageNote, applyStage } from '../lib/gzclp.js'
 import { extraNote } from '../lib/progression.js'
 import { reviewSession, applyChoices, INCREMENTS } from '../lib/sessionReview.js'
+import { methodFor, recommendChoice, recommendReason, methodName } from '../lib/progressionMethods.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import RestTimer from '../components/RestTimer.jsx'
@@ -128,6 +129,7 @@ export default function Workout() {
   })
   const { program, dayIndex, session } = snapshot
   const goals = program?.goals || program?.meta?.goals || []
+  const method = methodFor(program)
 
   // Set-tracking state: prefilled from each exercise's stored working values
   // (so values carry over session-to-session, even when sets weren't ticked).
@@ -268,7 +270,7 @@ export default function Workout() {
     // Carry values forward + auto-apply deloads; collect optional increase suggestions.
     // Ad-hoc adds aren't in the program, so they can't persist/progress — exclude them.
     const programIds = new Set(program.days[dayIndex].exercises.map((e) => e.id))
-    const result = reviewSession({ ...session, exercises }, sets, goals, units)
+    const result = reviewSession({ ...session, exercises }, sets, goals, units, method)
     result.persist = result.persist.filter((p) => programIds.has(p.exId))
     result.suggestions = result.suggestions.filter((s) => programIds.has(s.exId))
     const fresh = loadActiveProgram()
@@ -383,26 +385,34 @@ export default function Workout() {
           <div className="card">
             <p className="group-label">Progress next time?</p>
             <p className="muted small">
-              You completed everything on these. Bump them up only if it felt right — otherwise keep the same (the default).
+              {method === 'manual'
+                ? 'Bump these up only if it felt right — otherwise keep the same (the default).'
+                : <>Using <strong>{methodName(method)}</strong>. {recommendReason(method, difficulty)}</>}
             </p>
-            {review.suggestions.map((sug) => (
-              <div className="review-row" key={sug.exId}>
-                <span className="review-name">{sug.type === 'levelUp' ? '🚀' : '✅'} {sug.name}</span>
-                <div className="choice-chips">
-                  {optionsFor(sug, units).map((opt) => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      className={'chip' + (choices[sug.exId] === opt.key ? ' is-selected' : '')}
-                      onClick={() => setChoices((c) => ({ ...c, [sug.exId]: opt.key }))}
-                    >
-                      {opt.label}{opt.recommended ? ' ★' : ''}
-                    </button>
-                  ))}
+            {review.suggestions.map((sug) => {
+              const rec = recommendChoice(method, sug, difficulty)
+              return (
+                <div className="review-row" key={sug.exId}>
+                  <span className="review-name">{sug.type === 'levelUp' ? '🚀' : '✅'} {sug.name}</span>
+                  <div className="choice-chips">
+                    {optionsFor(sug, units).map((opt) => {
+                      const isRec = rec ? opt.key === rec : opt.recommended
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          className={'chip' + (choices[sug.exId] === opt.key ? ' is-selected' : '') + (isRec ? ' is-recommended' : '')}
+                          onClick={() => setChoices((c) => ({ ...c, [sug.exId]: opt.key }))}
+                        >
+                          {opt.label}{isRec ? ' ★' : ''}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-            <p className="muted small">★ = the usual jump for this kind of lift.</p>
+              )
+            })}
+            <p className="muted small">★ = recommended by your progression method. You choose.</p>
           </div>
         )}
 

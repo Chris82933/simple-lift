@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { EXERCISES, exMeasure } from '../data/exercises.js'
+import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 import { GOALS } from '../data/options.js'
 import { schemeForGoals } from '../data/schemes.js'
 import { WEEKDAY_LABELS } from '../lib/generator.js'
@@ -49,6 +50,7 @@ export default function Builder() {
         return {
           name: existing.name,
           goals: existing.goals || [],
+          progressionMethod: existing.progressionMethod || DEFAULT_METHOD,
           days: existing.days.map((d, i) => ({
             // Rotation/template days have no fixed weekday — assign one so the
             // Builder's weekday picker is a controlled input (not null).
@@ -66,6 +68,7 @@ export default function Builder() {
     return {
       name: '',
       goals: profile?.goals?.length ? profile.goals : ['general'],
+      progressionMethod: DEFAULT_METHOD,
       days: [{ weekday: 1, title: 'Day 1', exercises: [] }],
     }
   })
@@ -109,6 +112,7 @@ export default function Builder() {
       name: draft.name.trim(),
       source: 'custom',
       goals: draft.goals,
+      progressionMethod: draft.progressionMethod || DEFAULT_METHOD,
       days: draft.days
         .filter((d) => d.exercises.length > 0)
         .map((d) => ({
@@ -181,6 +185,42 @@ export default function Builder() {
             💡 Starting weights auto-fill from your saved 1RMs.{' '}
             <button type="button" className="link-btn" onClick={() => navigate('/one-rep-max')}>Find your maxes</button>
           </p>
+        </div>
+
+        {/* ---- Progression method ---- */}
+        <div className="card">
+          <p className="group-label">How do you want to progress?</p>
+          <p className="muted small">This decides which next step the app recommends after each workout. You always get the final say.</p>
+          <div className="choice-list">
+            {PROGRESSION_METHODS.map((m) => {
+              const selected = (draft.progressionMethod || DEFAULT_METHOD) === m.id
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={'choice-row' + (selected ? ' is-selected' : '')}
+                  onClick={() => update({ progressionMethod: m.id })}
+                >
+                  <span className="choice-title">
+                    {m.name}{m.recommended && <span className="rec-badge">Recommended</span>}
+                  </span>
+                  <span className="muted small">{m.tagline}</span>
+                </button>
+              )
+            })}
+          </div>
+          {(() => {
+            const m = PROGRESSION_METHODS.find((x) => x.id === (draft.progressionMethod || DEFAULT_METHOD))
+            return (
+              <div className="method-detail">
+                <p className="muted small">{m.how}</p>
+                <div className="proscons">
+                  <ul className="pros">{m.pros.map((p, i) => <li key={i}>{p}</li>)}</ul>
+                  <ul className="cons">{m.cons.map((c, i) => <li key={i}>{c}</li>)}</ul>
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         {draft.days.map((day, di) => (
