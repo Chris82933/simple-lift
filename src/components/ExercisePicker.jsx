@@ -12,10 +12,11 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
   const q = search.trim().toLowerCase()
   const active = getEquipment().active
   const availableSet = new Set(activeEquipmentIds())
-  // Hide template-only ladder variants and conditioning moves (logged via cardio),
-  // and (unless "Show all") anything you can't do with the current equipment.
+  // Hide only the template-only ladder variants; cardio/conditioning moves (e.g.
+  // Mountain Climbers, a warm-up run) can be added. Unless "Show all", also hide
+  // anything you can't do with the current equipment.
   const filtered = EXERCISES.filter(
-    (e) => !e.ladderOnly && e.pattern !== 'conditioning' && e.name.toLowerCase().includes(q)
+    (e) => !e.ladderOnly && e.name.toLowerCase().includes(q)
       && (showAll || isDoable(e, availableSet)),
   )
 

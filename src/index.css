@@ -646,7 +646,7 @@ select.text-input { appearance: none; }
 }
 .picker-head { display: flex; gap: 10px; align-items: center; }
 .picker-head .text-input { flex: 1; }
-.picker-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.picker-list { overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 6px; }
 .picker-item {
   display: flex;
   align-items: center;
@@ -1097,18 +1097,21 @@ select.text-input { appearance: none; }
 .machine-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .machine-chip {
   display: flex; align-items: center; gap: 8px;
+  min-width: 0; overflow: hidden;
   padding: 12px; border-radius: 12px;
   border: 1px solid var(--border); background: var(--surface-2);
   color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer;
   text-align: left;
 }
-.machine-icon { font-size: 18px; }
+.machine-icon { font-size: 18px; flex: none; }
 .cardio-fields { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .cardio-fields label {
   display: flex; flex-direction: column; gap: 4px;
+  min-width: 0;
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
 }
 .cardio-fields input {
+  width: 100%; min-width: 0;
   padding: 10px; background: var(--surface-2); border: 1px solid var(--border);
   border-radius: 10px; color: var(--text); font-size: 16px;
 }
