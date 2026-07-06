@@ -70,6 +70,7 @@ export default function Builder() {
 
   const [picker, setPicker] = useState(null) // dayIndex being edited, or null
   const [search, setSearch] = useState('')
+  const [amrapInfo, setAmrapInfo] = useState(false)
 
   const scheme = useMemo(() => schemeForGoals(draft.goals), [draft.goals])
   const inc = incrementForUnits(loadSettings().units)
@@ -267,14 +268,18 @@ export default function Builder() {
                   )}
                 </div>
                 {exMeasure(ex).type === 'reps' && (
-                  <button
-                    type="button"
-                    className={'amrap-toggle' + (ex.amrap ? ' is-on' : '')}
-                    onClick={() => updateExercise(di, ei, { amrap: ex.amrap ? undefined : true })}
-                  >
-                    <span className="amrap-check">{ex.amrap ? '✓' : ''}</span>
-                    Last set AMRAP <span className="muted small">— go for max reps on the final set (Greyskull / 5-3-1 style)</span>
-                  </button>
+                  <div className="amrap-row">
+                    <button
+                      type="button"
+                      className={'amrap-chip' + (ex.amrap ? ' is-on' : '')}
+                      aria-pressed={!!ex.amrap}
+                      onClick={() => updateExercise(di, ei, { amrap: ex.amrap ? undefined : true })}
+                    >
+                      <span className="amrap-box">{ex.amrap ? '✓' : ''}</span>
+                      AMRAP last set
+                    </button>
+                    <button type="button" className="info-icon" onClick={() => setAmrapInfo(true)} aria-label="What is AMRAP?">i</button>
+                  </div>
                 )}
               </div>
             ))}
@@ -329,6 +334,24 @@ export default function Builder() {
               })}
               {filtered.length === 0 && <p className="muted">No matches.</p>}
             </div>
+          </div>
+        </div>
+      )}
+
+      {amrapInfo && (
+        <div className="picker-overlay" role="dialog" aria-label="About AMRAP" onClick={() => setAmrapInfo(false)}>
+          <div className="info-sheet" onClick={(e) => e.stopPropagation()}>
+            <p className="info-title">AMRAP last set</p>
+            <p className="muted small">
+              AMRAP means <strong>“as many reps as possible.”</strong> You do your normal sets, then push the
+              <strong> final set</strong> for max clean reps instead of stopping at the target.
+            </p>
+            <p className="muted small">
+              It’s how programs like <strong>Greyskull LP</strong> and <strong>5/3/1</strong> work: a strong last set
+              earns bigger jumps, and it’s a simple way to autoregulate — some days you have more in the tank than others.
+            </p>
+            <p className="muted small">Leave it off for a steady, fixed-rep approach.</p>
+            <button type="button" className="btn btn-primary" onClick={() => setAmrapInfo(false)}>Got it</button>
           </div>
         </div>
       )}

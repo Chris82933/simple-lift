@@ -549,7 +549,7 @@ export default function Workout() {
                 <p className="suggestion ladder-hint">
                   Progression ladder · step {lad.index + 1} of {lad.length}
                   {lad.nextName
-                    ? ` — next: ${lad.nextName}. Hit the top of every set and you'll be offered the level-up.`
+                    ? ` — next: ${lad.nextName}. Level up once you can do all ${ex.sets} sets at ${ex.repHigh} ${measureUnit(ex)} with clean form.`
                     : " — you're at the hardest step. Keep adding reps."}
                 </p>
               )}

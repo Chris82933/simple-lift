@@ -46,6 +46,31 @@ export const LADDER_EXERCISES = [
 
   // ---- Core: anti-extension ----
   { id: 'long_lever_plank', name: 'Long-Lever Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, ladderOnly: true, cues: 'Elbows further forward of the shoulders — much harder anti-extension hold.' },
+
+  // ---- Rings: horizontal pull (ring row, easy → hard by body angle) ----
+  { id: 'ring_row_incline', name: 'Incline Ring Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['rings'], compound: true, load: false, ladderOnly: true, cues: 'Set the rings high and stay more upright — the closer to standing, the easier. Body straight, pull the rings to your chest, squeeze the shoulder blades.' },
+  { id: 'ring_row_feet_up', name: 'Feet-Elevated Ring Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['rings'], compound: true, load: false, ladderOnly: true, cues: 'Feet up on a box so your body is horizontal or past it — much harder. Stay hollow, no sagging hips.' },
+  { id: 'ring_archer_row', name: 'Archer Ring Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['rings'], compound: true, load: false, ladderOnly: true, cues: 'Pull to one ring while the other arm reaches out nearly straight — a step toward the one-arm row.' },
+
+  // ---- Rings: dip (support hold → full dip → rings turned out) ----
+  { id: 'ring_dip_negative', name: 'Ring Dip Negative', pattern: 'horiz_push', regions: ['chest', 'arms'], requires: ['rings'], compound: true, load: false, ladderOnly: true, cues: 'Start locked out at the top, lower as slowly as you can (aim 3–5s), then reset. Builds the strength for full dips.' },
+  { id: 'ring_rto_dip', name: 'RTO Ring Dip', pattern: 'horiz_push', regions: ['chest', 'arms'], requires: ['rings'], compound: true, load: false, ladderOnly: true, cues: 'Rings turned out (thumbs forward) at the top of every rep — brutal on the chest and stabilisers.' },
+
+  // ---- Rings: push-up ----
+  { id: 'ring_pushup_high', name: 'High Ring Push-Up', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: ['rings'], compound: true, load: false, ladderOnly: true, cues: 'Set the rings higher so you press at an incline — easier while you learn to fight the wobble.' },
+  { id: 'ring_rto_pushup', name: 'RTO Ring Push-Up', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: ['rings'], compound: true, load: false, ladderOnly: true, cues: 'Rings just off the floor, turned out at the top of every rep — maximal chest tension and stability.' },
+
+  // ---- Rings: toward the muscle-up ----
+  { id: 'false_grip_pullup', name: 'False-Grip Ring Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['rings'], compound: true, load: false, ladderOnly: true, cues: 'Hands on top of the rings (wrists over the ring), pull high to the sternum — the grip that makes the muscle-up possible.' },
+  { id: 'muscle_up_negative', name: 'Ring Muscle-Up Negative', pattern: 'vert_pull', regions: ['back', 'arms', 'chest'], requires: ['rings'], compound: true, load: false, ladderOnly: true, cues: 'Start in the support at the top and lower slowly through the transition to a hang — owns the hardest part first.' },
+  { id: 'ring_muscle_up', name: 'Ring Muscle-Up', pattern: 'vert_pull', regions: ['back', 'arms', 'chest'], requires: ['rings'], compound: true, load: false, ladderOnly: true, cues: 'Explosive false-grip pull, punch the rings down and roll the shoulders over into the support. The classic rings milestone.' },
+
+  // ---- Vertical push: pike push-up → handstand push-up ----
+  { id: 'elevated_pike_pushup', name: 'Elevated Pike Push-Up', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: [], compound: true, load: false, ladderOnly: true, cues: 'Feet up on a box so your torso is nearly vertical — lower your head to the floor and press. Bridges the pike and the handstand.' },
+  { id: 'wall_handstand_hold', name: 'Wall Handstand Hold', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: [], compound: false, load: false, hold: true, ladderOnly: true, cues: 'Kick up to the wall, lock the elbows, push tall and hold. Builds the position and shoulder endurance. Hold for time.' },
+  { id: 'wall_hspu_negative', name: 'Wall HSPU Negative', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: [], compound: true, load: false, ladderOnly: true, cues: 'In a wall handstand, lower your head to the floor as slowly as possible, then step down and reset. The key strength-builder.' },
+  { id: 'wall_hspu', name: 'Wall Handstand Push-Up', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: [], compound: true, load: false, ladderOnly: true, cues: 'Full range against the wall: lower until your head lightly touches, press back to a lockout. Keep the ribs down and body tight.' },
+  { id: 'freestanding_hspu', name: 'Freestanding HSPU', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: [], compound: true, load: false, ladderOnly: true, cues: 'No wall — balance and press. The elite endpoint; expect a long road of handstand practice first.' },
 ]
 
 // Ordered easy → hard. Ids may reference base-library exercises too.
@@ -59,4 +84,11 @@ export const LADDERS = [
   { id: 'core_comp', name: 'Leg-Raise Progression', order: ['lying_leg_raise', 'hanging_knee_raise', 'hanging_leg_raise', 'toes_to_bar'] },
   { id: 'core_brace', name: 'Plank Progression', order: ['plank', 'long_lever_plank', 'ab_wheel'] },
   { id: 'calf_prog', name: 'Calf Progression', order: ['wall_sit_calf_raise', 'bw_calf_raise', 'single_leg_calf_raise'] },
+  // ---- Gymnastic rings ----
+  { id: 'ring_row_prog', name: 'Ring Row Progression', order: ['ring_row_incline', 'ring_row', 'ring_row_feet_up', 'ring_archer_row'] },
+  { id: 'ring_dip_prog', name: 'Ring Dip Progression', order: ['ring_support_hold', 'ring_dip_negative', 'ring_dip', 'ring_rto_dip'] },
+  { id: 'ring_pushup_prog', name: 'Ring Push-Up Progression', order: ['ring_pushup_high', 'ring_pushup', 'ring_rto_pushup'] },
+  { id: 'muscle_up_prog', name: 'Ring Muscle-Up Progression', order: ['ring_pullup', 'false_grip_pullup', 'muscle_up_negative', 'ring_muscle_up'] },
+  // ---- Handstand push-up ----
+  { id: 'hspu_prog', name: 'Handstand Push-Up Progression', order: ['pike_pushup', 'elevated_pike_pushup', 'wall_handstand_hold', 'wall_hspu_negative', 'wall_hspu', 'freestanding_hspu'] },
 ]

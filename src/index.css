@@ -893,35 +893,67 @@ select.text-input { appearance: none; }
 .method-detail { margin-top: 4px; display: flex; flex-direction: column; gap: 8px; }
 .chip.is-recommended { border-color: var(--accent); }
 
-/* ---- Builder: last-set AMRAP toggle ---- */
-.amrap-toggle {
-  display: flex;
+/* ---- Builder: last-set AMRAP toggle (compact chip + info) ---- */
+.amrap-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.amrap-chip {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  margin-top: 8px;
-  padding: 8px 10px;
-  text-align: left;
+  gap: 7px;
+  padding: 6px 12px 6px 8px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 999px;
   color: var(--text);
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
 }
-.amrap-toggle.is-on { border-color: var(--accent); }
-.amrap-check {
+.amrap-chip.is-on { border-color: var(--accent); color: var(--accent-ink); background: var(--accent); }
+.amrap-box {
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: grid;
   place-items: center;
   border: 1px solid var(--border);
   border-radius: 5px;
-  font-size: 12px;
+  font-size: 11px;
+  background: var(--bg);
   color: var(--accent-ink);
 }
-.amrap-toggle.is-on .amrap-check { background: var(--accent); border-color: var(--accent); }
+.amrap-chip.is-on .amrap-box { background: var(--accent-ink); color: var(--accent); border-color: var(--accent-ink); }
+.info-icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---- Centered info popup ---- */
+.info-sheet {
+  margin: auto;
+  width: min(92vw, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+.info-title { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.info-sheet .btn { margin-top: 4px; }
 
 /* ---- Onboarding path cards (start screen) ---- */
 .path-card {
