@@ -9,11 +9,12 @@ import {
 } from '../data/options.js'
 import { saveProfile, addProgram, loadProfile } from '../lib/storage.js'
 import { generateProgram } from '../lib/generator.js'
+import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 
 const toggle = (arr, val) =>
   arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]
 
-const STEPS = ['focus', 'balance', 'equipment', 'schedule', 'goals']
+const STEPS = ['focus', 'balance', 'equipment', 'schedule', 'goals', 'progression']
 
 const DEFAULT_DRAFT = {
   focusAreas: [],
@@ -22,10 +23,14 @@ const DEFAULT_DRAFT = {
   daysPerWeek: 3,
   sessionLength: 45,
   goals: [],
+  progressionMethod: DEFAULT_METHOD,
 }
 
 export default function Onboarding() {
   const navigate = useNavigate()
+  // `started` false = the "how do you want to start?" path picker;
+  // true = the guided, assisted wizard for beginner/intermediate lifters.
+  const [started, setStarted] = useState(false)
   const [step, setStep] = useState(0)
   // Prefill from an existing profile when re-running setup.
   const [draft, setDraft] = useState(() => {
@@ -44,6 +49,7 @@ export default function Onboarding() {
     equipment: true, // none selected = bodyweight only
     schedule: !!draft.daysPerWeek && !!draft.sessionLength,
     goals: draft.goals.length >= 1,
+    progression: !!draft.progressionMethod,
   }[STEPS[step]]
 
   const isLast = step === STEPS.length - 1
@@ -53,7 +59,10 @@ export default function Onboarding() {
     if (isLast) {
       const profile = { ...draft, createdAt: new Date().toISOString() }
       saveProfile(profile)
-      addProgram(generateProgram(profile))
+      // Carry the chosen progression style onto the generated program so the
+      // after-workout screen recommends the right next step.
+      const program = generateProgram(profile)
+      addProgram({ ...program, progressionMethod: draft.progressionMethod })
       navigate('/today')
     } else {
       setStep((s) => s + 1)
@@ -61,15 +70,65 @@ export default function Onboarding() {
   }
 
   const back = () => {
-    if (step === 0) navigate('/today')
+    if (step === 0) setStarted(false)
     else setStep((s) => s - 1)
   }
 
-  // Expert escape hatch — skip the questions and design a program by hand.
+  // Expert escape hatches — skip the questions entirely.
   const buildOwn = () => navigate('/builder')
+  const useTemplate = () => navigate('/templates')
+  const startGuided = () => { setStep(0); setStarted(true) }
 
   // One-tap "train everything" so users who don't want to choose can keep moving.
   const selectAllFocus = () => set({ focusAreas: REGIONS.map((r) => r.id) })
+
+  // ---- Path picker: choose your starting point ----
+  if (!started) {
+    return (
+      <section className="page full-flow">
+        <header className="page-header">
+          <p className="eyebrow">Welcome to Simple Lift</p>
+          <h1>How do you want to start?</h1>
+          <p className="muted">Pick the path that fits you. You can always rebuild or switch programs later.</p>
+        </header>
+
+        <div className="step-body">
+          <button type="button" className="path-card is-primary" onClick={startGuided}>
+            <div className="path-card-top">
+              <span className="path-title">Guided setup</span>
+              <span className="rec-badge">Recommended</span>
+            </div>
+            <span className="muted small">
+              Answer a few quick questions and we&apos;ll build a balanced program and set up how it
+              progresses each week. Best if you&apos;re a beginner or intermediate lifter.
+            </span>
+          </button>
+
+          <button type="button" className="path-card" onClick={useTemplate}>
+            <span className="path-title">Choose a proven program</span>
+            <span className="muted small">
+              Start from a tried-and-tested plan — StrongLifts 5×5, Starting Strength, Push/Pull/Legs,
+              GZCLP and more — each with the right progression already built in.
+            </span>
+          </button>
+
+          <button type="button" className="path-card" onClick={buildOwn}>
+            <span className="path-title">Build my own</span>
+            <span className="muted small">
+              Design every day and exercise yourself and pick your progression style. For experts who
+              already know exactly what they want.
+            </span>
+          </button>
+        </div>
+
+        <div className="flow-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/today')}>Cancel</button>
+        </div>
+      </section>
+    )
+  }
+
+  const selectedMethod = PROGRESSION_METHODS.find((m) => m.id === draft.progressionMethod)
 
   return (
     <section className="page full-flow">
@@ -93,12 +152,6 @@ export default function Onboarding() {
           <>
             <h1>What do you want to focus on?</h1>
             <p className="muted">Pick one or more, or just train everything. We&apos;ll balance the rest of your week around your choices.</p>
-            <div className="onb-alt">
-              <span className="muted small">Know exactly what you want?</span>
-              <button type="button" className="link-btn" onClick={() => navigate('/templates')}>Use a template</button>
-              <span className="muted small">·</span>
-              <button type="button" className="link-btn" onClick={buildOwn}>Build your own</button>
-            </div>
             <div className="region-grid">
               {REGIONS.map((r) => (
                 <button
@@ -226,11 +279,44 @@ export default function Onboarding() {
             </div>
           </>
         )}
+
+        {STEPS[step] === 'progression' && (
+          <>
+            <h1>How should your program progress?</h1>
+            <p className="muted">This decides what the app recommends after each workout — add reps, add weight, or hold. Not sure? Go with our pick.</p>
+            <div className="choice-list">
+              {PROGRESSION_METHODS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={'choice-row' + (draft.progressionMethod === m.id ? ' is-selected' : '')}
+                  aria-pressed={draft.progressionMethod === m.id}
+                  onClick={() => set({ progressionMethod: m.id })}
+                >
+                  <span className="choice-title">
+                    {m.name}{m.recommended && <span className="rec-badge">Recommended</span>}
+                  </span>
+                  <span className="muted small">{m.tagline}</span>
+                </button>
+              ))}
+            </div>
+            {selectedMethod && (
+              <div className="method-detail">
+                <p className="muted small">{selectedMethod.how}</p>
+                <div className="proscons">
+                  <ul className="pros">{selectedMethod.pros.map((p, i) => <li key={i}>{p}</li>)}</ul>
+                  <ul className="cons">{selectedMethod.cons.map((c, i) => <li key={i}>{c}</li>)}</ul>
+                </div>
+              </div>
+            )}
+            <p className="muted small">You can change this anytime, and after every workout you still choose what to do.</p>
+          </>
+        )}
       </div>
 
       <div className="flow-actions">
         <button type="button" className="btn btn-ghost" onClick={back}>
-          {step === 0 ? 'Cancel' : 'Back'}
+          Back
         </button>
         <button type="button" className="btn btn-primary" onClick={next} disabled={!isValid}>
           {isLast ? 'Build my program' : 'Next'}

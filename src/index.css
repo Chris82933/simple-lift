@@ -153,7 +153,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   flex-direction: column;
   gap: 16px;
 }
-.full-flow { min-height: 100dvh; }
+.full-flow { min-height: 100dvh; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 
 .page-header h1 { font-size: 28px; font-weight: 800; margin: 2px 0 6px; letter-spacing: -0.03em; line-height: 1.12; }
 .eyebrow {
@@ -923,11 +923,25 @@ select.text-input { appearance: none; }
 }
 .amrap-toggle.is-on .amrap-check { background: var(--accent); border-color: var(--accent); }
 
-/* ---- Settings: labeled toggle row ---- */
-.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.setting-row > div { min-width: 0; }
-.setting-title { margin: 0 0 2px; font-weight: 600; font-size: 14px; }
-.setting-row .seg-sm { flex: none; }
+/* ---- Onboarding path cards (start screen) ---- */
+.path-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.05s ease;
+}
+.path-card:active { transform: scale(0.99); }
+.path-card.is-primary { border-color: var(--accent); }
+.path-card-top { display: flex; align-items: center; gap: 8px; }
+.path-title { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
 .proscons { display: flex; flex-direction: column; gap: 6px; margin: 2px 0; }
 .proscons ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .proscons li { font-size: 13px; line-height: 1.35; padding-left: 22px; position: relative; }
@@ -1260,9 +1274,12 @@ select.text-input { appearance: none; }
 .settings-list li {
   display: flex;
   justify-content: space-between;
+  gap: 16px;
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
 }
+.settings-list li > span:first-child { flex: none; }
+.settings-list li > span:last-child { text-align: right; margin-left: auto; }
 .settings-list li:last-child { border-bottom: none; }
 
 /* ---- Workout set rows ---- */

@@ -182,20 +182,18 @@ export default function Profile() {
 
       {/* ---- Training location (equipment profiles) ---- */}
       <div className="card">
-        <div className="mode-row">
-          <span className="group-label" style={{ margin: 0 }}>Training location</span>
-          <div className="seg seg-sm">
-            {PROFILE_IDS.map((id) => (
-              <button
-                key={id}
-                type="button"
-                className={'seg-item' + (activeProfile === id ? ' is-selected' : '')}
-                onClick={() => chooseProfile(id)}
-              >
-                {profileMeta(id).name}
-              </button>
-            ))}
-          </div>
+        <p className="group-label">Training location</p>
+        <div className="seg">
+          {PROFILE_IDS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={'seg-item' + (activeProfile === id ? ' is-selected' : '')}
+              onClick={() => chooseProfile(id)}
+            >
+              {profileMeta(id).name}
+            </button>
+          ))}
         </div>
         <details className="guide">
           <summary>Edit {profileMeta(activeProfile).name.toLowerCase()} equipment</summary>
@@ -242,24 +240,19 @@ export default function Profile() {
 
       {/* ---- During workouts ---- */}
       <div className="card">
-        <p className="group-label">During workouts</p>
-        <div className="setting-row">
-          <div>
-            <p className="setting-title">Plate calculator</p>
-            <p className="muted small">Show which plates to load on the bar for each set. Turn off if you already do the math.</p>
-          </div>
-          <div className="seg seg-sm">
-            {[{ id: 'show', label: 'Show' }, { id: 'hide', label: 'Hide' }].map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                className={'seg-item' + ((settings.hidePlateCalc === true ? 'hide' : 'show') === o.id ? ' is-selected' : '')}
-                onClick={() => setHidePlateCalc(o.id === 'hide')}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
+        <p className="group-label">Plate calculator</p>
+        <p className="muted small">Show which plates to load on the bar for each set during a workout. Turn off if you already do the math.</p>
+        <div className="seg">
+          {[{ id: 'show', label: 'Show' }, { id: 'hide', label: 'Hide' }].map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={'seg-item' + ((settings.hidePlateCalc === true ? 'hide' : 'show') === o.id ? ' is-selected' : '')}
+              onClick={() => setHidePlateCalc(o.id === 'hide')}
+            >
+              {o.label}
+            </button>
+          ))}
         </div>
       </div>
 
