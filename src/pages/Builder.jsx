@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { EXERCISES, exMeasure } from '../data/exercises.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 import { GOALS } from '../data/options.js'
-import { schemeForGoals } from '../data/schemes.js'
+import { schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { WEEKDAY_LABELS } from '../lib/generator.js'
 import {
   loadProfile, getProgram, addProgram, updateProgram, getMax, loadSettings,
@@ -17,23 +17,18 @@ const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...a
 
 // Build a day's default exercise entry from the library + current goal scheme.
 // Prefills a starting weight from a saved 1RM when one exists for this lift.
+// Defaults come from prescriptionFor, which tunes sets/reps/rest to how the move
+// is measured (reps / timed hold / cardio) and the muscle it works.
 function makeExercise(ex, scheme, inc) {
-  const tier = ex.compound ? scheme.compound : scheme.accessory
   const max = ex.load !== false ? getMax(ex.id) : null
-  // Prescribe in the exercise's own measure: reps, time, or distance — with a
-  // sensible default range and set count for each (a run/cardio block is 1 set).
-  const m = exMeasure(ex)
-  let lo, hi, sets = tier.sets
-  if (m.type === 'distance') { lo = 3; hi = 5; sets = 1 }
-  else if (m.type === 'time') { [lo, hi] = m.unit === 'min' ? [10, 20] : [20, 45]; if (m.unit === 'min') sets = 1 }
-  else { lo = tier.repLow; hi = tier.repHigh }
+  const p = prescriptionFor(ex, scheme)
   return {
     id: ex.id, name: ex.name, pattern: ex.pattern, regions: ex.regions,
     compound: ex.compound, load: ex.load !== false, cues: ex.cues,
     ladderId: ex.ladderId || null, nextId: ex.nextId || null, prevId: ex.prevId || null,
     hold: ex.hold || undefined, distance: ex.distance || undefined, unit: ex.unit || undefined,
-    sets, repLow: lo, repHigh: hi, restSec: tier.rest,
-    startWeight: max ? String(weightForReps(max.oneRM, tier.repHigh, inc)) : '',
+    sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec,
+    startWeight: max ? String(weightForReps(max.oneRM, p.repHigh, inc)) : '',
   }
 }
 
@@ -182,7 +177,7 @@ export default function Builder() {
             ))}
           </div>
           <p className="muted small">
-            💡 Starting weights auto-fill from your saved 1RMs.{' '}
+            💡 Sets, reps &amp; rest auto-fill with sensible defaults for each move — heavy compounds get low reps and long rest, isolation and core get higher reps. Each exercise uses a rep <em>range</em> (like most programs): aim for the top of the range on every set, then add weight. Tweak anything you like. Starting weights fill from your saved 1RMs.{' '}
             <button type="button" className="link-btn" onClick={() => navigate('/one-rep-max')}>Find your maxes</button>
           </p>
         </div>
@@ -271,6 +266,16 @@ export default function Builder() {
                     <label>Start wt<input type="number" inputMode="decimal" value={ex.startWeight} placeholder="–" onChange={(e) => updateExercise(di, ei, { startWeight: e.target.value })} /></label>
                   )}
                 </div>
+                {exMeasure(ex).type === 'reps' && (
+                  <button
+                    type="button"
+                    className={'amrap-toggle' + (ex.amrap ? ' is-on' : '')}
+                    onClick={() => updateExercise(di, ei, { amrap: ex.amrap ? undefined : true })}
+                  >
+                    <span className="amrap-check">{ex.amrap ? '✓' : ''}</span>
+                    Last set AMRAP <span className="muted small">— go for max reps on the final set (Greyskull / 5-3-1 style)</span>
+                  </button>
+                )}
               </div>
             ))}
 

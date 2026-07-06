@@ -105,7 +105,13 @@ const optionsFor = (sug, units) => {
       opts.push({ key: `w${inc}`, label: `+${inc} ${units}`, recommended: inc === sug.recommendedInc })
     }
   }
-  if (sug.reps) opts.push({ key: 'reps', label: '+1 rep' })
+  if (sug.reps) {
+    // Timed holds grow by seconds/minutes; everything else by reps.
+    const label = sug.type === 'time'
+      ? `+${sug.reps.by} ${sug.measure?.unit || 'sec'}`
+      : `+${sug.reps.by || 1} rep${(sug.reps.by || 1) > 1 ? 's' : ''}`
+    opts.push({ key: 'reps', label })
+  }
   opts.push({ key: 'keep', label: 'Keep same' })
   return opts
 }
@@ -115,6 +121,7 @@ export default function Workout() {
   const location = useLocation()
   const settings = loadSettings()
   const units = settings.units || 'lbs'
+  const showPlates = settings.hidePlateCalc !== true
 
   // Snapshot the program & session once at mount so mid-session edits don't reload the live workout.
   const stateDayIndex = location.state?.dayIndex
@@ -493,7 +500,7 @@ export default function Workout() {
           const tracksLoad = ex.load !== false
           const doable = isDoable(ex, availableSet)
           const sub = doable ? null : bestSubstitute(ex, availableSet)
-          const plateTarget = tracksLoad && isBarbellLift(ex) ? nextSetTarget(ex, sets[ex.id]) : null
+          const plateTarget = showPlates && tracksLoad && isBarbellLift(ex) ? nextSetTarget(ex, sets[ex.id]) : null
           // Bodyweight moves progress by variation — show where they sit in the ladder.
           const lad = !tracksLoad ? ladderInfo(ex.id) : null
           return (

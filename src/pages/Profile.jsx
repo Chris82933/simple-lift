@@ -63,6 +63,12 @@ export default function Profile() {
     saveSettings(next)
   }
 
+  const setHidePlateCalc = (hide) => {
+    const next = { ...settings, hidePlateCalc: hide }
+    setSettings(next)
+    saveSettings(next)
+  }
+
   const theme = settings.theme || 'dark'
   const setTheme = (t) => {
     const next = { ...settings, theme: t }
@@ -231,6 +237,29 @@ export default function Profile() {
               {t.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* ---- During workouts ---- */}
+      <div className="card">
+        <p className="group-label">During workouts</p>
+        <div className="setting-row">
+          <div>
+            <p className="setting-title">Plate calculator</p>
+            <p className="muted small">Show which plates to load on the bar for each set. Turn off if you already do the math.</p>
+          </div>
+          <div className="seg seg-sm">
+            {[{ id: 'show', label: 'Show' }, { id: 'hide', label: 'Hide' }].map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className={'seg-item' + ((settings.hidePlateCalc === true ? 'hide' : 'show') === o.id ? ' is-selected' : '')}
+                onClick={() => setHidePlateCalc(o.id === 'hide')}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

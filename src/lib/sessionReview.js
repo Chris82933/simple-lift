@@ -6,7 +6,7 @@
 //    increment is merely flagged as "recommended".
 import { schemeOf, evaluateProgression, applyStage } from './gzclp.js'
 import { isExtraScheme, evaluateExtra } from './progression.js'
-import { EXERCISE_BY_ID } from '../data/exercises.js'
+import { EXERCISE_BY_ID, exMeasure } from '../data/exercises.js'
 
 // Selectable weight increments per unit (smallest → largest).
 export const INCREMENTS = { lbs: [2.5, 5, 10], kg: [1.25, 2.5, 5] }
@@ -97,6 +97,11 @@ export function reviewSession(session, setsMap, goals, units, method = 'manual')
 
     // --- Generic exercises (progression method drives when/what to suggest) ---
     persist.push(base)
+    // Cardio / conditioning is self-paced (go longer or faster when you feel it)
+    // — logging it is enough; don't nag to "add a rep" to a treadmill.
+    const m = exMeasure(ex)
+    if (ex.pattern === 'conditioning' && m.type !== 'reps') continue
+
     // Linear & RPE progress once you complete the prescribed sets; double
     // progression (and manual) waits until you top the rep range.
     const didSets = doneSets.length >= ex.sets
@@ -105,11 +110,15 @@ export function reviewSession(session, setsMap, goals, units, method = 'manual')
       if (tracksLoad && entered > 0) {
         suggestions.push({
           exId: ex.id, name: ex.name, type: 'load',
-          base: entered, reps: { to: target + 1 }, hitTop: completedAll,
-          recommendedInc: recommendedInc(ex, units), isGzclp: false,
+          base: entered, reps: { to: target + 1, by: 1 }, hitTop: completedAll,
+          recommendedInc: recommendedInc(ex, units), isGzclp: false, measure: m,
         })
+      } else if (m.type === 'time') {
+        // Timed hold (plank, dead hang): grow the duration, not "reps".
+        const by = m.unit === 'min' ? 1 : 5
+        suggestions.push({ exId: ex.id, name: ex.name, type: 'time', reps: { to: target + by, by }, hitTop: completedAll, measure: m })
       } else {
-        suggestions.push({ exId: ex.id, name: ex.name, type: 'reps', reps: { to: target + 1 }, hitTop: completedAll })
+        suggestions.push({ exId: ex.id, name: ex.name, type: 'reps', reps: { to: target + 1, by: 1 }, hitTop: completedAll, measure: m })
       }
     }
   }

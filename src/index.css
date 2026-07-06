@@ -892,6 +892,42 @@ select.text-input { appearance: none; }
 }
 .method-detail { margin-top: 4px; display: flex; flex-direction: column; gap: 8px; }
 .chip.is-recommended { border-color: var(--accent); }
+
+/* ---- Builder: last-set AMRAP toggle ---- */
+.amrap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.amrap-toggle.is-on { border-color: var(--accent); }
+.amrap-check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--accent-ink);
+}
+.amrap-toggle.is-on .amrap-check { background: var(--accent); border-color: var(--accent); }
+
+/* ---- Settings: labeled toggle row ---- */
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setting-row > div { min-width: 0; }
+.setting-title { margin: 0 0 2px; font-weight: 600; font-size: 14px; }
+.setting-row .seg-sm { flex: none; }
 .proscons { display: flex; flex-direction: column; gap: 6px; margin: 2px 0; }
 .proscons ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .proscons li { font-size: 13px; line-height: 1.35; padding-left: 22px; position: relative; }
@@ -1192,6 +1228,11 @@ select.text-input { appearance: none; }
 .log-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
 .log-row > span:nth-child(2) { white-space: nowrap; margin-left: auto; }
 .log-del { width: 26px; height: 26px; font-size: 13px; flex: none; }
+.log-ex-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.log-status { flex: none; font-size: 12px; color: var(--muted); }
+.log-status.is-done { color: var(--accent); }
+.log-ex.is-skipped .log-ex-name { color: var(--muted); }
+.log-ex.is-skipped { opacity: 0.6; }
 
 .flow-actions {
   margin-top: auto;

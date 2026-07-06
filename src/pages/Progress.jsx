@@ -58,11 +58,20 @@ function SessionEntry({ workout, units, onDelete }) {
         <span className="muted small">{setCount} set{setCount === 1 ? '' : 's'} done</span>
       </div>
       <div className="log-exercises">
-        {workout.entries.map((e, j) => (
-          <div key={j}>
+        {workout.entries.map((e, j) => {
+          const total = (e.sets || []).length
+          const done = (e.sets || []).filter((s) => s.done).length
+          const skipped = done === 0
+          return (
+          <div key={j} className={skipped ? 'log-ex is-skipped' : 'log-ex'}>
             <div className="log-row">
-              <span>{e.name}{e.adhoc ? ' ＋' : ''}</span>
-              <span className="muted small">{topSet(e)} {units}</span>
+              <span className="log-ex-name">
+                <span className={'log-status' + (skipped ? '' : ' is-done')} aria-hidden="true">{skipped ? '○' : '✓'}</span>
+                {e.name}{e.adhoc ? ' ＋' : ''}
+              </span>
+              <span className="muted small">
+                {skipped ? 'not done' : `${done}/${total} sets`}{!skipped ? ` · ${topSet(e)} ${units}` : ''}
+              </span>
             </div>
             {open && (
               <div className="log-sets">
@@ -75,7 +84,8 @@ function SessionEntry({ workout, units, onDelete }) {
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
       {workout.notes && <p className="muted small log-note">📝 {workout.notes}</p>}
       <button type="button" className="log-toggle" onClick={() => setOpen((o) => !o)}>
