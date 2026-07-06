@@ -955,6 +955,10 @@ select.text-input { appearance: none; }
 .info-title { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
 .info-sheet .btn { margin-top: 4px; }
 
+/* ---- Deload reminder ---- */
+.deload-card { display: flex; flex-direction: column; gap: 8px; }
+.deload-card .btn { align-self: flex-start; }
+
 /* ---- Onboarding path cards (start screen) ---- */
 .path-card {
   display: flex;

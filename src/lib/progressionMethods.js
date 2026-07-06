@@ -83,7 +83,7 @@ export function methodFor(program) {
 // session difficulty (used by RPE). Returns 'keep' | 'reps' | `w${inc}` | null.
 // null = no method opinion → fall back to the lift-standard increment.
 export function recommendChoice(method, sug, difficulty) {
-  if (!sug || sug.type === 'levelUp') return null
+  if (!sug || sug.type === 'levelUp' || sug.type === 'levelDown') return null
   const wKey = sug.type === 'load' && sug.recommendedInc ? `w${sug.recommendedInc}` : null
   const repKey = sug.reps ? 'reps' : null
 

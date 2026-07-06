@@ -42,6 +42,8 @@ const day = (title, note, exercises) => ({
 export const TEMPLATES = [
   {
     templateId: 'starting_strength',
+    deloadWeeks: 6,
+    deloadNote: 'This program already auto-backs-off 10% when you stall a lift. If you feel run down, take a lighter week anyway — same lifts at ~90%.',
     name: 'Starting Strength',
     description: 'Mark Rippetoe’s classic novice barbell program. Three big lifts per session, 3×5, alternating two workouts — the fastest proven way to build base strength as a beginner.',
     tags: ['Barbell', 'Strength', 'Beginner'],
@@ -74,6 +76,8 @@ export const TEMPLATES = [
 
   {
     templateId: 'stronglifts',
+    deloadWeeks: 6,
+    deloadNote: 'Squatting 5×5 three times a week adds up. If the bar speed is dropping, take a week at ~90% before pushing on.',
     name: 'StrongLifts 5×5',
     description: 'The internet’s most popular beginner barbell program. Five sets of five on the big lifts, two alternating workouts, add weight every session. Dead simple and very effective.',
     tags: ['Barbell', 'Strength', 'Beginner'],
@@ -106,6 +110,8 @@ export const TEMPLATES = [
 
   {
     templateId: 'greyskull',
+    deloadWeeks: 6,
+    deloadNote: 'The AMRAP sets are taxing. Every 6 weeks or so, take an easy week — stop the last set well short of failure — then attack it again.',
     name: 'Greyskull LP',
     description: 'John Sheaffer’s linear program with an AMRAP twist: the last set of each lift is “as many reps as possible,” so strong days earn bigger jumps. Includes arms — a favourite for lifters who also want to look the part.',
     tags: ['Barbell', 'Strength', 'Beginner'],
@@ -138,6 +144,8 @@ export const TEMPLATES = [
 
   {
     templateId: 'gzclp',
+    deloadWeeks: 6,
+    deloadNote: 'GZCLP drops stages automatically when you miss, but a planned lighter week every 6 weeks keeps the joints fresh.',
     name: 'GZCLP',
     description: 'Cody Lefever’s GZCL Linear Progression — a barbell beginner program with smart built-in stage drops. T1 main lift 5×3+, T2 secondary 3×10, T3 accessory 3×15+, rotated across four workouts.',
     tags: ['Barbell', 'Strength', 'Beginner'],
@@ -176,6 +184,8 @@ export const TEMPLATES = [
 
   {
     templateId: 'reddit_ppl',
+    deloadWeeks: 5,
+    deloadNote: 'High volume six days a week wears you down. Every ~5 weeks, cut each set to ~90% weight (or drop to 2 sets) for a week, then resume.',
     name: 'Reddit PPL (Push / Pull / Legs)',
     description: 'The hugely popular r/Fitness “Metallicadpa” 6-day Push/Pull/Legs routine. High frequency and volume around the big lifts — one of the most recommended programs for building muscle once you’re past the true-beginner stage.',
     tags: ['Barbell', 'Hypertrophy', '6 days/wk'],
@@ -222,6 +232,8 @@ export const TEMPLATES = [
 
   {
     templateId: 'phul',
+    deloadWeeks: 5,
+    deloadNote: 'The heavy power days plus hypertrophy volume stack up fatigue. Take a lighter week every ~5 weeks — ~90% on the big lifts, easy on the rest.',
     name: 'PHUL (Power Hypertrophy Upper Lower)',
     description: 'A 4-day “powerbuilding” split: two heavy power days for strength and two higher-rep hypertrophy days for size. A great intermediate step once linear programs stop working.',
     tags: ['Barbell', 'Powerbuilding', '4 days/wk'],
@@ -274,6 +286,8 @@ export const TEMPLATES = [
 
   {
     templateId: 'climb_home',
+    deloadWeeks: 5,
+    deloadNote: 'Fingers and elbows need recovery. Every ~5 weeks, ease the hangs and hard pulls for a week — shorter holds, easier grips — to stay injury-free.',
     name: 'Climbing Strength (Home)',
     description: 'A rings-and-bar strength block for rock climbers, in the order coaches recommend: fingers and heavy pulling first while you’re fresh, core tension in the middle, and antagonist/prehab work last to keep elbows and shoulders healthy. Built around minimal home gear.',
     tags: ['Climbing', 'Rings', '2 days/wk'],
@@ -318,6 +332,8 @@ export const TEMPLATES = [
 
   {
     templateId: 'bw_foundations',
+    deloadWeeks: 6,
+    deloadNote: 'Every ~6 weeks, take an easy week — drop a set or use a slightly easier variation — to let tendons catch up with your strength.',
     name: 'Bodyweight Foundations',
     description: 'A full-body bodyweight routine done each training day, modelled on the r/bodyweightfitness Recommended Routine and standard calisthenics progression. Every move sits on a ladder — start where you are and step up to a harder variation as each gets easy. No weights: just a pull-up bar and something low to grip for rows.',
     tags: ['Bodyweight', 'Full body', 'Beginner'],
@@ -353,6 +369,8 @@ export const TEMPLATES = [
 
   {
     templateId: 'bw_ppl',
+    deloadWeeks: 6,
+    deloadNote: 'Every ~6 weeks, take a lighter week — fewer sets or an easier ladder step — so joints and tendons recover alongside your strength.',
     name: 'Bodyweight Push / Pull / Legs',
     description: 'A 3-day bodyweight split using the progression ladders — push, pull, and legs days that rotate across your week. Scales from beginner to one-arm push-ups and pistols.',
     tags: ['Bodyweight', 'Split', 'Intermediate'],
@@ -397,6 +415,7 @@ export const TEMPLATES = [
 
   {
     templateId: 'opm',
+    deloadWeeks: 0,
     name: 'One Punch Man Challenge',
     description: 'The legendary training routine of Saitama: 100 push-ups, 100 sit-ups, 100 squats, and a 10km run — every single day, no rest days. "Just 3 years of this and I became bald." Warning: this will be humbling.',
     tags: ['Bodyweight', 'Daily', 'Endurance'],

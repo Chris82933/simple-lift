@@ -99,6 +99,12 @@ const optionsFor = (sug, units) => {
       { key: 'keep', label: 'Keep same' },
     ]
   }
+  if (sug.type === 'levelDown') {
+    return [
+      { key: 'levelDown', label: `Ease off → ${sug.prevName}` },
+      { key: 'keep', label: 'Keep same' },
+    ]
+  }
   const opts = []
   if (sug.type === 'load') {
     for (const inc of INCREMENTS[units] || INCREMENTS.lbs) {
@@ -400,7 +406,7 @@ export default function Workout() {
               const rec = recommendChoice(method, sug, difficulty)
               return (
                 <div className="review-row" key={sug.exId}>
-                  <span className="review-name">{sug.type === 'levelUp' ? '🚀' : '✅'} {sug.name}</span>
+                  <span className="review-name">{sug.type === 'levelUp' ? '🚀' : sug.type === 'levelDown' ? '🔽' : '✅'} {sug.name}</span>
                   <div className="choice-chips">
                     {optionsFor(sug, units).map((opt) => {
                       const isRec = rec ? opt.key === rec : opt.recommended

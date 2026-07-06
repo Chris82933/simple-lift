@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { loadHistory, loadSettings, loadCardio, deleteWorkout, deleteCardio } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
+import { exMeasure } from '../data/exercises.js'
 import ProgressChart from '../components/ProgressChart.jsx'
 
 // Chart palette — mid-tone hues that stay legible on both light and dark cards.
@@ -19,6 +20,30 @@ function buildSeries(history) {
       const top = Math.max(...weights)
       if (!byEx[e.exerciseId]) byEx[e.exerciseId] = { id: e.exerciseId, name: e.name, points: [] }
       byEx[e.exerciseId].points.push({ t, weight: top })
+    }
+  }
+  return Object.values(byEx)
+    .filter((s) => s.points.length > 0)
+    .sort((a, b) => b.points.length - a.points.length)
+    .map((s, i) => ({ ...s, color: PALETTE[i % PALETTE.length] }))
+}
+
+// Build per-exercise rep series for bodyweight moves (best set's reps per
+// session) so calisthenics progress is visible even with no weight on the bar.
+// Skips anything with weight logged (that's on the main chart) and timed/
+// distance moves (seconds and km don't share an axis with reps).
+function buildBodyweightSeries(history) {
+  const byEx = {}
+  for (const w of [...history].reverse()) {
+    const t = new Date(w.date).getTime()
+    for (const e of w.entries) {
+      const sets = e.sets || []
+      if (sets.some((s) => Number(s.weight) > 0)) continue
+      if (exMeasure({ id: e.exerciseId }).type !== 'reps') continue
+      const reps = sets.filter((s) => s.done).map((s) => Number(s.reps) || 0).filter((x) => x > 0)
+      if (reps.length === 0) continue
+      if (!byEx[e.exerciseId]) byEx[e.exerciseId] = { id: e.exerciseId, name: e.name, points: [] }
+      byEx[e.exerciseId].points.push({ t, weight: Math.max(...reps) })
     }
   }
   return Object.values(byEx)
@@ -136,6 +161,14 @@ export default function Progress() {
     }
   }
   const allSeries = useMemo(() => buildSeries(history), [history])
+  const bwSeries = useMemo(() => buildBodyweightSeries(history), [history])
+  const [bwHidden, setBwHidden] = useState(() => new Set())
+  const toggleBw = (id) => setBwHidden((h) => {
+    const n = new Set(h)
+    n.has(id) ? n.delete(id) : n.add(id)
+    return n
+  })
+  const bwVisible = bwSeries.filter((s) => !bwHidden.has(s.id))
   const [cardioMetric, setCardioMetric] = useState('time')
   const cardioSeries = useMemo(() => buildCardioSeries(cardio, cardioMetric), [cardio, cardioMetric])
 
@@ -191,6 +224,28 @@ export default function Progress() {
           <p className="muted small">Weighted lifts will plot here once you log some.</p>
         )}
       </div>
+
+      {/* ---- Bodyweight reps ---- */}
+      {bwSeries.length > 0 && (
+        <div className="card">
+          <p className="group-label">Bodyweight reps over time</p>
+          <ProgressChart series={bwVisible} />
+          <div className="legend">
+            {bwSeries.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={'legend-item' + (bwHidden.has(s.id) ? ' is-off' : '')}
+                onClick={() => toggleBw(s.id)}
+              >
+                <span className="legend-swatch" style={{ background: s.color }} />
+                {s.name}
+              </button>
+            ))}
+          </div>
+          <p className="muted small">Best set&apos;s reps each session — watch these climb, then level up the movement.</p>
+        </div>
+      )}
 
       {/* ---- Cardio ---- */}
       <div className="card">

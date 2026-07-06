@@ -85,12 +85,21 @@ export function reviewSession(session, setsMap, goals, units, method = 'manual')
       continue
     }
 
-    // --- Bodyweight ladder: offer a level-up ---
-    if (!tracksLoad && ex.nextId) {
+    // --- Bodyweight ladder: level up (earned) or ease off (too hard) ---
+    if (!tracksLoad && (ex.nextId || ex.prevId)) {
       persist.push(base)
-      if (completedAll) {
+      const bestReps = Math.max(0, ...doneSets.map((s) => Number(s.reps) || 0))
+      // Even your best set fell short of the bottom of the range → offer a step down.
+      const struggled = doneSets.length > 0 && bestReps < ex.repLow
+      if (completedAll && ex.nextId) {
         const next = EXERCISE_BY_ID[ex.nextId]
         suggestions.push({ exId: ex.id, name: ex.name, type: 'levelUp', nextId: ex.nextId, nextName: next?.name })
+      } else if (struggled && ex.prevId) {
+        const prev = EXERCISE_BY_ID[ex.prevId]
+        suggestions.push({ exId: ex.id, name: ex.name, type: 'levelDown', prevId: ex.prevId, prevName: prev?.name })
+      } else if (completedAll && !ex.nextId) {
+        // Hardest rung — no harder variant, so keep chasing reps.
+        suggestions.push({ exId: ex.id, name: ex.name, type: 'reps', reps: { to: target + 1, by: 1 }, hitTop: true, measure: exMeasure(ex) })
       }
       continue
     }
@@ -134,14 +143,14 @@ export function applyChoices(program, dayIndex, suggestions, choices) {
     const choice = choices[ex.id]
     if (!choice || choice === 'keep') return ex
 
-    if (choice === 'levelUp' && sug.nextId) {
-      const next = EXERCISE_BY_ID[sug.nextId]
-      if (!next) return ex
+    if ((choice === 'levelUp' && sug.nextId) || (choice === 'levelDown' && sug.prevId)) {
+      const target = EXERCISE_BY_ID[choice === 'levelUp' ? sug.nextId : sug.prevId]
+      if (!target) return ex
       return {
         ...ex,
-        id: next.id, name: next.name, pattern: next.pattern, regions: next.regions,
-        compound: next.compound, load: next.load !== false, cues: next.cues,
-        ladderId: next.ladderId || null, nextId: next.nextId || null, prevId: next.prevId || null,
+        id: target.id, name: target.name, pattern: target.pattern, regions: target.regions,
+        compound: target.compound, load: target.load !== false, cues: target.cues,
+        ladderId: target.ladderId || null, nextId: target.nextId || null, prevId: target.prevId || null,
         startWeight: '',
       }
     }
