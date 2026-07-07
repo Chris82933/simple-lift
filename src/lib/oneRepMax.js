@@ -74,6 +74,25 @@ export function goalWorkingSets(oneRM, inc = 5) {
 
 export const incrementForUnits = (units) => (units === 'kg' ? 2.5 : 5)
 
+// Standard warm-up ramp (r/Fitness / StrongLifts style): a few progressively
+// heavier sets leading into your working weight — lighter with more reps,
+// building to heavy with fewer, so the working sets feel primed, not cold.
+// Working sets stay at one weight; the ramp is the warm-up, not the work.
+export const WARMUP_SCHEME = [
+  { pct: 0.4, reps: 5 },
+  { pct: 0.6, reps: 3 },
+  { pct: 0.8, reps: 2 },
+]
+
+// Build warm-up rows for a given working weight (drops any that meet/exceed it).
+export function warmupSets(workingWeight, inc = 5) {
+  const w = Number(workingWeight)
+  if (!w) return []
+  return WARMUP_SCHEME
+    .map(({ pct, reps }) => ({ weight: roundTo(w * pct, inc), reps }))
+    .filter((s) => s.weight > 0 && s.weight < w)
+}
+
 // Typical 1RM ratios relative to the back squat, for estimating an untested
 // barbell lift's strength from ones you've already recorded. These are rough
 // population averages — a sensible starting point the user then refines, not

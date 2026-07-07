@@ -490,6 +490,8 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 }
 .set-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 .set-line.done .set-input { opacity: 0.6; }
+.set-line.is-warmup .set-num { color: var(--accent); font-size: 12px; font-weight: 700; }
+.set-line.is-warmup .set-input { opacity: 0.75; }
 .set-check {
   width: 40px;
   height: 40px;
@@ -613,7 +615,7 @@ select.text-input { appearance: none; }
 .ex-reorder { display: flex; gap: 2px; }
 .ex-reorder .icon-btn { width: 26px; height: 26px; font-size: 11px; }
 .ex-reorder .icon-btn:disabled { opacity: 0.3; cursor: default; }
-.recommend-link { align-self: flex-start; font-size: 12px; }
+.recommend-btn { align-self: flex-start; margin-top: 2px; }
 .builder-fields { display: flex; flex-wrap: wrap; gap: 8px; }
 .builder-fields label {
   display: flex;
@@ -1216,8 +1218,20 @@ select.text-input { appearance: none; }
   font-size: 18px; cursor: pointer;
 }
 .rest-stepper span { font-weight: 700; min-width: 42px; text-align: center; }
-.add-row { display: flex; gap: 10px; }
-.add-row .btn { flex: 1; }
+.add-row { display: flex; gap: 8px; }
+.add-action {
+  flex: 1;
+  padding: 11px 6px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.add-action:hover { color: var(--text); border-color: var(--muted); }
 
 /* ---- Cardio form ---- */
 .cardio-form { display: flex; flex-direction: column; gap: 12px; }

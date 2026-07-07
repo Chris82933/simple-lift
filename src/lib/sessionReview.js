@@ -27,7 +27,8 @@ export function reviewSession(session, setsMap, goals, units, method = 'manual')
   const suggestions = []
 
   for (const ex of session.exercises) {
-    const logged = setsMap[ex.id] || []
+    // Warm-up sets are priming only — never count toward progression or logging.
+    const logged = (setsMap[ex.id] || []).filter((s) => !s.warmup)
     const tracksLoad = ex.load !== false
     const entered = maxEntered(logged)
     const doneSets = logged.filter((s) => s.done && Number(s.reps) > 0)

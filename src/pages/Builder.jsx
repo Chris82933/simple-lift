@@ -6,7 +6,7 @@ import { GOALS } from '../data/options.js'
 import { schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { WEEKDAY_LABELS } from '../lib/generator.js'
 import {
-  loadProfile, getProgram, addProgram, updateProgram, getMax, loadMaxes, loadSettings, lastPerformance,
+  loadProfile, getProgram, addProgram, updateProgram, getMax, loadMaxes, loadSettings,
 } from '../lib/storage.js'
 import { weightForReps, incrementForUnits, interpolate1RM } from '../lib/oneRepMax.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
@@ -15,35 +15,30 @@ const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
 
 const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
 
-// The heaviest weight logged for a lift in its most recent session, if any.
-function loggedTopWeight(exId) {
-  const perf = lastPerformance(exId)
-  if (!perf) return 0
-  const ws = (perf.sets || []).map((s) => Number(s.weight) || 0).filter((x) => x > 0)
-  return ws.length ? Math.max(...ws) : 0
+// The 1RM we can attribute to a lift: a saved max, else one interpolated from
+// your other saved lifts. Weights are computed off this — never off a single
+// logged set, which might be a warm-up or an off day.
+function oneRMfor(exId) {
+  const max = getMax(exId)
+  if (max?.oneRM) return Number(max.oneRM)
+  return interpolate1RM(exId, loadMaxes()) || 0
 }
 
-// Best starting weight we can infer for a loadable lift, in priority order:
-// where you last left off (logged) → a saved 1RM → an estimate interpolated
-// from your other saved lifts. Empty string when we have nothing to go on.
+// Starting (working) weight for a loadable lift, derived from its 1RM and the
+// rep target. Empty string when we have no 1RM to work from.
 function resolveStartWeight(ex, repHigh, inc) {
   if (ex.load === false) return ''
-  const logged = loggedTopWeight(ex.id)
-  if (logged) return String(logged)
-  const max = getMax(ex.id)
-  if (max?.oneRM) return String(weightForReps(max.oneRM, repHigh, inc))
-  const est = interpolate1RM(ex.id, loadMaxes())
-  if (est) return String(weightForReps(est, repHigh, inc))
-  return ''
+  const oneRM = oneRMfor(ex.id)
+  return oneRM ? String(weightForReps(oneRM, repHigh, inc)) : ''
 }
 
 // Build a day's default exercise entry from the library + current goal scheme.
 // Defaults come from prescriptionFor (sets/reps/rest tuned to how the move is
-// measured and the muscle worked); the starting weight is resolved from your
-// logs / maxes / an interpolated estimate.
+// measured and the muscle worked); the working weight is derived from your 1RM,
+// and compound lifts get a warm-up ramp by default.
 function makeExercise(ex, scheme, inc) {
   const p = prescriptionFor(ex, scheme)
-  return {
+  const entry = {
     id: ex.id, name: ex.name, pattern: ex.pattern, regions: ex.regions,
     compound: ex.compound, load: ex.load !== false, cues: ex.cues,
     ladderId: ex.ladderId || null, nextId: ex.nextId || null, prevId: ex.prevId || null,
@@ -51,6 +46,8 @@ function makeExercise(ex, scheme, inc) {
     sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec,
     startWeight: resolveStartWeight(ex, p.repHigh, inc),
   }
+  if (ex.load !== false && ex.compound) entry.warmups = true
+  return entry
 }
 
 export default function Builder() {
@@ -92,6 +89,7 @@ export default function Builder() {
   const [picker, setPicker] = useState(null) // dayIndex being edited, or null
   const [search, setSearch] = useState('')
   const [amrapInfo, setAmrapInfo] = useState(false)
+  const [warmupInfo, setWarmupInfo] = useState(false)
 
   const scheme = useMemo(() => schemeForGoals(draft.goals), [draft.goals])
   const inc = incrementForUnits(loadSettings().units)
@@ -129,17 +127,18 @@ export default function Builder() {
     updateDay(di, { exercises: next })
   }
 
-  // Reset one exercise's sets/reps/rest to the recommended defaults for the
-  // current goal, and refill its starting weight from your logs / maxes — for
-  // fixing older programs whose numbers never made sense.
+  // Reset one exercise to the recommended setup for the current goal: sets/reps/
+  // rest from the scheme, working weight computed from your 1RM (saved or
+  // interpolated — never a single logged set), and a warm-up ramp on compounds.
   const applyRecommended = (di, ei) => {
     const ex = draft.days[di].exercises[ei]
     const lib = EXERCISE_BY_ID[ex.id] || ex
     const p = prescriptionFor(lib, scheme)
     const patch = { sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec }
-    if (ex.load) {
+    if (lib.load !== false) {
       const w = resolveStartWeight(lib, p.repHigh, inc)
       if (w) patch.startWeight = w
+      patch.warmups = lib.compound ? true : undefined
     }
     updateExercise(di, ei, patch)
   }
@@ -320,6 +319,20 @@ export default function Builder() {
                     <label>Start wt<input type="number" inputMode="decimal" value={ex.startWeight} placeholder="–" onChange={(e) => updateExercise(di, ei, { startWeight: e.target.value })} /></label>
                   )}
                 </div>
+                {ex.load && (
+                  <div className="amrap-row">
+                    <button
+                      type="button"
+                      className={'amrap-chip' + (ex.warmups ? ' is-on' : '')}
+                      aria-pressed={!!ex.warmups}
+                      onClick={() => updateExercise(di, ei, { warmups: ex.warmups ? undefined : true })}
+                    >
+                      <span className="amrap-box">{ex.warmups ? '✓' : ''}</span>
+                      Warm-up ramp
+                    </button>
+                    <button type="button" className="info-icon" onClick={() => setWarmupInfo(true)} aria-label="What is a warm-up ramp?">i</button>
+                  </div>
+                )}
                 {exMeasure(ex).type === 'reps' && (
                   <div className="amrap-row">
                     <button
@@ -334,8 +347,8 @@ export default function Builder() {
                     <button type="button" className="info-icon" onClick={() => setAmrapInfo(true)} aria-label="What is AMRAP?">i</button>
                   </div>
                 )}
-                <button type="button" className="link-btn recommend-link" onClick={() => applyRecommended(di, ei)}>
-                  ✨ Use recommended sets/reps/rest{ex.load ? ' + weight from your logs' : ''}
+                <button type="button" className="btn btn-ghost btn-sm recommend-btn" onClick={() => applyRecommended(di, ei)}>
+                  ✨ Use recommended{ex.load ? ' (sets, reps, rest & weight from your 1RM)' : ' sets, reps & rest'}
                 </button>
               </div>
             ))}
@@ -408,6 +421,22 @@ export default function Builder() {
             </p>
             <p className="muted small">Leave it off for a steady, fixed-rep approach.</p>
             <button type="button" className="btn btn-primary" onClick={() => setAmrapInfo(false)}>Got it</button>
+          </div>
+        </div>
+      )}
+
+      {warmupInfo && (
+        <div className="picker-overlay" role="dialog" aria-label="About warm-up ramp" onClick={() => setWarmupInfo(false)}>
+          <div className="info-sheet" onClick={(e) => e.stopPropagation()}>
+            <p className="info-title">Warm-up ramp</p>
+            <p className="muted small">
+              Your <strong>working sets</strong> stay at one weight for the same reps — that&apos;s on purpose, and it&apos;s how nearly every program (StrongLifts, r/Fitness PPL, 5/3/1) is written.
+            </p>
+            <p className="muted small">
+              What was missing is the <strong>warm-up</strong>. With this on, the app adds a few lighter ramp-up sets before your working sets — <strong>~40% × 5, 60% × 3, 80% × 2</strong> of your working weight — lighter with more reps, building to heavy with fewer. It primes the movement so your first working set isn&apos;t cold.
+            </p>
+            <p className="muted small">Warm-up weights are figured from your working weight, which comes from your 1RM.</p>
+            <button type="button" className="btn btn-primary" onClick={() => setWarmupInfo(false)}>Got it</button>
           </div>
         </div>
       )}

@@ -23,6 +23,7 @@ import {
 import { isBarbellLift } from '../lib/plates.js'
 import { ladderInfo } from '../lib/ladder.js'
 import { measureUnit } from '../data/exercises.js'
+import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
 // i.e. the first one not yet marked done (or the last, once all are done). This
@@ -148,11 +149,17 @@ export default function Workout() {
   // (so values carry over session-to-session, even when sets weren't ticked).
   const [sets, setSets] = useState(() => {
     const initial = {}
+    const inc = incrementForUnits(units)
     if (session) {
       for (const ex of session.exercises) {
         const stored = ex.progression?.weight != null ? ex.progression.weight : ex.startWeight
         const weight = ex.load !== false && stored !== '' && stored != null ? String(stored) : ''
-        initial[ex.id] = Array.from({ length: ex.sets }, () => ({ weight, reps: String(ex.repHigh), done: false }))
+        // Warm-up ramp leading into the working sets (compound lifts with a weight).
+        const warms = ex.warmups && weight
+          ? warmupSets(Number(weight), inc).map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: false, warmup: true }))
+          : []
+        const working = Array.from({ length: ex.sets }, () => ({ weight, reps: String(ex.repHigh), done: false }))
+        initial[ex.id] = [...warms, ...working]
       }
     }
     return initial
@@ -277,22 +284,25 @@ export default function Workout() {
   const changeSetCount = (exId, delta) => {
     setSets((s) => {
       const rows = s[exId] || []
+      const workingCount = rows.filter((r) => !r.warmup).length
       if (delta > 0) {
-        const last = rows[rows.length - 1] || { weight: '', reps: '', done: false }
-        return { ...s, [exId]: [...rows, { weight: last.weight, reps: last.reps, done: false }] }
+        // Copy the last working row (warm-ups are always first) for the new set.
+        const lastWorking = [...rows].reverse().find((r) => !r.warmup) || { weight: '', reps: '', done: false }
+        return { ...s, [exId]: [...rows, { weight: lastWorking.weight, reps: lastWorking.reps, done: false }] }
       }
-      if (rows.length <= 1) return s
-      return { ...s, [exId]: rows.slice(0, -1) }
+      if (workingCount <= 1) return s
+      return { ...s, [exId]: rows.slice(0, -1) } // drop the last (a working set)
     })
     setExercises((list) => list.map((e) => {
       if (e.id !== exId) return e
-      const cur = sets[exId]?.length || e.sets
-      return { ...e, sets: Math.max(1, cur + delta) }
+      const working = (sets[exId] || []).filter((r) => !r.warmup).length || e.sets
+      return { ...e, sets: Math.max(1, working + delta) }
     }))
   }
 
-  const totalSets = exercises.reduce((n, ex) => n + (sets[ex.id]?.length || ex.sets), 0)
-  const doneSets = Object.values(sets).flat().filter((r) => r.done).length
+  // Working sets only — warm-ups don't count toward the session's progress.
+  const totalSets = exercises.reduce((n, ex) => n + (sets[ex.id]?.filter((r) => !r.warmup).length || ex.sets), 0)
+  const doneSets = Object.values(sets).flat().filter((r) => r.done && !r.warmup).length
 
   const finish = () => {
     const date = new Date().toISOString()
@@ -541,7 +551,8 @@ export default function Workout() {
                       : <FormCheckButton name={ex.name} />}
                   </div>
                   <p className="muted small">
-                    {sets[ex.id]?.length ?? ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)} · {ex.restSec}s rest
+                    {sets[ex.id]?.filter((r) => !r.warmup).length ?? ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)} · {ex.restSec}s rest
+                    {sets[ex.id]?.some((r) => r.warmup) ? ' · + warm-ups' : ''}
                     {ex.compound ? ' · compound' : ''}
                   </p>
                 </div>
@@ -594,12 +605,13 @@ export default function Workout() {
                   <span>{measureUnit(ex)}</span>
                   <span>done</span>
                 </div>
-                {sets[ex.id].map((row, idx) => {
+                {(() => { let workingN = 0; return sets[ex.id].map((row, idx) => {
                   const isAmrapSet = ex.amrap && idx === sets[ex.id].length - 1
+                  if (!row.warmup) workingN += 1
                   return (
-                    <div className={'set-line' + (row.done ? ' done' : '')} key={idx}>
-                      <span className="set-num" title={isAmrapSet ? 'AMRAP — as many reps as possible' : undefined}>
-                        {idx + 1}{isAmrapSet ? '+' : ''}
+                    <div className={'set-line' + (row.done ? ' done' : '') + (row.warmup ? ' is-warmup' : '')} key={idx}>
+                      <span className="set-num" title={row.warmup ? 'Warm-up set' : isAmrapSet ? 'AMRAP — as many reps as possible' : undefined}>
+                        {row.warmup ? 'W' : workingN}{isAmrapSet ? '+' : ''}
                       </span>
                       {tracksLoad && (
                         <input
@@ -630,22 +642,27 @@ export default function Workout() {
                       </button>
                     </div>
                   )
-                })}
+                }) })()}
               </div>
 
-              <div className="set-adjust">
-                <button type="button" onClick={() => changeSetCount(ex.id, -1)} disabled={sets[ex.id].length <= 1} aria-label="Remove a set">– set</button>
-                <span className="muted small">{sets[ex.id].length} set{sets[ex.id].length === 1 ? '' : 's'}</span>
-                <button type="button" onClick={() => changeSetCount(ex.id, 1)} aria-label="Add a set">+ set</button>
-              </div>
+              {editMode && (() => {
+                const working = sets[ex.id].filter((r) => !r.warmup).length
+                return (
+                  <div className="set-adjust">
+                    <button type="button" onClick={() => changeSetCount(ex.id, -1)} disabled={working <= 1} aria-label="Remove a set">– set</button>
+                    <span className="muted small">{working} working set{working === 1 ? '' : 's'}</span>
+                    <button type="button" onClick={() => changeSetCount(ex.id, 1)} aria-label="Add a set">+ set</button>
+                  </div>
+                )
+              })()}
             </div>
           )
         })}
 
         <div className="add-row">
-          <button type="button" className="btn btn-ghost" onClick={() => setPickerOpen(true)}>＋ Add exercise</button>
-          <button type="button" className="btn btn-ghost" onClick={() => setCardioOpen(true)}>❤️ Log cardio</button>
-          <button type="button" className="btn btn-ghost" onClick={() => setOneRmOpen(true)}>🧮 1RM calc</button>
+          <button type="button" className="add-action" onClick={() => setPickerOpen(true)}>Add exercise</button>
+          <button type="button" className="add-action" onClick={() => setCardioOpen(true)}>Log cardio</button>
+          <button type="button" className="add-action" onClick={() => setOneRmOpen(true)}>1RM calc</button>
         </div>
         {cardioSaved > 0 && <p className="muted small">✓ {cardioSaved} cardio session{cardioSaved === 1 ? '' : 's'} logged.</p>}
 
