@@ -50,23 +50,23 @@ const DIFFICULTIES = [
   { id: 'maxed', label: '🥵 Maxed out' },
 ]
 
-// Did the user change the workout's structure (added/removed exercises or
-// edited rest times) relative to the program's saved version of this day?
+// Did the user change the workout's structure (added/removed/reordered
+// exercises, or edited rest times or set counts) relative to the given baseline?
 function isCustomized(originalExercises, liveExercises) {
   if (liveExercises.length !== originalExercises.length) return true
-  return liveExercises.some((le) => {
+  return liveExercises.some((le, i) => {
     const orig = originalExercises.find((o) => o.id === le.id)
-    return !orig || orig.restSec !== le.restSec
+    return !orig || orig.restSec !== le.restSec || orig.sets !== le.sets || originalExercises[i]?.id !== le.id
   })
 }
 
 // Rebuild a program day's exercise list from the live (edited) one, preserving
-// each kept exercise's saved progression/weights and folding in rest changes
-// and any newly added exercises.
+// each kept exercise's saved progression/weights and folding in rest and set-count
+// changes, exercise order, and any newly added exercises.
 function buildCustomDay(persistedExercises, liveExercises) {
   return liveExercises.map((le) => {
     const orig = persistedExercises.find((o) => o.id === le.id)
-    if (orig) return { ...orig, restSec: le.restSec }
+    if (orig) return { ...orig, restSec: le.restSec, sets: le.sets }
     const { adhoc, ...rest } = le // promote ad-hoc add into a real program entry
     return rest
   })
@@ -168,6 +168,11 @@ export default function Workout() {
   // Live, editable exercise list (lets users add/remove/adjust mid-workout).
   const [exercises, setExercises] = useState(() => (session ? session.exercises : []))
   const [editMode, setEditMode] = useState(false)
+  // Snapshot taken when entering edit mode, so "Cancel changes" can revert.
+  const [editSnapshot, setEditSnapshot] = useState(null)
+  // The last structure saved to the program — what the completion screen
+  // compares against, so already-saved edits don't prompt again.
+  const [baseline, setBaseline] = useState(() => (session ? session.exercises : []))
   const [pickerOpen, setPickerOpen] = useState(false)
   const [cardioOpen, setCardioOpen] = useState(false)
   const [oneRmOpen, setOneRmOpen] = useState(false)
@@ -300,6 +305,34 @@ export default function Workout() {
     }))
   }
 
+  // ---- Edit mode: snapshot on enter, save or discard on exit ----
+  const enterEdit = () => {
+    setEditSnapshot({ exercises, sets })
+    setEditMode(true)
+  }
+  // Persist structural edits (set counts, rest, order, adds/removes) to the
+  // active program now — so they stick even if the workout isn't finished.
+  const saveEdits = () => {
+    const fresh = loadActiveProgram()
+    if (fresh) {
+      const newExercises = buildCustomDay(fresh.days[dayIndex].exercises, exercises)
+      const days = fresh.days.map((d, i) => (i === dayIndex ? { ...d, exercises: newExercises } : d))
+      updateProgram({ ...fresh, days })
+      setBaseline(exercises)
+    }
+    setEditMode(false)
+    setEditSnapshot(null)
+  }
+  // Discard this edit session's changes, reverting to the pre-edit snapshot.
+  const cancelEdits = () => {
+    if (editSnapshot) {
+      setExercises(editSnapshot.exercises)
+      setSets(editSnapshot.sets)
+    }
+    setEditMode(false)
+    setEditSnapshot(null)
+  }
+
   // Working sets only — warm-ups don't count toward the session's progress.
   const totalSets = exercises.reduce((n, ex) => n + (sets[ex.id]?.filter((r) => !r.warmup).length || ex.sets), 0)
   const doneSets = Object.values(sets).flat().filter((r) => r.done && !r.warmup).length
@@ -320,8 +353,8 @@ export default function Workout() {
     if (fresh) updateProgram(applyPersist(fresh, dayIndex, result.persist))
     advanceRotation(program.id, dayIndex)
 
-    // Did they restructure the workout? If so, offer to save it.
-    setCustomized(isCustomized(session.exercises, exercises))
+    // Did they restructure the workout since the last save? If so, offer to save.
+    setCustomized(isCustomized(baseline, exercises))
 
     // Default is always "keep the same" — increases are an explicit choice.
     const initChoices = {}
@@ -492,7 +525,7 @@ export default function Workout() {
       <header className="page-header">
         <div className="workout-head-row">
           <p className="eyebrow">{session.dayLabel} · Workout</p>
-          <button type="button" className={'edit-toggle' + (editMode ? ' is-on' : '')} onClick={() => setEditMode((e) => !e)}>
+          <button type="button" className={'edit-toggle' + (editMode ? ' is-on' : '')} onClick={() => (editMode ? saveEdits() : enterEdit())}>
             {editMode ? 'Done editing' : '✎ Edit'}
           </button>
         </div>
@@ -537,6 +570,8 @@ export default function Workout() {
           const doable = isDoable(ex, availableSet)
           const sub = doable ? null : bestSubstitute(ex, availableSet)
           const plateTarget = showPlates && tracksLoad && isBarbellLift(ex) ? nextSetTarget(ex, sets[ex.id]) : null
+          // The set row the plate math is loaded for, so we can highlight it.
+          const activePlateIdx = plateTarget ? plateTarget.setNumber - 1 : -1
           // Bodyweight moves progress by variation — show where they sit in the ladder.
           const lad = !tracksLoad ? ladderInfo(ex.id) : null
           return (
@@ -609,7 +644,7 @@ export default function Workout() {
                   const isAmrapSet = ex.amrap && idx === sets[ex.id].length - 1
                   if (!row.warmup) workingN += 1
                   return (
-                    <div className={'set-line' + (row.done ? ' done' : '') + (row.warmup ? ' is-warmup' : '')} key={idx}>
+                    <div className={'set-line' + (row.done ? ' done' : '') + (row.warmup ? ' is-warmup' : '') + (idx === activePlateIdx ? ' is-plate-target' : '')} key={idx}>
                       <span className="set-num" title={row.warmup ? 'Warm-up set' : isAmrapSet ? 'AMRAP — as many reps as possible' : undefined}>
                         {row.warmup ? 'W' : workingN}{isAmrapSet ? '+' : ''}
                       </span>
@@ -667,9 +702,10 @@ export default function Workout() {
         {cardioSaved > 0 && <p className="muted small">✓ {cardioSaved} cardio session{cardioSaved === 1 ? '' : 's'} logged.</p>}
 
         {editMode && (
-          <button type="button" className="btn btn-primary done-editing-btn" onClick={() => setEditMode(false)}>
-            Done editing
-          </button>
+          <div className="edit-actions">
+            <button type="button" className="btn btn-ghost" onClick={cancelEdits}>Cancel changes</button>
+            <button type="button" className="btn btn-primary" onClick={saveEdits}>Done editing</button>
+          </div>
         )}
       </div>
 

@@ -18,7 +18,7 @@ export default function PlateBreakdown({ weight, units, setNumber }) {
 
   return (
     <div className="plate-line">
-      {setNumber ? <span className="plate-set">Set {setNumber}</span> : <span className="plate-label">Load</span>}
+      {setNumber ? <span className="plate-set">▸ Loading set {setNumber}</span> : <span className="plate-label">Load</span>}
       {result.barOnly ? (
         <span className="plate-text">Just the bar ({bar}{units})</span>
       ) : result.perSide.length === 0 ? (
