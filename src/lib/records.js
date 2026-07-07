@@ -80,7 +80,7 @@ export function prShort(pr, units) {
 }
 
 // Plain-text session recap for sharing (paste into Strava, notes, socials).
-export function buildSessionSummary(title, entries, prs, { units, durationMin } = {}) {
+export function buildSessionSummary(title, entries, { units } = {}) {
   const body = []
   let volume = 0
   for (const e of entries || []) {
@@ -94,15 +94,8 @@ export function buildSessionSummary(title, entries, prs, { units, durationMin } 
     body.push(`${e.name} — ${parts.join(', ')}`)
   }
   const lines = [`${title} 🏋️`]
-  const meta = []
-  if (durationMin) meta.push(`${durationMin} min`)
-  if (volume > 0) meta.push(`${Math.round(volume).toLocaleString()} ${units} volume`)
-  if (meta.length) lines.push(meta.join(' · '))
+  if (volume > 0) lines.push(`${Math.round(volume).toLocaleString()} ${units} volume`)
   lines.push('', ...body)
-  if (prs && prs.length) {
-    lines.push('')
-    for (const pr of prs) lines.push(`🏆 PR: ${pr.name} — ${prShort(pr, units)}`)
-  }
   lines.push('', 'Tracked with Simple Lift')
   return lines.join('\n')
 }

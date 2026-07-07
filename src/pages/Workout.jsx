@@ -182,7 +182,6 @@ export default function Workout() {
   const [rest, setRest] = useState(null)
   const [finished, setFinished] = useState(false)
   const [finishedAt, setFinishedAt] = useState(null)
-  const [startedAt] = useState(() => Date.now()) // for session duration (share summary)
   const [review, setReview] = useState({ autoNotes: [], suggestions: [] })
   const [choices, setChoices] = useState({})
 
@@ -420,8 +419,7 @@ export default function Workout() {
   // Build the shareable text once, on demand.
   const summaryText = () => {
     const entries = exercises.map((ex) => ({ name: ex.name, sets: sets[ex.id] }))
-    const durationMin = Math.max(1, Math.round((Date.now() - startedAt) / 60000))
-    return buildSessionSummary(session.title, entries, prs, { units, durationMin })
+    return buildSessionSummary(session.title, entries, { units })
   }
   const canShare = typeof navigator !== 'undefined' && !!navigator.share
   const shareSummary = async () => {
