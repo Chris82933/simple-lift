@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation,
-  addCardio, addProgram, updateWorkout,
+  addCardio, addProgram, updateWorkout, loadHistory, loadMaxes, saveMax,
 } from '../lib/storage.js'
+import { sessionRecords, buildSessionSummary, prShort } from '../lib/records.js'
 import { repsLabel, schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { stageNote, applyStage } from '../lib/gzclp.js'
 import { extraNote } from '../lib/progression.js'
@@ -181,8 +182,16 @@ export default function Workout() {
   const [rest, setRest] = useState(null)
   const [finished, setFinished] = useState(false)
   const [finishedAt, setFinishedAt] = useState(null)
+  const [startedAt] = useState(() => Date.now()) // for session duration (share summary)
   const [review, setReview] = useState({ autoNotes: [], suggestions: [] })
   const [choices, setChoices] = useState({})
+
+  // Completion-screen records: PRs, offered 1RM updates (+ which were applied),
+  // and share status.
+  const [prs, setPrs] = useState([])
+  const [rmUpdates, setRmUpdates] = useState([])
+  const [rmDone, setRmDone] = useState({})
+  const [shareStatus, setShareStatus] = useState(null)
 
   // Completion-screen extras: structural-edit save, difficulty, notes.
   const [customized, setCustomized] = useState(false)
@@ -340,7 +349,13 @@ export default function Workout() {
   const finish = () => {
     const date = new Date().toISOString()
     const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, sets: sets[ex.id] }))
-    appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries })
+
+    // Detect PRs and fresh 1RM estimates against the history *before* this session.
+    const { prs: newPrs, oneRMUpdates } = sessionRecords(entries, loadHistory(), loadMaxes())
+    appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries, prs: newPrs })
+    setPrs(newPrs)
+    setRmUpdates(oneRMUpdates)
+    setRmDone({})
     setFinishedAt(date)
 
     // Carry values forward + auto-apply deloads; collect optional increase suggestions.
@@ -396,6 +411,31 @@ export default function Workout() {
     navigate('/today')
   }
 
+  // Save a fresh 1RM estimate for one lift (keeps recommended weights accurate).
+  const applyRmUpdate = (u) => {
+    saveMax(u.exId, { oneRM: u.oneRM, weight: u.weight, reps: u.reps, units, name: u.name })
+    setRmDone((d) => ({ ...d, [u.exId]: true }))
+  }
+
+  // Build the shareable text once, on demand.
+  const summaryText = () => {
+    const entries = exercises.map((ex) => ({ name: ex.name, sets: sets[ex.id] }))
+    const durationMin = Math.max(1, Math.round((Date.now() - startedAt) / 60000))
+    return buildSessionSummary(session.title, entries, prs, { units, durationMin })
+  }
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share
+  const shareSummary = async () => {
+    const text = summaryText()
+    if (canShare) {
+      try { await navigator.share({ title: session.title, text }); setShareStatus('shared') } catch { /* cancelled */ }
+    } else {
+      copySummary()
+    }
+  }
+  const copySummary = async () => {
+    try { await navigator.clipboard.writeText(summaryText()); setShareStatus('copied') } catch { setShareStatus('error') }
+  }
+
   if (finished) {
     return (
       <section className="page full-flow">
@@ -408,6 +448,21 @@ export default function Workout() {
           <p className="placeholder-title">{session.title}</p>
           <p className="muted">{doneSets} of {totalSets} sets logged. Your weights are saved for next time.</p>
         </div>
+
+        {/* ---- Personal records ---- */}
+        {prs.length > 0 && (
+          <div className="card pr-card">
+            <p className="pr-title">🏆 New personal record{prs.length === 1 ? '' : 's'}!</p>
+            <ul className="pr-list">
+              {prs.map((pr) => (
+                <li key={pr.exId}>
+                  <span className="pr-name">{pr.name}</span>
+                  <span className="pr-value">{prShort(pr, units)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* ---- Save workout customizations ---- */}
         {customized && (
@@ -456,6 +511,25 @@ export default function Workout() {
             onChange={(e) => setNotes(e.target.value)}
           />
         </div>
+
+        {/* ---- Update estimated 1RMs from strong sets ---- */}
+        {rmUpdates.length > 0 && (
+          <div className="card">
+            <p className="group-label">Update your 1RM?</p>
+            <p className="muted small">A strong set beat your saved max — update it so recommended weights stay accurate.</p>
+            {rmUpdates.map((u) => (
+              <div className="review-row rm-row" key={u.exId}>
+                <span className="review-name">
+                  {u.name}
+                  <span className="muted small"> · {u.weight}×{u.reps} → {u.oneRM} {units}{u.prev > 0 ? ` (was ${u.prev})` : ''}</span>
+                </span>
+                {rmDone[u.exId]
+                  ? <span className="rm-done">✓ Updated</span>
+                  : <button type="button" className="btn btn-ghost btn-sm" onClick={() => applyRmUpdate(u)}>Update</button>}
+              </div>
+            ))}
+          </div>
+        )}
 
         {review.suggestions.length > 0 && (
           <div className="card">
@@ -510,6 +584,23 @@ export default function Workout() {
             {review.autoNotes.map((n, i) => <p className="muted small progress-note" key={i}>🔧 {n}</p>)}
           </div>
         )}
+
+        {/* ---- Share session ---- */}
+        <div className="card">
+          <p className="group-label">Share this session</p>
+          <p className="muted small">Copy a text recap to paste into a Strava activity, your notes, or socials.</p>
+          <div className="share-actions">
+            <button type="button" className="btn btn-ghost" onClick={shareSummary}>
+              {canShare ? 'Share…' : '📋 Copy summary'}
+            </button>
+            {canShare && (
+              <button type="button" className="btn btn-ghost" onClick={copySummary}>📋 Copy</button>
+            )}
+          </div>
+          {shareStatus === 'copied' && <p className="muted small share-note">✓ Copied to clipboard — paste it into Strava.</p>}
+          {shareStatus === 'shared' && <p className="muted small share-note">✓ Shared.</p>}
+          {shareStatus === 'error' && <p className="muted small share-note">Couldn’t copy — long-press to select instead.</p>}
+        </div>
 
         <div className="flow-actions">
           <button className="btn btn-primary" onClick={done}>

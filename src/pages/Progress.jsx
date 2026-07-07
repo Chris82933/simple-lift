@@ -3,23 +3,28 @@ import { Link, useNavigate } from 'react-router-dom'
 import { loadHistory, loadSettings, loadCardio, deleteWorkout, deleteCardio } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { exMeasure } from '../data/exercises.js'
+import { estimate1RM } from '../lib/oneRepMax.js'
 import ProgressChart from '../components/ProgressChart.jsx'
 
 // Chart palette — mid-tone hues that stay legible on both light and dark cards.
 const PALETTE = ['#10b981', '#ff4d4d', '#3b9fd6', '#e0a800', '#e84393', '#8b5cf6', '#14b8a6', '#f97316']
 
-// Build per-exercise weight series (top set per session) from history.
-function buildSeries(history) {
+// Build per-exercise weight series from history. metric 'top' plots the heaviest
+// set each session; 'e1rm' plots the best estimated 1RM (weight × reps), which
+// rewards rep PRs too, not just heavier bars. Warm-up sets are excluded.
+function buildSeries(history, metric = 'top') {
   const byEx = {}
   // oldest → newest
   for (const w of [...history].reverse()) {
     const t = new Date(w.date).getTime()
     for (const e of w.entries) {
-      const weights = (e.sets || []).map((s) => Number(s.weight) || 0).filter((x) => x > 0)
-      if (weights.length === 0) continue
-      const top = Math.max(...weights)
+      const loaded = (e.sets || []).filter((s) => !s.warmup && Number(s.weight) > 0)
+      if (loaded.length === 0) continue
+      const value = metric === 'e1rm'
+        ? Math.round(Math.max(...loaded.map((s) => estimate1RM(Number(s.weight), Number(s.reps) || 1))))
+        : Math.max(...loaded.map((s) => Number(s.weight)))
       if (!byEx[e.exerciseId]) byEx[e.exerciseId] = { id: e.exerciseId, name: e.name, points: [] }
-      byEx[e.exerciseId].points.push({ t, weight: top })
+      byEx[e.exerciseId].points.push({ t, weight: value })
     }
   }
   return Object.values(byEx)
@@ -71,6 +76,7 @@ const DIFF_LABELS = {
 function SessionEntry({ workout, units, onDelete }) {
   const [open, setOpen] = useState(false)
   const setCount = workout.entries.reduce((n, e) => n + (e.sets?.filter((s) => s.done).length || 0), 0)
+  const prIds = new Set((workout.prs || []).map((p) => p.exId))
   return (
     <div className="log-entry">
       <div className="log-head">
@@ -80,6 +86,7 @@ function SessionEntry({ workout, units, onDelete }) {
       </div>
       <div className="log-meta">
         {workout.difficulty && <span className="diff-badge">{DIFF_LABELS[workout.difficulty] || workout.difficulty}</span>}
+        {prIds.size > 0 && <span className="pr-badge">🏆 {prIds.size} PR{prIds.size === 1 ? '' : 's'}</span>}
         <span className="muted small">{setCount} set{setCount === 1 ? '' : 's'} done</span>
       </div>
       <div className="log-exercises">
@@ -92,7 +99,7 @@ function SessionEntry({ workout, units, onDelete }) {
             <div className="log-row">
               <span className="log-ex-name">
                 <span className={'log-status' + (skipped ? '' : ' is-done')} aria-hidden="true">{skipped ? '○' : '✓'}</span>
-                {e.name}{e.adhoc ? ' ＋' : ''}
+                {e.name}{e.adhoc ? ' ＋' : ''}{prIds.has(e.exerciseId) ? ' 🏆' : ''}
               </span>
               <span className="muted small">
                 {skipped ? 'not done' : `${done}/${total} sets`}{!skipped ? ` · ${topSet(e)} ${units}` : ''}
@@ -160,7 +167,8 @@ export default function Progress() {
       refresh()
     }
   }
-  const allSeries = useMemo(() => buildSeries(history), [history])
+  const [weightMetric, setWeightMetric] = useState('top') // 'top' | 'e1rm'
+  const allSeries = useMemo(() => buildSeries(history, weightMetric), [history, weightMetric])
   const bwSeries = useMemo(() => buildBodyweightSeries(history), [history])
   const [bwHidden, setBwHidden] = useState(() => new Set())
   const toggleBw = (id) => setBwHidden((h) => {
@@ -203,7 +211,18 @@ export default function Progress() {
       </header>
 
       <div className="card">
-        <p className="group-label">Weight over time ({units})</p>
+        <div className="week-head">
+          <p className="group-label" style={{ margin: 0 }}>
+            {weightMetric === 'e1rm' ? 'Estimated 1RM' : 'Top set'} over time ({units})
+          </p>
+        </div>
+        <div className="seg metric-seg">
+          {[{ id: 'top', label: 'Top set' }, { id: 'e1rm', label: 'Est. 1RM' }].map((m) => (
+            <button key={m.id} type="button" className={'seg-item' + (weightMetric === m.id ? ' is-selected' : '')} onClick={() => setWeightMetric(m.id)}>
+              {m.label}
+            </button>
+          ))}
+        </div>
         <ProgressChart series={visible} units={units} />
         {allSeries.length > 0 && (
           <div className="legend">
