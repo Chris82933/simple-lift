@@ -120,7 +120,7 @@ const BASE_EXERCISES = [
   { id: 'cable_crunch', name: 'Cable Crunch', pattern: 'core', regions: ['core'], requires: ['cable'], compound: false, cues: 'Kneel, rope by your head, crunch down with the abs — don’t just bow at the hips.' },
 
   // ---- Popular additions (r/Fitness favorites) ----
-  { id: 'back_extension', name: 'Back Extension', pattern: 'hinge', regions: ['back', 'legs', 'core'], requires: ['flat_bench'], compound: false, load: false, tags: ['running'], cues: 'Hinge over the pad, squeeze glutes to rise to a straight line — don’t hyperextend.' },
+  { id: 'back_extension', name: 'Back Extension', pattern: 'hinge', regions: ['back', 'legs', 'core'], requires: ['flat_bench'], compound: false, tags: ['running'], cues: 'Hinge over the pad, squeeze glutes to rise to a straight line — don’t hyperextend. Hold a plate to your chest to add weight once bodyweight is easy.' },
   { id: 'good_morning', name: 'Good Morning', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell', 'rack'], compound: true, cues: 'Bar on the back, soft knees, push hips back with a flat back, feel the hamstrings.' },
   { id: 'leg_curl', name: 'Leg Curl', pattern: 'hinge', regions: ['legs'], requires: ['leg_curl_ext'], compound: false, tags: ['running'], cues: 'Curl the pad up by squeezing the hamstrings, lower slowly — no hip bouncing.' },
   { id: 'leg_extension', name: 'Leg Extension', pattern: 'squat', regions: ['legs'], requires: ['leg_curl_ext'], compound: false, tags: ['running'], cues: 'Extend to nearly locked, squeeze the quads at the top, lower under control.' },

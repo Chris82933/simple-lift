@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadPrograms, getActiveProgramId, loadHistory, updateProgram } from '../lib/storage.js'
-import { deloadDue } from '../lib/deload.js'
+import { loadPrograms, getActiveProgramId, loadHistory } from '../lib/storage.js'
 import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS } from '../lib/equipment.js'
 import { repsLabel } from '../data/schemes.js'
 import { measureUnit } from '../data/exercises.js'
@@ -16,16 +15,9 @@ export default function Today() {
   const history = loadHistory()
   const [activeId, setActiveId] = useState(() => getActiveProgramId())
   const [activeProfile, setActiveProfileState] = useState(() => getEquipment().active)
-  const [deloadAcked, setDeloadAcked] = useState(false)
   const switchProfile = (id) => { setActiveProfile(id); setActiveProfileState(id) }
 
   const program = programs.find((p) => p.id === activeId) || programs[0] || null
-
-  const deload = program && !deloadAcked ? deloadDue(program, history) : null
-  const ackDeload = () => {
-    if (program && deload) updateProgram({ ...program, deloadAckWeeks: deload.weeks })
-    setDeloadAcked(true)
-  }
 
   if (!program) {
     return (
@@ -67,17 +59,6 @@ export default function Today() {
           Today&apos;s a rest day. Your next session is{' '}
           {pick.nextWeekday != null ? WEEKDAY_LABELS[pick.nextWeekday] : 'coming up'}.
         </p>
-      )}
-
-      {deload && (
-        <div className="card notice deload-card">
-          <p className="placeholder-title">🌙 Time for a deload week</p>
-          <p className="muted small">
-            You&apos;ve trained {deload.weeks} weeks on {program.name}. A lighter recovery week lets fatigue clear so you come back stronger.{' '}
-            {deload.note || 'This week, cut your working weight ~10% (or drop a set or two) and keep the reps well short of failure, then resume as normal.'}
-          </p>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={ackDeload}>Got it — I&apos;ll take it easy</button>
-        </div>
       )}
 
       <FocusTiles current="program" onPickProgram={setActiveId} />

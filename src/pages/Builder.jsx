@@ -1,26 +1,47 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { EXERCISES, exMeasure } from '../data/exercises.js'
+import { EXERCISES, EXERCISE_BY_ID, exMeasure } from '../data/exercises.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 import { GOALS } from '../data/options.js'
 import { schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { WEEKDAY_LABELS } from '../lib/generator.js'
 import {
-  loadProfile, getProgram, addProgram, updateProgram, getMax, loadSettings,
+  loadProfile, getProgram, addProgram, updateProgram, getMax, loadMaxes, loadSettings, lastPerformance,
 } from '../lib/storage.js'
-import { weightForReps, incrementForUnits } from '../lib/oneRepMax.js'
+import { weightForReps, incrementForUnits, interpolate1RM } from '../lib/oneRepMax.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
 
 const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
 
+// The heaviest weight logged for a lift in its most recent session, if any.
+function loggedTopWeight(exId) {
+  const perf = lastPerformance(exId)
+  if (!perf) return 0
+  const ws = (perf.sets || []).map((s) => Number(s.weight) || 0).filter((x) => x > 0)
+  return ws.length ? Math.max(...ws) : 0
+}
+
+// Best starting weight we can infer for a loadable lift, in priority order:
+// where you last left off (logged) → a saved 1RM → an estimate interpolated
+// from your other saved lifts. Empty string when we have nothing to go on.
+function resolveStartWeight(ex, repHigh, inc) {
+  if (ex.load === false) return ''
+  const logged = loggedTopWeight(ex.id)
+  if (logged) return String(logged)
+  const max = getMax(ex.id)
+  if (max?.oneRM) return String(weightForReps(max.oneRM, repHigh, inc))
+  const est = interpolate1RM(ex.id, loadMaxes())
+  if (est) return String(weightForReps(est, repHigh, inc))
+  return ''
+}
+
 // Build a day's default exercise entry from the library + current goal scheme.
-// Prefills a starting weight from a saved 1RM when one exists for this lift.
-// Defaults come from prescriptionFor, which tunes sets/reps/rest to how the move
-// is measured (reps / timed hold / cardio) and the muscle it works.
+// Defaults come from prescriptionFor (sets/reps/rest tuned to how the move is
+// measured and the muscle worked); the starting weight is resolved from your
+// logs / maxes / an interpolated estimate.
 function makeExercise(ex, scheme, inc) {
-  const max = ex.load !== false ? getMax(ex.id) : null
   const p = prescriptionFor(ex, scheme)
   return {
     id: ex.id, name: ex.name, pattern: ex.pattern, regions: ex.regions,
@@ -28,7 +49,7 @@ function makeExercise(ex, scheme, inc) {
     ladderId: ex.ladderId || null, nextId: ex.nextId || null, prevId: ex.prevId || null,
     hold: ex.hold || undefined, distance: ex.distance || undefined, unit: ex.unit || undefined,
     sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec,
-    startWeight: max ? String(weightForReps(max.oneRM, p.repHigh, inc)) : '',
+    startWeight: resolveStartWeight(ex, p.repHigh, inc),
   }
 }
 
@@ -96,6 +117,31 @@ export default function Builder() {
   const addExerciseToDay = (di, ex) => {
     if (draft.days[di].exercises.some((e) => e.id === ex.id)) return
     updateDay(di, { exercises: [...draft.days[di].exercises, makeExercise(ex, scheme, inc)] })
+  }
+
+  // Reorder an exercise within its day.
+  const moveExercise = (di, ei, dir) => {
+    const list = draft.days[di].exercises
+    const j = ei + dir
+    if (j < 0 || j >= list.length) return
+    const next = [...list]
+    ;[next[ei], next[j]] = [next[j], next[ei]]
+    updateDay(di, { exercises: next })
+  }
+
+  // Reset one exercise's sets/reps/rest to the recommended defaults for the
+  // current goal, and refill its starting weight from your logs / maxes — for
+  // fixing older programs whose numbers never made sense.
+  const applyRecommended = (di, ei) => {
+    const ex = draft.days[di].exercises[ei]
+    const lib = EXERCISE_BY_ID[ex.id] || ex
+    const p = prescriptionFor(lib, scheme)
+    const patch = { sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec }
+    if (ex.load) {
+      const w = resolveStartWeight(lib, p.repHigh, inc)
+      if (w) patch.startWeight = w
+    }
+    updateExercise(di, ei, patch)
   }
 
   const totalExercises = draft.days.reduce((n, d) => n + d.exercises.length, 0)
@@ -217,6 +263,9 @@ export default function Builder() {
               </div>
             )
           })()}
+          <p className="muted small deload-tip">
+            🌙 <strong>Deload tip:</strong> every 4–6 weeks, take one lighter week — cut your working weight ~10% (or drop a set or two) and keep reps well short of failure. It clears fatigue so you come back stronger. No need to schedule it; just take one when you feel run down.
+          </p>
         </div>
 
         {draft.days.map((day, di) => (
@@ -247,6 +296,10 @@ export default function Builder() {
                 <div className="builder-ex-top">
                   <ExerciseFigure pattern={ex.pattern} size={36} />
                   <span className="ex-name">{ex.name}</span>
+                  <div className="ex-reorder">
+                    <button type="button" className="icon-btn" disabled={ei === 0} onClick={() => moveExercise(di, ei, -1)} aria-label={`Move ${ex.name} up`}>▲</button>
+                    <button type="button" className="icon-btn" disabled={ei === day.exercises.length - 1} onClick={() => moveExercise(di, ei, 1)} aria-label={`Move ${ex.name} down`}>▼</button>
+                  </div>
                   <button type="button" className="icon-btn" onClick={() => removeExercise(di, ei)} aria-label="Remove exercise">✕</button>
                 </div>
                 <div className="builder-fields">
@@ -281,6 +334,9 @@ export default function Builder() {
                     <button type="button" className="info-icon" onClick={() => setAmrapInfo(true)} aria-label="What is AMRAP?">i</button>
                   </div>
                 )}
+                <button type="button" className="link-btn recommend-link" onClick={() => applyRecommended(di, ei)}>
+                  ✨ Use recommended sets/reps/rest{ex.load ? ' + weight from your logs' : ''}
+                </button>
               </div>
             ))}
 

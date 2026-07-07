@@ -271,6 +271,26 @@ export default function Workout() {
       return { ...s, [exId]: s[exId].map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }
     })
 
+  // Add or drop a set mid-workout. A new set copies the last row's weight/reps
+  // (a sensible default) but starts un-done; keep ex.sets in sync so the review
+  // knows how many sets were prescribed.
+  const changeSetCount = (exId, delta) => {
+    setSets((s) => {
+      const rows = s[exId] || []
+      if (delta > 0) {
+        const last = rows[rows.length - 1] || { weight: '', reps: '', done: false }
+        return { ...s, [exId]: [...rows, { weight: last.weight, reps: last.reps, done: false }] }
+      }
+      if (rows.length <= 1) return s
+      return { ...s, [exId]: rows.slice(0, -1) }
+    })
+    setExercises((list) => list.map((e) => {
+      if (e.id !== exId) return e
+      const cur = sets[exId]?.length || e.sets
+      return { ...e, sets: Math.max(1, cur + delta) }
+    }))
+  }
+
   const totalSets = exercises.reduce((n, ex) => n + (sets[ex.id]?.length || ex.sets), 0)
   const doneSets = Object.values(sets).flat().filter((r) => r.done).length
 
@@ -521,7 +541,7 @@ export default function Workout() {
                       : <FormCheckButton name={ex.name} />}
                   </div>
                   <p className="muted small">
-                    {ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)} · {ex.restSec}s rest
+                    {sets[ex.id]?.length ?? ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)} · {ex.restSec}s rest
                     {ex.compound ? ' · compound' : ''}
                   </p>
                 </div>
@@ -611,6 +631,12 @@ export default function Workout() {
                     </div>
                   )
                 })}
+              </div>
+
+              <div className="set-adjust">
+                <button type="button" onClick={() => changeSetCount(ex.id, -1)} disabled={sets[ex.id].length <= 1} aria-label="Remove a set">– set</button>
+                <span className="muted small">{sets[ex.id].length} set{sets[ex.id].length === 1 ? '' : 's'}</span>
+                <button type="button" onClick={() => changeSetCount(ex.id, 1)} aria-label="Add a set">+ set</button>
               </div>
             </div>
           )

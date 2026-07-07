@@ -502,6 +502,20 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 }
 .set-check.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
+/* Add / remove a set mid-workout */
+.set-adjust { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 8px; }
+.set-adjust button {
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.set-adjust button:disabled { opacity: 0.4; cursor: default; }
+
 /* ---- Rest timer ---- */
 .rest-timer {
   position: fixed;
@@ -594,8 +608,12 @@ select.text-input { appearance: none; }
   flex-direction: column;
   gap: 8px;
 }
-.builder-ex-top { display: flex; align-items: center; gap: 10px; }
-.builder-ex-top .ex-name { flex: 1; }
+.builder-ex-top { display: flex; align-items: center; gap: 8px; }
+.builder-ex-top .ex-name { flex: 1; min-width: 0; }
+.ex-reorder { display: flex; gap: 2px; }
+.ex-reorder .icon-btn { width: 26px; height: 26px; font-size: 11px; }
+.ex-reorder .icon-btn:disabled { opacity: 0.3; cursor: default; }
+.recommend-link { align-self: flex-start; font-size: 12px; }
 .builder-fields { display: flex; flex-wrap: wrap; gap: 8px; }
 .builder-fields label {
   display: flex;
@@ -956,9 +974,15 @@ select.text-input { appearance: none; }
 .info-title { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
 .info-sheet .btn { margin-top: 4px; }
 
-/* ---- Deload reminder ---- */
-.deload-card { display: flex; flex-direction: column; gap: 8px; }
-.deload-card .btn { align-self: flex-start; }
+/* ---- Builder deload tip ---- */
+.deload-tip {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  line-height: 1.5;
+}
 
 /* ---- Onboarding path cards (start screen) ---- */
 .path-card {

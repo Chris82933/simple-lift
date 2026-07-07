@@ -73,3 +73,39 @@ export function goalWorkingSets(oneRM, inc = 5) {
 }
 
 export const incrementForUnits = (units) => (units === 'kg' ? 2.5 : 5)
+
+// Typical 1RM ratios relative to the back squat, for estimating an untested
+// barbell lift's strength from ones you've already recorded. These are rough
+// population averages — a sensible starting point the user then refines, not
+// a promise. Only well-established barbell lifts are listed; anything not here
+// can't be interpolated (returns null).
+export const STRENGTH_RATIOS = {
+  back_squat: 1,
+  front_squat: 0.85,
+  deadlift: 1.2,
+  romanian_dl: 0.9,
+  good_morning: 0.5,
+  hip_thrust: 1.35,
+  bench_press: 0.75,
+  overhead_press: 0.45,
+  barbell_row: 0.65,
+}
+
+// Estimate a lift's 1RM from any saved maxes, via the ratio table. Converts each
+// convertible record to a "squat-equivalent" 1RM, averages them, then scales to
+// the target lift. Returns null when nothing can be converted.
+export function interpolate1RM(exId, maxes) {
+  const targetRatio = STRENGTH_RATIOS[exId]
+  if (!targetRatio) return null
+  const equivs = []
+  for (const [id, m] of Object.entries(maxes || {})) {
+    if (id === exId) continue
+    const r = STRENGTH_RATIOS[id]
+    const oneRM = Number(m?.oneRM)
+    if (!r || !oneRM) continue
+    equivs.push(oneRM / r)
+  }
+  if (equivs.length === 0) return null
+  const squatEquiv = equivs.reduce((a, b) => a + b, 0) / equivs.length
+  return squatEquiv * targetRatio
+}

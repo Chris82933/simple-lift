@@ -3,16 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { EXERCISES, EXERCISE_BY_ID } from '../data/exercises.js'
 import {
   estimate1RM, roundTo, workingWeights, goalWorkingSets, METHODS, incrementForUnits,
+  interpolate1RM, STRENGTH_RATIOS,
 } from '../lib/oneRepMax.js'
 import {
   loadSettings, saveSettings, loadMaxes, saveMax, deleteMax,
 } from '../lib/storage.js'
 
-// Main barbell/dumbbell compound lifts worth estimating a 1RM for.
-const LIFT_OPTIONS = EXERCISES.filter(
-  (e) => e.compound && e.load !== false && !e.ladderOnly &&
-    (e.requires.includes('barbell') || e.requires.includes('dumbbells')),
+// Every loadable lift can get a 1RM — main barbell/dumbbell compounds first,
+// then everything else you might have in a program.
+const LOADABLE = EXERCISES.filter((e) => e.load !== false && !e.ladderOnly)
+const MAIN_LIFTS = LOADABLE.filter(
+  (e) => e.compound && (e.requires.includes('barbell') || e.requires.includes('dumbbells')),
 )
+const OTHER_LIFTS = LOADABLE.filter((e) => !MAIN_LIFTS.includes(e))
+const LIFT_OPTIONS = [...MAIN_LIFTS, ...OTHER_LIFTS]
 
 const Stepper = ({ label, value, set, min = 1, max = 20, suffix }) => (
   <div className="stepper">
@@ -69,6 +73,14 @@ export default function OneRepMax() {
   const maxes = loadMaxes()
   const savedEntries = Object.entries(maxes)
 
+  // Estimate the main barbell lifts you haven't tested yet, from the maxes you
+  // have saved — so a new program can still start with sensible weights.
+  const estimates = Object.keys(STRENGTH_RATIOS)
+    .filter((id) => !maxes[id])
+    .map((id) => ({ id, name: EXERCISE_BY_ID[id]?.name || id, raw: interpolate1RM(id, maxes) }))
+    .filter((e) => e.raw)
+    .map((e) => ({ ...e, oneRM: roundTo(e.raw, inc) }))
+
   return (
     <section className="page full-flow">
       <header className="page-header">
@@ -85,7 +97,12 @@ export default function OneRepMax() {
         <div className="card">
           <p className="group-label">Lift</p>
           <select className="text-input select" value={liftId} onChange={(e) => setLiftId(e.target.value)}>
-            {LIFT_OPTIONS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            <optgroup label="Main lifts">
+              {MAIN_LIFTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </optgroup>
+            <optgroup label="Other lifts">
+              {OTHER_LIFTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </optgroup>
             <option value="other">Other / custom…</option>
           </select>
           {liftId === 'other' && (
@@ -181,6 +198,30 @@ export default function OneRepMax() {
               </div>
             ))}
             <p className="muted small">These auto-fill starting weights when you build a custom program or load a template.</p>
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/builder')}>Build a program with these →</button>
+          </div>
+        )}
+
+        {/* ---- Interpolated estimates for untested lifts ---- */}
+        {estimates.length > 0 && (
+          <div className="card">
+            <p className="group-label">Estimated from your records</p>
+            <p className="muted small">
+              Rough estimates for main lifts you haven&apos;t tested, based on typical strength ratios to the maxes you&apos;ve saved. Save one to seed a new program, then refine it once you actually test the lift.
+            </p>
+            {estimates.map((e) => (
+              <div className="history-row" key={e.id}>
+                <span>{e.name}</span>
+                <span className="muted small">≈ {e.oneRM} {units}</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => { saveMax(e.id, { oneRM: e.oneRM, units, name: e.name, estimated: true }); refresh() }}
+                >
+                  Save
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
