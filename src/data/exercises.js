@@ -80,6 +80,9 @@ const BASE_EXERCISES = [
 
   // ---- Triceps ----
   { id: 'db_skullcrusher', name: 'Dumbbell Skullcrusher', pattern: 'triceps', regions: ['arms'], requires: ['dumbbells', 'flat_bench'], compound: false, cues: 'Upper arms still, lower to the forehead, extend fully.' },
+  { id: 'db_overhead_ext', name: 'Overhead Triceps Extension', pattern: 'triceps', regions: ['arms'], requires: ['dumbbells'], compound: false, cues: 'Hold one dumbbell overhead in both hands, elbows pointing up and tucked; lower behind your head, then extend to a full lockout. Stretches the long head of the triceps.' },
+  { id: 'cable_overhead_ext', name: 'Cable Overhead Triceps Extension', pattern: 'triceps', regions: ['arms'], requires: ['cable'], compound: false, cues: 'Rope on a low pulley, face away and take the arms overhead; extend forward to lockout keeping the elbows high — constant-tension long-head work.' },
+  { id: 'band_overhead_ext', name: 'Band Overhead Triceps Extension', pattern: 'triceps', regions: ['arms'], requires: ['bands'], compound: false, load: false, cues: 'Anchor the band low behind you, arms overhead; extend to lockout and control the stretch. Elbows stay pointing forward.' },
   { id: 'bench_dip', name: 'Bench Dip', pattern: 'triceps', regions: ['arms'], requires: ['flat_bench'], compound: false, load: false, cues: 'Hands on the bench, lower with elbows back, press up.' },
   { id: 'band_pushdown', name: 'Band Triceps Pushdown', pattern: 'triceps', regions: ['arms'], requires: ['bands'], compound: false, load: false, cues: 'Pin elbows to your sides, extend fully, slow return.' },
   { id: 'diamond_pushup', name: 'Diamond Push-Up', pattern: 'triceps', regions: ['arms', 'chest'], requires: [], compound: false, load: false, cues: 'Hands together under the chest, elbows tight to the body.' },
@@ -217,6 +220,118 @@ for (const ladder of LADDERS) {
     ex.prevId = ladder.order[i - 1] || null
     ex.nextId = ladder.order[i + 1] || null
   })
+}
+
+// Hidden search aliases — common alternate names, abbreviations, and muscle
+// nicknames so a search finds the right lift even if the person calls it
+// something else. Not shown in the UI; used only by matchesQuery. Keep lowercase.
+const ALIASES = {
+  // Squat
+  back_squat: ['barbell squat', 'high bar squat', 'low bar squat'],
+  front_squat: ['barbell front squat'],
+  goblet_squat: ['dumbbell squat'],
+  leg_press: ['machine leg press'],
+  bw_squat: ['bodyweight squat', 'air squat'],
+  leg_extension: ['quad extension', 'knee extension'],
+  // Hinge
+  deadlift: ['conventional deadlift', 'barbell deadlift', 'dead lift'],
+  romanian_dl: ['rdl', 'romanian deadlift', 'stiff leg deadlift', 'sldl'],
+  db_rdl: ['dumbbell romanian deadlift', 'dumbbell rdl'],
+  kb_swing: ['kettlebell swing', 'kb swing'],
+  hip_thrust: ['barbell hip thrust', 'glute thrust', 'glute bridge'],
+  glute_bridge: ['hip bridge', 'bridge'],
+  single_leg_rdl: ['single leg deadlift', 'one leg rdl'],
+  back_extension: ['hyperextension', 'hyper extension', '45 degree back extension'],
+  good_morning: ['barbell good morning'],
+  leg_curl: ['hamstring curl', 'lying leg curl', 'seated leg curl'],
+  // Lunge
+  walking_lunge: ['dumbbell lunge', 'lunges'],
+  bw_lunge: ['bodyweight lunge', 'lunges'],
+  bulgarian_split: ['bulgarian split squat', 'rear foot elevated split squat', 'rfess', 'split squat'],
+  step_up: ['box step up'],
+  reverse_lunge: ['backward lunge'],
+  // Horizontal push
+  bench_press: ['barbell bench press', 'flat bench', 'flat barbell bench', 'chest press'],
+  db_bench: ['dumbbell bench press', 'db bench', 'dumbbell chest press', 'flat dumbbell press'],
+  incline_db_press: ['incline dumbbell press', 'incline dumbbell bench'],
+  incline_bench: ['incline barbell press', 'incline barbell bench'],
+  pushup: ['press up', 'push ups'],
+  dip: ['chest dip', 'parallel bar dip', 'tricep dip'],
+  cable_fly: ['cable crossover', 'cable flye', 'pec fly', 'chest fly'],
+  // Vertical push
+  overhead_press: ['ohp', 'military press', 'strict press', 'standing shoulder press', 'barbell shoulder press', 'barbell overhead press'],
+  db_shoulder_press: ['dumbbell shoulder press', 'dumbbell overhead press', 'seated dumbbell press', 'db press'],
+  pike_pushup: ['pike press'],
+  arnold_press: ['arnold dumbbell press'],
+  // Horizontal pull
+  barbell_row: ['bent over row', 'bent-over row', 'bor', 'barbell bent over row'],
+  db_row: ['one arm row', 'single arm row', 'dumbbell row', 'kroc row'],
+  seated_cable_row: ['cable row', 'seated row', 'low row'],
+  inverted_row: ['bodyweight row', 'australian pull up', 'horizontal row'],
+  pendlay_row: ['dead stop row'],
+  db_shrug: ['dumbbell shrug', 'shrugs', 'traps'],
+  barbell_shrug: ['barbell shrugs', 'shrugs', 'traps'],
+  // Vertical pull
+  pullup: ['pull up', 'pull-up', 'pullups'],
+  chinup: ['chin up', 'chin-up', 'chinups'],
+  lat_pulldown: ['pulldown', 'lat pull down', 'lat pull-down'],
+  cable_pulldown: ['cable lat pulldown'],
+  // Biceps / forearms
+  db_curl: ['bicep curl', 'biceps curl', 'dumbbell bicep curl'],
+  ez_curl: ['barbell curl', 'ez bar curl', 'ez-bar curl', 'bicep curl'],
+  band_curl: ['band bicep curl'],
+  wrist_curl: ['forearm curl'],
+  // Triceps
+  db_skullcrusher: ['skull crusher', 'skullcrusher', 'lying triceps extension', 'nose breaker', 'tricep'],
+  db_overhead_ext: ['french press', 'overhead dumbbell extension', 'seated triceps extension', 'overhead tricep extension', 'tricep extension', 'triceps extension', 'tricep'],
+  cable_overhead_ext: ['overhead tricep extension', 'rope overhead extension', 'cable french press', 'tricep'],
+  band_overhead_ext: ['overhead tricep extension', 'band tricep extension', 'tricep'],
+  band_pushdown: ['tricep pushdown', 'triceps pushdown', 'rope pushdown', 'tricep'],
+  bench_dip: ['tricep dip', 'chair dip', 'tricep'],
+  diamond_pushup: ['close grip pushup', 'triangle pushup', 'tricep pushup', 'tricep'],
+  // Shoulders
+  lateral_raise: ['side raise', 'side lateral raise', 'lateral delt raise', 'db lateral raise', 'shoulder raise'],
+  band_lateral: ['band side raise'],
+  // Calves
+  db_calf_raise: ['dumbbell calf raise', 'standing calf raise'],
+  bw_calf_raise: ['standing calf raise', 'bodyweight calf raise'],
+  tibialis_raise: ['tib raise', 'anterior tibialis raise'],
+  // Core
+  plank: ['front plank', 'forearm plank'],
+  hanging_leg_raise: ['hanging leg raises', 'leg raise'],
+  dead_bug: ['deadbug'],
+  ab_wheel: ['ab rollout', 'ab roller', 'ab wheel rollout'],
+  russian_twist: ['russian twists', 'seated twist'],
+  situp: ['sit up', 'sit-up', 'crunch'],
+  cable_crunch: ['kneeling cable crunch', 'rope crunch'],
+  hollow_hold: ['hollow body hold', 'hollow body'],
+  side_plank: ['side plank hold'],
+  // Cardio / conditioning
+  running: ['run', 'jog', 'jogging'],
+  treadmill: ['treadmill run', 'treadmill walk'],
+  stationary_bike: ['exercise bike', 'spin bike', 'cycling', 'bike'],
+  rowing_machine: ['rower', 'erg', 'concept2'],
+  elliptical: ['cross trainer'],
+  stair_climber: ['stairmaster', 'stair master'],
+  jump_rope: ['skipping', 'skip rope', 'jump roping'],
+  mountain_climber: ['mountain climbers'],
+  burpee: ['burpees'],
+  jumping_jack: ['jumping jacks', 'star jump'],
+  high_knees: ['high knee'],
+  // Rings
+  ring_muscle_up: ['muscle up'],
+  wall_hspu: ['handstand push up', 'hspu'],
+}
+for (const [id, aliases] of Object.entries(ALIASES)) {
+  if (EXERCISE_BY_ID[id]) EXERCISE_BY_ID[id].aliases = aliases
+}
+
+// Search match: exercise name OR any hidden alias contains the query.
+export function matchesQuery(ex, query) {
+  const q = (query || '').trim().toLowerCase()
+  if (!q) return true
+  if (ex.name.toLowerCase().includes(q)) return true
+  return (ex.aliases || []).some((a) => a.includes(q))
 }
 
 export { LADDERS }

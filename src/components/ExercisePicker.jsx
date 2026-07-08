@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { EXERCISES } from '../data/exercises.js'
+import { EXERCISES, matchesQuery } from '../data/exercises.js'
 import ExerciseFigure from './ExerciseFigure.jsx'
 import { getEquipment, activeEquipmentIds, isDoable, profileMeta } from '../lib/equipment.js'
 
@@ -16,7 +16,7 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
   // Mountain Climbers, a warm-up run) can be added. Unless "Show all", also hide
   // anything you can't do with the current equipment.
   const filtered = EXERCISES.filter(
-    (e) => !e.ladderOnly && e.name.toLowerCase().includes(q)
+    (e) => !e.ladderOnly && matchesQuery(e, q)
       && (showAll || isDoable(e, availableSet)),
   )
 

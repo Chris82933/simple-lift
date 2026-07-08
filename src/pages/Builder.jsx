@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { EXERCISES, EXERCISE_BY_ID, exMeasure } from '../data/exercises.js'
+import { EXERCISES, EXERCISE_BY_ID, exMeasure, matchesQuery } from '../data/exercises.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 import { GOALS } from '../data/options.js'
 import { schemeForGoals, prescriptionFor } from '../data/schemes.js'
@@ -186,9 +186,7 @@ export default function Builder() {
 
   // Hide only the template-only ladder variants; conditioning/cardio moves ARE
   // allowed so people can add a warm-up (e.g. 15 min zone-2) to a lifting day.
-  const filtered = EXERCISES.filter((e) =>
-    !e.ladderOnly && e.name.toLowerCase().includes(search.trim().toLowerCase()),
-  )
+  const filtered = EXERCISES.filter((e) => !e.ladderOnly && matchesQuery(e, search))
   const dayExIds = picker !== null
     ? new Set(draft.days[picker].exercises.map((e) => e.id))
     : new Set()
