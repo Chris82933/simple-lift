@@ -536,6 +536,25 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .share-actions { display: flex; gap: 10px; }
 .share-actions .btn { flex: 1; }
 .share-note { margin-top: 4px; }
+
+/* ---- Today: pick a different day ---- */
+.day-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+  scrollbar-width: none;
+}
+.day-picker::-webkit-scrollbar { display: none; }
+.day-chip-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+.day-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.day-chip-btn.is-selected .day-dot { background: var(--accent-ink); }
 .set-check {
   width: 40px;
   height: 40px;

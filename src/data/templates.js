@@ -41,6 +41,52 @@ const day = (title, note, exercises) => ({
 
 export const TEMPLATES = [
   {
+    templateId: 'foundations_fullbody',
+    deloadWeeks: 6,
+    deloadNote: 'Every ~6 weeks, take an easier week — drop a set or use a slightly easier variation — to let tendons and joints catch up with your strength.',
+    name: 'Foundations: Full-Body Strength',
+    description:
+      'A do-everything full-body plan for real-life strength, built on the resistance-training evidence base: train each major muscle ~2–3×/week, cover all the fundamental movement patterns, work in moderate rep ranges close to (but not to) failure, and add a little over time. Every move either climbs a progression ladder or loads up, so it fits a complete beginner and a seasoned lifter alike. Run it 2 or 3 days a week.',
+    tags: ['Full body', 'Science-based', '2–3 days/wk'],
+    level: 'All levels',
+    bestFor: 'Everyday strength & health',
+    equipment: 'A pair of dumbbells and a bar to hang from. A bench is optional (swap to push-ups without one).',
+    progressionInfo:
+      'Double progression on the loaded lifts — work in the rep range, and once you hit the top of it on every set, add a little weight and start back near the bottom. Bodyweight moves climb their ladder: own the top of the range and the app offers the next-harder variation (too hard? it eases you down a step). Start as light or as easy as you need — the whole point is to add a little each week (progressive overload). Informed by resistance-training research on frequency (Schoenfeld, Ogborn & Krieger, 2016), effort/proximity to failure, and the ACSM’s guidance to train all major muscle groups 2+ days a week.',
+    pros: [
+      'Hits every major muscle and movement pattern 2–3×/week — the frequency the research favours for strength and muscle',
+      'Truly scalable: bodyweight moves progress from wall push-ups to one-arm work; loaded lifts start light and grow with you',
+      'Only five moves a session, 2–3 days a week — quick, recoverable, and easy to stick with',
+      'Balanced push/pull and squat/hinge keeps you resilient and pain-free for daily life',
+    ],
+    cons: [
+      'Not specialised — a focused program will beat it for a max bench or a competition squat',
+      'Wants a couple of basics (dumbbells + something to hang from); no-equipment users lean on the bodyweight ladders',
+      'Progress is steady rather than the fastest — it’s built to last, not to peak',
+    ],
+    source: 'template',
+    goals: ['general', 'strength'],
+    progressionMethod: 'double',
+    schedule: { mode: 'rotation', trainingDays: [1, 3, 5] },
+    days: [
+      day('Full Body A', 'Squat, push, pull, press, brace. Leave 1–2 reps in the tank on each set. Run it 2×/week (e.g. Mon/Thu) or 3×/week.', [
+        ex('goblet_squat', 3, [8, 12], 120),
+        ex('pushup', 3, [8, 15], 90),
+        ex('inverted_row', 3, [8, 12], 90),
+        ex('db_shoulder_press', 3, [8, 12], 90),
+        ex('plank', 3, [20, 45], 45),
+      ]),
+      day('Full Body B', 'Hinge, lunge, pull, push, brace. Same idea — stop each set a rep or two shy of failure.', [
+        ex('db_rdl', 3, [8, 12], 120),
+        ex('reverse_lunge', 3, [8, 12], 90),
+        ex('pull_negative', 3, [3, 6], 120),
+        ex('db_bench', 3, [8, 12], 90),
+        ex('dead_bug', 3, [8, 12], 45),
+      ]),
+    ],
+  },
+
+  {
     templateId: 'starting_strength',
     deloadWeeks: 6,
     deloadNote: 'This program already auto-backs-off 10% when you stall a lift. If you feel run down, take a lighter week anyway — same lifts at ~90%.',

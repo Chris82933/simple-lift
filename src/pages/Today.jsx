@@ -15,7 +15,10 @@ export default function Today() {
   const history = loadHistory()
   const [activeId, setActiveId] = useState(() => getActiveProgramId())
   const [activeProfile, setActiveProfileState] = useState(() => getEquipment().active)
+  // Let people pick a different day of the program to do, not just today's.
+  const [selectedDay, setSelectedDay] = useState(null)
   const switchProfile = (id) => { setActiveProfile(id); setActiveProfileState(id) }
+  const pickProgram = (id) => { setActiveId(id); setSelectedDay(null) }
 
   const program = programs.find((p) => p.id === activeId) || programs[0] || null
 
@@ -39,7 +42,10 @@ export default function Today() {
 
   const todayWeekday = new Date().getDay()
   const pick = pickSession(program, todayWeekday)
-  const session = pick.session
+  // The day being previewed: the user's chosen day, else today's scheduled one.
+  const dayIndex = selectedDay != null && selectedDay < program.days.length ? selectedDay : pick.index
+  const session = program.days[dayIndex]
+  const isScheduledToday = pick.isToday && dayIndex === pick.index
   const trainWds = new Set(trainingWeekdays(program))
   const warning = restWarnings(trainingWeekdays(program))
   const lastWorkout = history[0]
@@ -50,18 +56,34 @@ export default function Today() {
   return (
     <section className="page">
       <header className="page-header">
-        <p className="eyebrow">{pick.isToday ? 'Today' : 'Next up'}</p>
+        <p className="eyebrow">{isScheduledToday ? 'Today' : selectedDay != null ? 'Chosen session' : 'Next up'}</p>
         <h1>{session.title}</h1>
       </header>
 
-      {!pick.isToday && (
+      {!pick.isToday && selectedDay == null && (
         <p className="muted" style={{ marginTop: -8 }}>
           Today&apos;s a rest day. Your next session is{' '}
-          {pick.nextWeekday != null ? WEEKDAY_LABELS[pick.nextWeekday] : 'coming up'}.
+          {pick.nextWeekday != null ? WEEKDAY_LABELS[pick.nextWeekday] : 'coming up'}. Pick any day below to do it now.
         </p>
       )}
 
-      <FocusTiles current="program" onPickProgram={setActiveId} />
+      <FocusTiles current="program" onPickProgram={pickProgram} />
+
+      {program.days.length > 1 && (
+        <div className="day-picker" role="group" aria-label="Choose a day">
+          {program.days.map((d, i) => (
+            <button
+              key={i}
+              type="button"
+              className={'chip day-chip-btn' + (i === dayIndex ? ' is-selected' : '')}
+              onClick={() => setSelectedDay(i)}
+            >
+              {d.title}
+              {i === pick.index && pick.isToday && <span className="day-dot" aria-hidden="true" />}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="card">
         <div className="mode-row">
@@ -93,9 +115,9 @@ export default function Today() {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => navigate('/workout', { state: { dayIndex: pick.index } })}
+          onClick={() => navigate('/workout', { state: { dayIndex } })}
         >
-          {pick.isToday ? 'Start workout' : `Start ${session.title} now`}
+          {isScheduledToday ? 'Start workout' : `Start ${session.title} now`}
         </button>
         {needSwap > 0 && (
           <p className="muted small">
