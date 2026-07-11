@@ -6,6 +6,7 @@ import {
 } from '../lib/storage.js'
 import { REGIONS, EQUIPMENT_GROUPS, GOALS } from '../data/options.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { isIOS } from '../lib/platform.js'
 import InstallApp from '../components/InstallApp.jsx'
 import { applyTheme } from '../lib/theme.js'
 import {
@@ -157,6 +158,16 @@ export default function Profile() {
             : 'Your programs and workout history are saved only in this browser, on this device. If you clear your browser cache / site data, switch browsers, or use another device, this data will be gone.'}
           {!signedIn && auth?.configured && ' Sign in with Google above to back it up.'}
         </p>
+        {!signedIn && isIOS() && (
+          <p className="muted small">
+            <strong>On iPhone &amp; iPad this is more urgent:</strong> Safari (and home-screen web apps) can automatically delete this app&apos;s saved data after about <strong>7 days without opening it</strong>. To be safe, copy a backup code below and keep it somewhere — or {auth?.configured ? 'sign in above' : 'use cloud sync once it&apos;s enabled'}.
+          </p>
+        )}
+        {!signedIn && (
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => { generateCode(); document.getElementById('backup-card')?.scrollIntoView({ behavior: 'smooth' }) }}>
+            Back up my data now
+          </button>
+        )}
       </div>
 
       {/* ---- Tools ---- */}
@@ -294,7 +305,7 @@ export default function Profile() {
       )}
 
       {/* ---- Backup & transfer ---- */}
-      <div className="card">
+      <div className="card" id="backup-card">
         <p className="group-label">Backup &amp; transfer</p>
         <p className="muted small">
           Export a code with <strong>everything</strong> — programs, history, cardio, maxes, and

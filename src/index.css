@@ -537,6 +537,11 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .share-actions .btn { flex: 1; }
 .share-note { margin-top: 4px; }
 
+/* ---- iOS data-loss warning ---- */
+.ios-warning { border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.ios-warning .placeholder-title { margin-bottom: 6px; }
+.ios-warning-actions { display: flex; gap: 8px; margin-top: 10px; }
+
 /* ---- Today: pick a different day ---- */
 .day-picker {
   display: flex;

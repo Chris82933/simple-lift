@@ -56,10 +56,13 @@ The app works fully on local/offline storage. Turning on Google sign-in lets use
      }
    }
    ```
+   (This is also saved in the repo as [`firestore.rules`](firestore.rules) — you can paste it or deploy it with `firebase deploy --only firestore:rules`.)
 5. Project **Settings (gear) → General → Your apps → Web app (`</>`)**. Register an app, then copy the `firebaseConfig` values.
-6. Paste those six values into [`src/lib/firebaseConfig.js`](src/lib/firebaseConfig.js), replacing the `YOUR_…` placeholders.
+6. Add those six values **either way**:
+   - **Quickest:** paste them into the `direct` object in [`src/lib/firebaseConfig.js`](src/lib/firebaseConfig.js), replacing the `YOUR_…` placeholders; **or**
+   - **Cleaner (keeps them out of tracked source):** `cp .env.example .env` and fill in the `VITE_FIREBASE_*` values. `.env` is gitignored and overrides the file.
 7. **Authentication → Settings → Authorized domains → Add domain:** `chris82933.github.io` (localhost is already allowed for local testing).
-8. Commit & push. The "Sign in with Google" button on the Profile screen now works.
+8. Commit & push (and, if you used GitHub Actions to build, add the same `VITE_FIREBASE_*` as repository **secrets/variables** so the deployed build picks them up). The "Sign in with Google" button on the Profile screen now works.
 
 > The Firebase `apiKey` is a **public** client identifier — it's safe to commit. Security comes from the Firestore rules above, not from hiding the key.
 

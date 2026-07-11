@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadPrograms, getActiveProgramId, loadHistory } from '../lib/storage.js'
+import { loadPrograms, getActiveProgramId, loadHistory, loadSettings, saveSettings } from '../lib/storage.js'
+import { isIOS } from '../lib/platform.js'
+import { useAuth } from '../context/AuthContext.jsx'
 import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS } from '../lib/equipment.js'
 import { repsLabel } from '../data/schemes.js'
 import { measureUnit } from '../data/exercises.js'
@@ -11,8 +13,18 @@ import FocusTiles from '../components/FocusTiles.jsx'
 
 export default function Today() {
   const navigate = useNavigate()
+  const auth = useAuth()
   const programs = loadPrograms()
   const history = loadHistory()
+
+  // iOS quietly deletes local app data after ~7 days of no use. Nudge iOS users
+  // with no cloud backup to save a backup — once, until they dismiss or sign in.
+  const [iosDismissed, setIosDismissed] = useState(() => !!loadSettings().iosBackupDismissed)
+  const showIosWarning = isIOS() && !auth?.user && !iosDismissed
+  const dismissIos = () => {
+    setIosDismissed(true)
+    saveSettings({ ...loadSettings(), iosBackupDismissed: true })
+  }
   const [activeId, setActiveId] = useState(() => getActiveProgramId())
   const [activeProfile, setActiveProfileState] = useState(() => getEquipment().active)
   // Let people pick a different day of the program to do, not just today's.
@@ -59,6 +71,19 @@ export default function Today() {
         <p className="eyebrow">{isScheduledToday ? 'Today' : selectedDay != null ? 'Chosen session' : 'Next up'}</p>
         <h1>{session.title}</h1>
       </header>
+
+      {showIosWarning && (
+        <div className="card notice ios-warning">
+          <p className="placeholder-title">📲 Back up your data</p>
+          <p className="muted small">
+            On iPhone &amp; iPad, Safari can erase this app&apos;s saved data after about a week of not opening it — and it isn&apos;t backed up anywhere yet. Save a backup code (or sign in, once that&apos;s enabled) so your programs are one paste away from restored.
+          </p>
+          <div className="ios-warning-actions">
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => navigate('/profile')}>Back up now</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={dismissIos}>Dismiss</button>
+          </div>
+        </div>
+      )}
 
       {!pick.isToday && selectedDay == null && (
         <p className="muted" style={{ marginTop: -8 }}>

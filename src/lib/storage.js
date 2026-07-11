@@ -11,23 +11,79 @@ const SKILLS_KEY = 'simple-lift:skills'
 const UPDATED_KEY = 'simple-lift:updatedAt'
 const LEGACY_PROGRAM_KEY = 'simple-lift:program' // pre-multi-program
 
-const read = (key, fallback = null) => {
+// Low-level read that separates "the key is genuinely absent" from "the read
+// or JSON parse FAILED" (storage disabled, quota weirdness, corruption). The
+// distinction matters: on iOS a transient failure must never be mistaken for
+// "empty", or a following save would overwrite good data with nothing.
+//   → { ok: true,  value }   value is null when the key is absent
+//   → { ok: false, value: null }   couldn't read reliably — do NOT clobber
+function readRaw(key) {
+  let raw
   try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
+    raw = localStorage.getItem(key)
   } catch {
-    return fallback
+    return { ok: false, value: null } // storage unavailable (private mode, disabled)
+  }
+  if (raw == null) return { ok: true, value: null } // genuinely not set yet
+  try {
+    return { ok: true, value: JSON.parse(raw) }
+  } catch {
+    return { ok: false, value: null } // corrupt — better to keep it than replace it
+  }
+}
+
+const read = (key, fallback = null) => {
+  const r = readRaw(key)
+  return r.ok && r.value != null ? r.value : fallback
+}
+
+// Set once if a write ever throws (usually iOS quota / private mode) so the UI
+// can warn the user their data isn't being saved.
+let storageBroken = false
+export const isStorageHealthy = () => !storageBroken
+
+// Is localStorage usable at all right now? Drives the iOS "back up" warnings.
+export function storageAvailable() {
+  try {
+    const k = '__sl_probe__'
+    localStorage.setItem(k, '1')
+    localStorage.removeItem(k)
+    return true
+  } catch {
+    return false
   }
 }
 
 // Writing bumps the updatedAt stamp and notifies the sync layer (unless silent,
-// e.g. when we're applying data pulled down from the cloud).
+// e.g. when we're applying data pulled down from the cloud). Never throws —
+// returns false and announces an error instead, so a failed save can't crash a
+// workout flow.
 function write(key, value, { silent = false } = {}) {
-  localStorage.setItem(key, JSON.stringify(value))
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch (e) {
+    storageBroken = true
+    try {
+      window.dispatchEvent(new CustomEvent('sl-storage-error', { detail: { key, message: String((e && e.message) || e) } }))
+    } catch { /* no window */ }
+    return false
+  }
   if (!silent) {
-    localStorage.setItem(UPDATED_KEY, JSON.stringify(Date.now()))
+    try { localStorage.setItem(UPDATED_KEY, JSON.stringify(Date.now())) } catch { /* ignore */ }
     window.dispatchEvent(new CustomEvent('sl-data-changed'))
   }
+  return true
+}
+
+// Safe load-modify-save for a collection. If the read itself failed (not merely
+// empty), it declines to write rather than overwrite good data with a degraded
+// value — the core guard against the iOS data-loss report. Returns true if it
+// wrote, false if it bailed or the write failed.
+function mutate(key, fallback, fn) {
+  const r = readRaw(key)
+  if (!r.ok) return false // couldn't read reliably — do not clobber
+  const current = r.value == null ? fallback : r.value
+  return write(key, fn(current))
 }
 
 export const genId = () =>
@@ -45,22 +101,23 @@ export const saveSettings = (s) => write(SETTINGS_KEY, s)
 export const loadSkills = () => read(SKILLS_KEY, {})
 export const saveSkills = (s) => write(SKILLS_KEY, s)
 export function updateSkill(skillId, patch) {
-  const all = loadSkills()
-  const next = { ...all, [skillId]: { ...(all[skillId] || {}), ...patch } }
-  write(SKILLS_KEY, next)
-  return next
+  mutate(SKILLS_KEY, {}, (all) => ({ ...all, [skillId]: { ...(all[skillId] || {}), ...patch } }))
+  return loadSkills()
 }
 
 // ---- Programs (multiple) ----
 function migrateLegacy() {
-  // Wrap a pre-existing single program into the new array model, once.
+  // Wrap a pre-existing single program into the new array model, once. Only
+  // migrate when we can confirm no programs array exists yet — never on a read
+  // failure, which could otherwise duplicate or clobber.
   const legacy = read(LEGACY_PROGRAM_KEY)
-  if (legacy && !localStorage.getItem(PROGRAMS_KEY)) {
+  const existing = readRaw(PROGRAMS_KEY)
+  if (legacy && existing.ok && existing.value == null) {
     const id = genId()
     const wrapped = { id, name: 'My Program', source: 'generated', ...legacy }
     write(PROGRAMS_KEY, [wrapped], { silent: true })
     write(ACTIVE_KEY, id, { silent: true })
-    localStorage.removeItem(LEGACY_PROGRAM_KEY)
+    try { localStorage.removeItem(LEGACY_PROGRAM_KEY) } catch { /* ignore */ }
   }
 }
 
@@ -71,14 +128,23 @@ function normalizeProgram(p) {
   return p
 }
 
-export function loadPrograms() {
+// Read programs with the read-status flag, so mutators can bail on failure
+// instead of clobbering. Runs the one-time legacy migration first.
+function readPrograms() {
   migrateLegacy()
-  return read(PROGRAMS_KEY, []).map(normalizeProgram)
+  const r = readRaw(PROGRAMS_KEY)
+  if (!r.ok) return { ok: false, programs: [] }
+  return { ok: true, programs: (r.value || []).map(normalizeProgram) }
+}
+
+export function loadPrograms() {
+  return readPrograms().programs
 }
 
 // Advance a rotation program's pointer to the next workout after one is done.
 export function advanceRotation(programId, completedDayIndex) {
-  const programs = loadPrograms()
+  const { ok, programs } = readPrograms()
+  if (!ok) return // storage read failed — don't rewrite from a bad base
   const p = programs.find((x) => x.id === programId)
   if (!p || p.schedule?.mode !== 'rotation') return
   p.schedule.pointer = (completedDayIndex + 1) % p.days.length
@@ -103,22 +169,28 @@ export function getProgram(id) {
 
 // Adds a program, assigns an id if missing, and makes it active.
 export function addProgram(program) {
-  const programs = loadPrograms()
+  const { ok, programs } = readPrograms()
   const id = program.id || genId()
   const withId = { createdAt: new Date().toISOString(), ...program, id }
-  savePrograms([...programs, withId])
+  // Only append onto programs we could actually read. If the read failed, base
+  // on [] — the write itself will most likely also fail (same storage fault),
+  // so nothing is silently wiped; if it succeeds we've at least kept the new one.
+  savePrograms([...(ok ? programs : []), withId])
   setActiveProgramId(id)
   return withId
 }
 
 export function updateProgram(program) {
-  const programs = loadPrograms().map((p) => (p.id === program.id ? program : p))
-  savePrograms(programs)
+  const { ok, programs } = readPrograms()
+  if (!ok) return program // don't overwrite everything from a bad base
+  savePrograms(programs.map((p) => (p.id === program.id ? program : p)))
   return program
 }
 
 export function deleteProgram(id) {
-  const remaining = loadPrograms().filter((p) => p.id !== id)
+  const { ok, programs } = readPrograms()
+  if (!ok) return
+  const remaining = programs.filter((p) => p.id !== id)
   savePrograms(remaining)
   if (getActiveProgramId() === id) {
     setActiveProgramId(remaining[0]?.id || null)
@@ -131,45 +203,38 @@ export const loadMaxes = () => read(MAXES_KEY, {})
 export const getMax = (exerciseId) => loadMaxes()[exerciseId] || null
 
 export function saveMax(exerciseId, data) {
-  const maxes = loadMaxes()
-  maxes[exerciseId] = { ...data, updatedAt: new Date().toISOString() }
-  write(MAXES_KEY, maxes)
-  return maxes
+  mutate(MAXES_KEY, {}, (maxes) => ({ ...maxes, [exerciseId]: { ...data, updatedAt: new Date().toISOString() } }))
+  return loadMaxes()
 }
 
 export function deleteMax(exerciseId) {
-  const maxes = loadMaxes()
-  delete maxes[exerciseId]
-  write(MAXES_KEY, maxes)
+  mutate(MAXES_KEY, {}, (maxes) => { const n = { ...maxes }; delete n[exerciseId]; return n })
 }
 
 // ---- Cardio log ----
 export const loadCardio = () => read(CARDIO_KEY, [])
 
 export function addCardio(entry) {
-  const log = loadCardio()
-  log.unshift({ id: genId(), ...entry })
-  write(CARDIO_KEY, log)
-  return log
+  const withId = { id: genId(), ...entry }
+  mutate(CARDIO_KEY, [], (log) => [withId, ...log])
+  return loadCardio()
 }
 
 export function deleteCardio(id) {
-  write(CARDIO_KEY, loadCardio().filter((e) => e.id !== id))
+  mutate(CARDIO_KEY, [], (log) => log.filter((e) => e.id !== id))
 }
 
 // ---- Workout history ----
 export const loadHistory = () => read(HISTORY_KEY, [])
 
 export function appendWorkout(entry) {
-  const history = loadHistory()
-  history.unshift(entry) // newest first
-  write(HISTORY_KEY, history)
-  return history
+  mutate(HISTORY_KEY, [], (history) => [entry, ...history]) // newest first
+  return loadHistory()
 }
 
 // Remove a logged workout by its date stamp (its unique id).
 export function deleteWorkout(date) {
-  write(HISTORY_KEY, loadHistory().filter((w) => w.date !== date))
+  mutate(HISTORY_KEY, [], (history) => history.filter((w) => w.date !== date))
 }
 
 export function lastPerformance(exerciseId) {
@@ -184,11 +249,13 @@ export function lastPerformance(exerciseId) {
 // Patch the most recent workout (or one matched by date) with extra fields,
 // e.g. a post-session difficulty rating and notes.
 export function updateWorkout(date, patch) {
-  const history = loadHistory()
-  const idx = date ? history.findIndex((w) => w.date === date) : 0
-  if (idx === -1 || history.length === 0) return
-  history[idx] = { ...history[idx], ...patch }
-  write(HISTORY_KEY, history)
+  mutate(HISTORY_KEY, [], (history) => {
+    const idx = date ? history.findIndex((w) => w.date === date) : 0
+    if (idx === -1 || history.length === 0) return history
+    const copy = history.slice()
+    copy[idx] = { ...copy[idx], ...patch }
+    return copy
+  })
 }
 
 // ---- Sync snapshot ----
@@ -217,7 +284,9 @@ export function importData(blob) {
   if (blob.maxes !== undefined) write(MAXES_KEY, blob.maxes, { silent: true })
   if (blob.cardio !== undefined) write(CARDIO_KEY, blob.cardio, { silent: true })
   if (blob.skills !== undefined) write(SKILLS_KEY, blob.skills, { silent: true })
-  if (blob.updatedAt !== undefined) localStorage.setItem(UPDATED_KEY, JSON.stringify(blob.updatedAt))
+  if (blob.updatedAt !== undefined) {
+    try { localStorage.setItem(UPDATED_KEY, JSON.stringify(blob.updatedAt)) } catch { /* ignore */ }
+  }
 }
 
 export const getUpdatedAt = () => read(UPDATED_KEY, 0)
@@ -251,14 +320,14 @@ export function importCode(code) {
   }
   importData(blob)
   // importData is silent; announce the change so the UI/sync layer refreshes.
-  localStorage.setItem(UPDATED_KEY, JSON.stringify(Date.now()))
+  try { localStorage.setItem(UPDATED_KEY, JSON.stringify(Date.now())) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent('sl-data-changed'))
   return true
 }
 
 export function clearAll() {
   ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, UPDATED_KEY, LEGACY_PROGRAM_KEY].forEach(
-    (k) => localStorage.removeItem(k),
+    (k) => { try { localStorage.removeItem(k) } catch { /* ignore */ } },
   )
   window.dispatchEvent(new CustomEvent('sl-data-changed'))
 }
