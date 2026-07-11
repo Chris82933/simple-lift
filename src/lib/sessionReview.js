@@ -117,16 +117,18 @@ export function reviewSession(session, setsMap, goals, units, method = 'manual')
     const didSets = doneSets.length >= ex.sets
     const progresses = (method === 'linear' || method === 'rpe') ? didSets : completedAll
     if (progresses) {
+      // Timed moves grow by seconds/minutes, rep moves by a rep — including the
+      // secondary "+time" option on loaded timed moves (e.g. farmer's carry).
+      const stepBy = m.type === 'time' ? (m.unit === 'min' ? 1 : 5) : 1
       if (tracksLoad && entered > 0) {
         suggestions.push({
           exId: ex.id, name: ex.name, type: 'load',
-          base: entered, reps: { to: target + 1, by: 1 }, hitTop: completedAll,
+          base: entered, reps: { to: target + stepBy, by: stepBy }, hitTop: completedAll,
           recommendedInc: recommendedInc(ex, units), isGzclp: false, measure: m,
         })
       } else if (m.type === 'time') {
         // Timed hold (plank, dead hang): grow the duration, not "reps".
-        const by = m.unit === 'min' ? 1 : 5
-        suggestions.push({ exId: ex.id, name: ex.name, type: 'time', reps: { to: target + by, by }, hitTop: completedAll, measure: m })
+        suggestions.push({ exId: ex.id, name: ex.name, type: 'time', reps: { to: target + stepBy, by: stepBy }, hitTop: completedAll, measure: m })
       } else {
         suggestions.push({ exId: ex.id, name: ex.name, type: 'reps', reps: { to: target + 1, by: 1 }, hitTop: completedAll, measure: m })
       }

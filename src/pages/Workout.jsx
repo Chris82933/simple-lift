@@ -23,7 +23,7 @@ import {
 } from '../lib/equipment.js'
 import { isBarbellLift } from '../lib/plates.js'
 import { ladderInfo } from '../lib/ladder.js'
-import { measureUnit } from '../data/exercises.js'
+import { measureUnit, exMeasure } from '../data/exercises.js'
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
@@ -114,10 +114,11 @@ const optionsFor = (sug, units) => {
     }
   }
   if (sug.reps) {
-    // Timed holds grow by seconds/minutes; everything else by reps.
-    const label = sug.type === 'time'
-      ? `+${sug.reps.by} ${sug.measure?.unit || 'sec'}`
-      : `+${sug.reps.by || 1} rep${(sug.reps.by || 1) > 1 ? 's' : ''}`
+    // Timed moves grow by seconds/minutes (even loaded ones, e.g. carries);
+    // everything else by reps.
+    const isTime = sug.type === 'time' || sug.measure?.type === 'time'
+    const by = sug.reps.by || 1
+    const label = isTime ? `+${by} ${sug.measure?.unit || 'sec'}` : `+${by} rep${by > 1 ? 's' : ''}`
     opts.push({ key: 'reps', label })
   }
   opts.push({ key: 'keep', label: 'Keep same' })
@@ -155,8 +156,9 @@ export default function Workout() {
       for (const ex of session.exercises) {
         const stored = ex.progression?.weight != null ? ex.progression.weight : ex.startWeight
         const weight = ex.load !== false && stored !== '' && stored != null ? String(stored) : ''
-        // Warm-up ramp leading into the working sets (compound lifts with a weight).
-        const warms = ex.warmups && weight
+        // Warm-up ramp leading into the working sets (rep-measured compound
+        // lifts with a weight — timed moves like carries don't ramp).
+        const warms = ex.warmups && weight && exMeasure(ex).type === 'reps'
           ? warmupSets(Number(weight), inc).map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: false, warmup: true }))
           : []
         const working = Array.from({ length: ex.sets }, () => ({ weight, reps: String(ex.repHigh), done: false }))

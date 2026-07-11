@@ -46,18 +46,18 @@ export const TEMPLATES = [
     deloadNote: 'Every ~6 weeks, take an easier week — drop a set or use a slightly easier variation — to let tendons and joints catch up with your strength.',
     name: 'Foundations: Full-Body Strength',
     description:
-      'A do-everything full-body plan for real-life strength, built on the resistance-training evidence base: train each major muscle ~2–3×/week, cover all the fundamental movement patterns, work in moderate rep ranges close to (but not to) failure, and add a little over time. Every move either climbs a progression ladder or loads up, so it fits a complete beginner and a seasoned lifter alike. Run it 2 or 3 days a week.',
+      'A do-everything full-body plan for real-life strength, built straight from the evidence. The WHO guidelines call for strengthening every major muscle group at least twice a week (Bull et al., 2020), and a 2022 meta-analysis of cohort studies found 30–60 minutes of weekly strength work is linked with a 10–20% lower risk of early death, heart disease, and cancer — with no extra benefit beyond that (Momma et al., 2022). This program is exactly that dose, done well: squat, hinge, push, pull, carry, and brace across 2–3 short sessions a week, scaling from a first-ever workout to years of training.',
     tags: ['Full body', 'Science-based', '2–3 days/wk'],
     level: 'All levels',
     bestFor: 'Everyday strength & health',
     equipment: 'A pair of dumbbells and a bar to hang from. A bench is optional (swap to push-ups without one).',
     progressionInfo:
-      'Double progression on the loaded lifts — work in the rep range, and once you hit the top of it on every set, add a little weight and start back near the bottom. Bodyweight moves climb their ladder: own the top of the range and the app offers the next-harder variation (too hard? it eases you down a step). Start as light or as easy as you need — the whole point is to add a little each week (progressive overload). Informed by resistance-training research on frequency (Schoenfeld, Ogborn & Krieger, 2016), effort/proximity to failure, and the ACSM’s guidance to train all major muscle groups 2+ days a week.',
+      'Each muscle is trained 2×+ per week — the frequency meta-analyses favour for growth (Schoenfeld, Ogborn & Krieger, 2016) — in moderate rep ranges, which build muscle as well as heavy ones when sets approach failure (Schoenfeld et al., 2017). Stop 1–2 reps short of failure: it grows muscle about as well as grinding to zero, with less fatigue to recover from (Refalo et al., 2023). Loaded lifts use double progression (top the range on every set → add a little weight, drop back, climb again) with ~2-minute rests on the big lifts (Schoenfeld et al., 2016). Bodyweight moves climb their ladder to a harder variation — or ease down a rung when needed. Push every rep up fast and lower it under control: intending to move quickly is what builds power (Behm & Sale, 1993), and power is what daily function runs on as we age (Byrne et al., 2016). The carries train grip and posture — grip strength is one of the strongest simple predictors of long-term health (Leong et al., 2015). Even the 2-day option clears the minimum effective training dose (Iversen et al., 2021).',
     pros: [
-      'Hits every major muscle and movement pattern 2–3×/week — the frequency the research favours for strength and muscle',
-      'Truly scalable: bodyweight moves progress from wall push-ups to one-arm work; loaded lifts start light and grow with you',
-      'Only five moves a session, 2–3 days a week — quick, recoverable, and easy to stick with',
-      'Balanced push/pull and squat/hinge keeps you resilient and pain-free for daily life',
+      'Every major muscle and movement pattern 2–3×/week — the frequency and weekly dose the research keeps rewarding',
+      'Truly scalable: ladders run from wall push-ups toward one-arm work; loaded lifts start as light as you need',
+      'Six quick moves a session — the biggest health payoff in the data sits at just 30–60 minutes a week',
+      'Carries, single-leg work, and fast lifting intent build grip, balance, and power — strength you feel outside the gym',
     ],
     cons: [
       'Not specialised — a focused program will beat it for a max bench or a competition squat',
@@ -69,18 +69,20 @@ export const TEMPLATES = [
     progressionMethod: 'double',
     schedule: { mode: 'rotation', trainingDays: [1, 3, 5] },
     days: [
-      day('Full Body A', 'Squat, push, pull, press, brace. Leave 1–2 reps in the tank on each set. Run it 2×/week (e.g. Mon/Thu) or 3×/week.', [
+      day('Full Body A', 'Squat · push · row · press · carry · brace. Stop 1–2 reps shy of failure; push up fast, lower slow. Run A/B 2×/week (e.g. Mon & Thu) or 3×/week.', [
         ex('goblet_squat', 3, [8, 12], 120),
         ex('pushup', 3, [8, 15], 90),
         ex('inverted_row', 3, [8, 12], 90),
         ex('db_shoulder_press', 3, [8, 12], 90),
+        ex('farmer_carry', 2, [30, 45], 75),
         ex('plank', 3, [20, 45], 45),
       ]),
-      day('Full Body B', 'Hinge, lunge, pull, push, brace. Same idea — stop each set a rep or two shy of failure.', [
+      day('Full Body B', 'Hinge · lunge · pull · press · carry · brace. Same rules — fast up, slow down, a rep or two in the tank.', [
         ex('db_rdl', 3, [8, 12], 120),
         ex('reverse_lunge', 3, [8, 12], 90),
         ex('pull_negative', 3, [3, 6], 120),
         ex('db_bench', 3, [8, 12], 90),
+        ex('farmer_carry', 2, [30, 45], 75),
         ex('dead_bug', 3, [8, 12], 45),
       ]),
     ],

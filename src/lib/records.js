@@ -1,7 +1,10 @@
 // Personal-record detection, 1RM updates, and a shareable session summary.
-// Records are judged on estimated 1RM (weight × reps → e1RM) so a heavy triple
-// and a lighter high-rep set are compared fairly. Warm-up sets never count.
+// Rep-measured lifts are judged on estimated 1RM (weight × reps → e1RM) so a
+// heavy triple and a lighter high-rep set are compared fairly. Timed moves
+// (planks, carries) never touch 1RM math — their "reps" are seconds — and are
+// tracked as heavier-load or longer-hold PRs instead. Warm-ups never count.
 import { estimate1RM } from './oneRepMax.js'
+import { exMeasure } from '../data/exercises.js'
 
 // The best a single exercise's sets achieved this session (warm-ups excluded).
 function bestOfSets(sets) {
@@ -51,6 +54,17 @@ export function sessionRecords(entries, priorHistory, maxes = {}) {
   for (const e of entries || []) {
     const b = bestOfSets(e.sets)
     const prior = bests[e.exerciseId]
+    const m = exMeasure({ id: e.exerciseId })
+    if (m.type !== 'reps') {
+      // Timed/distance moves: e1RM math is meaningless (their "reps" are
+      // seconds). PR = a heavier carry, or a longer bodyweight hold.
+      if (prior && b.topWeight > 0 && b.topWeight > prior.topWeight) {
+        prs.push({ exId: e.exerciseId, name: e.name, kind: 'weight', value: b.topWeight })
+      } else if (prior && b.topWeight === 0 && b.topReps > prior.topReps) {
+        prs.push({ exId: e.exerciseId, name: e.name, kind: 'time', value: b.topReps, unit: m.unit })
+      }
+      continue
+    }
     if (b.topE1RM > 0 && b.bestSet) {
       // A PR needs a prior baseline to beat (first-ever session isn't a "PR").
       if (prior && b.topE1RM > prior.topE1RM + 0.5) {
@@ -76,6 +90,7 @@ export function sessionRecords(entries, priorHistory, maxes = {}) {
 export function prShort(pr, units) {
   if (pr.kind === 'e1rm') return `est. 1RM ${pr.value} ${units}`
   if (pr.kind === 'weight') return `${pr.value} ${units} top set`
+  if (pr.kind === 'time') return `${pr.value} ${pr.unit || 'sec'} hold`
   return `${pr.value} reps`
 }
 

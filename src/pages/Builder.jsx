@@ -46,7 +46,7 @@ function makeExercise(ex, scheme, inc) {
     sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec,
     startWeight: resolveStartWeight(ex, p.repHigh, inc),
   }
-  if (ex.load !== false && ex.compound) entry.warmups = true
+  if (ex.load !== false && ex.compound && exMeasure(ex).type === 'reps') entry.warmups = true
   return entry
 }
 
@@ -138,7 +138,7 @@ export default function Builder() {
     if (lib.load !== false) {
       const w = resolveStartWeight(lib, p.repHigh, inc)
       if (w) patch.startWeight = w
-      patch.warmups = lib.compound ? true : undefined
+      patch.warmups = lib.compound && exMeasure(lib).type === 'reps' ? true : undefined
     }
     updateExercise(di, ei, patch)
   }

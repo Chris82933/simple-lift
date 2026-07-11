@@ -112,6 +112,7 @@ const BASE_EXERCISES = [
   { id: 'reverse_wrist_curl', name: 'Reverse Wrist Curl', pattern: 'biceps', regions: ['arms'], requires: ['dumbbells'], compound: false, tags: ['climbing'], cues: 'Palms down, lift the dumbbell with the wrist — balances the forearms and protects the elbows.' },
 
   // ---- Core ----
+  { id: 'farmer_carry', name: 'Farmer’s Carry', pattern: 'core', regions: ['core', 'arms', 'back'], requires: ['dumbbells'], compound: true, hold: true, unit: 'sec', tags: ['climbing'], cues: 'Grab a heavy dumbbell in each hand, stand tall, and walk — shoulders back, ribs down, no leaning. Carry for time. One-bell “suitcase” carries make the core work even harder.' },
   { id: 'plank', name: 'Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, tags: ['climbing', 'running'], cues: 'Straight line, squeeze glutes and abs, breathe. Hold for time.' },
   { id: 'side_plank_leg_lift', name: 'Side Plank + Leg Lift', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, cues: 'Hold a side plank and raise the top leg with control — hits the obliques and hip abductors. Reps per side.' },
   { id: 'hollow_hold', name: 'Hollow Body Hold', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, cues: 'Low back pressed flat, shoulders and legs off the floor in a shallow banana. Hold for time — the foundation for levers and handstands.' },
@@ -297,6 +298,7 @@ const ALIASES = {
   bw_calf_raise: ['standing calf raise', 'bodyweight calf raise'],
   tibialis_raise: ['tib raise', 'anterior tibialis raise'],
   // Core
+  farmer_carry: ['farmers walk', "farmer's walk", 'farmers carry', 'loaded carry', 'suitcase carry', 'dumbbell carry', 'grip'],
   plank: ['front plank', 'forearm plank'],
   hanging_leg_raise: ['hanging leg raises', 'leg raise'],
   dead_bug: ['deadbug'],
