@@ -33,12 +33,13 @@ const direct = {
 const env = (typeof import.meta !== 'undefined' && import.meta.env) || {}
 
 export const firebaseConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY || direct.apiKey,
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || direct.authDomain,
-  projectId: env.VITE_FIREBASE_PROJECT_ID || direct.projectId,
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || direct.storageBucket,
-  messagingSenderId: env.VITE_FIREBASE_SENDER_ID || direct.messagingSenderId,
-  appId: env.VITE_FIREBASE_APP_ID || direct.appId,
+  apiKey: "AIzaSyBUFevSCsd5Vh2lx5hc6jOS4qREboueEyk",
+  authDomain: "simple-lift-1f7ec.firebaseapp.com",
+  projectId: "simple-lift-1f7ec",
+  storageBucket: "simple-lift-1f7ec.firebasestorage.app",
+  messagingSenderId: "144158287744",
+  appId: "1:144158287744:web:14c5c52283eff5aac04365",
+  measurementId: "G-1LBY7D6CPC"
 }
 
 // True only once every value is real (no leftover YOUR_… placeholder).
