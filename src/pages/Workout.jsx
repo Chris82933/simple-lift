@@ -23,7 +23,7 @@ import {
 } from '../lib/equipment.js'
 import { isBarbellLift } from '../lib/plates.js'
 import { ladderInfo } from '../lib/ladder.js'
-import { measureUnit, exMeasure } from '../data/exercises.js'
+import { measureUnit, exMeasure, EXERCISE_BY_ID } from '../data/exercises.js'
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
@@ -248,6 +248,34 @@ export default function Workout() {
       const n = { ...s }
       delete n[exId]
       n[sub.id] = Array.from({ length: p.sets }, () => ({ weight: '', reps: String(p.repHigh), done: false }))
+      return n
+    })
+  }
+
+  // Manually move a laddered bodyweight move up (harder) or down (easier) a
+  // level, on demand — no target required. Keeps the current sets/reps/rest.
+  const stepLadder = (exId, dir) => {
+    const ex = exercises.find((e) => e.id === exId)
+    const info = ladderInfo(exId)
+    const targetId = dir > 0 ? info?.nextId : info?.prevId
+    const target = targetId && EXERCISE_BY_ID[targetId]
+    if (!ex || !target) return
+    const entry = {
+      ...ex,
+      id: target.id, name: target.name, pattern: target.pattern, regions: target.regions,
+      compound: target.compound, load: target.load !== false, cues: target.cues,
+      ladderId: target.ladderId || null, nextId: target.nextId || null, prevId: target.prevId || null,
+    }
+    setExercises((list) => {
+      if (list.some((e) => e.id === target.id && e.id !== exId)) return list // avoid dup id
+      return list.map((e) => (e.id === exId ? entry : e))
+    })
+    setSets((s) => {
+      const n = { ...s }
+      const rows = n[exId] || []
+      delete n[exId]
+      // Keep the same number of working sets; reset done + drop any warm-ups.
+      n[target.id] = rows.filter((r) => !r.warmup).map((r) => ({ ...r, done: false }))
       return n
     })
   }
@@ -709,12 +737,32 @@ export default function Workout() {
               <p className="cue">💡 {ex.cues}</p>
               {ex.progression && <p className="suggestion">{stageNote(ex, units) || extraNote(ex, units)}</p>}
               {lad && lad.length > 1 && (
-                <p className="suggestion ladder-hint">
-                  Progression ladder · step {lad.index + 1} of {lad.length}
-                  {lad.nextName
-                    ? ` — next: ${lad.nextName}. Level up once you can do all ${ex.sets} sets at ${ex.repHigh} ${measureUnit(ex)} with clean form.`
-                    : " — you're at the hardest step. Keep adding reps."}
-                </p>
+                <div className="ladder-hint">
+                  <p className="suggestion" style={{ margin: 0 }}>
+                    Progression ladder · step {lad.index + 1} of {lad.length}
+                    {lad.nextName
+                      ? ` — next: ${lad.nextName}. Level up once you can do all ${ex.sets} sets at ${ex.repHigh} ${measureUnit(ex)} with clean form.`
+                      : " — you're at the hardest step. Keep adding reps."}
+                  </p>
+                  <div className="ladder-steps">
+                    <button
+                      type="button"
+                      className="ladder-step-btn"
+                      disabled={!lad.prevId}
+                      onClick={() => stepLadder(ex.id, -1)}
+                    >
+                      ↓ Easier{lad.prevName ? `: ${lad.prevName}` : ''}
+                    </button>
+                    <button
+                      type="button"
+                      className="ladder-step-btn"
+                      disabled={!lad.nextId}
+                      onClick={() => stepLadder(ex.id, 1)}
+                    >
+                      ↑ Harder{lad.nextName ? `: ${lad.nextName}` : ''}
+                    </button>
+                  </div>
+                </div>
               )}
               {plateTarget && (
                 <PlateBreakdown

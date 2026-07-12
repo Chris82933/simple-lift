@@ -415,10 +415,28 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   border-radius: 10px;
   padding: 8px 10px;
 }
-.suggestion.ladder-hint {
-  color: var(--muted);
-  background: var(--surface-2);
+.ladder-hint { display: flex; flex-direction: column; gap: 8px; }
+.ladder-hint .suggestion { color: var(--muted); background: var(--surface-2); }
+.ladder-steps { display: flex; gap: 8px; flex-wrap: wrap; }
+.builder-ladder { align-items: center; margin-top: 4px; }
+.ladder-step-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.builder-ladder .ladder-step-btn { flex: none; }
+.ladder-step-btn:hover:not(:disabled) { border-color: var(--accent); }
+.ladder-step-btn:disabled { opacity: 0.4; cursor: default; }
 
 /* ---- Barbell plate calculator ---- */
 .plate-line {

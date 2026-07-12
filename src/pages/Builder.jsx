@@ -9,6 +9,7 @@ import {
   loadProfile, getProgram, addProgram, updateProgram, getMax, loadMaxes, loadSettings,
 } from '../lib/storage.js'
 import { weightForReps, incrementForUnits, interpolate1RM } from '../lib/oneRepMax.js'
+import { ladderInfo } from '../lib/ladder.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
@@ -125,6 +126,22 @@ export default function Builder() {
     const next = [...list]
     ;[next[ei], next[j]] = [next[j], next[ei]]
     updateDay(di, { exercises: next })
+  }
+
+  // Swap a laddered exercise to an easier (dir<0) or harder (dir>0) variation,
+  // keeping its sets/reps/rest. Lets people pick any level directly, no target.
+  const changeLevel = (di, ei, dir) => {
+    const ex = draft.days[di].exercises[ei]
+    const info = ladderInfo(ex.id)
+    const targetId = dir > 0 ? info?.nextId : info?.prevId
+    const target = targetId && EXERCISE_BY_ID[targetId]
+    if (!target) return
+    if (draft.days[di].exercises.some((e, j) => j !== ei && e.id === target.id)) return // no dup
+    updateExercise(di, ei, {
+      id: target.id, name: target.name, pattern: target.pattern, regions: target.regions,
+      compound: target.compound, load: target.load !== false, cues: target.cues,
+      ladderId: target.ladderId || null, nextId: target.nextId || null, prevId: target.prevId || null,
+    })
   }
 
   // Reset one exercise to the recommended setup for the current goal: sets/reps/
@@ -317,6 +334,17 @@ export default function Builder() {
                     <label>Start wt<input type="number" inputMode="decimal" value={ex.startWeight} placeholder="–" onChange={(e) => updateExercise(di, ei, { startWeight: e.target.value })} /></label>
                   )}
                 </div>
+                {(() => {
+                  const lad = ladderInfo(ex.id)
+                  if (!lad || lad.length <= 1) return null
+                  return (
+                    <div className="ladder-steps builder-ladder">
+                      <span className="muted small">Level {lad.index + 1}/{lad.length}</span>
+                      <button type="button" className="ladder-step-btn" disabled={!lad.prevId} onClick={() => changeLevel(di, ei, -1)} title={lad.prevName ? `Easier: ${lad.prevName}` : ''}>↓ Easier</button>
+                      <button type="button" className="ladder-step-btn" disabled={!lad.nextId} onClick={() => changeLevel(di, ei, 1)} title={lad.nextName ? `Harder: ${lad.nextName}` : ''}>↑ Harder</button>
+                    </div>
+                  )
+                })()}
                 {ex.load && (
                   <div className="amrap-row">
                     <button
