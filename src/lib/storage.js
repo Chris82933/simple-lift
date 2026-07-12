@@ -273,6 +273,33 @@ export function exportData() {
   }
 }
 
+// Firestore caps a single document at ~1 MiB, and we sync the whole snapshot as
+// one document. Guard against silently outgrowing it: warn with headroom, and
+// let the sync layer refuse a doomed write near the ceiling. JSON byte length is
+// a close-enough proxy for Firestore's own size accounting.
+export const CLOUD_DOC_LIMIT = 1048576 // 1 MiB
+export const CLOUD_WARN_AT = 800 * 1024 // ~0.78 MiB — flag well before the wall
+
+export function snapshotBytes() {
+  try {
+    const json = JSON.stringify(exportData())
+    return typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(json).length : json.length
+  } catch {
+    return 0
+  }
+}
+
+// { bytes, pct (0–100), warn, over } describing how full the cloud document is.
+export function cloudSizeInfo() {
+  const bytes = snapshotBytes()
+  return {
+    bytes,
+    pct: Math.min(100, Math.round((bytes / CLOUD_DOC_LIMIT) * 100)),
+    warn: bytes >= CLOUD_WARN_AT,
+    over: bytes >= CLOUD_DOC_LIMIT,
+  }
+}
+
 // Applies a cloud snapshot to local storage. Silent so it doesn't echo back out.
 export function importData(blob) {
   if (!blob) return

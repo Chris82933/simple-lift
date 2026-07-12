@@ -3,7 +3,7 @@ import {
   isFirebaseConfigured, subscribeAuth, signInWithGoogle, signOutUser,
 } from '../lib/firebase.js'
 import { pullCloud, pushCloud } from '../lib/cloud.js'
-import { exportData, importData, getUpdatedAt } from '../lib/storage.js'
+import { exportData, importData, getUpdatedAt, cloudSizeInfo } from '../lib/storage.js'
 
 const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
@@ -11,6 +11,7 @@ export const useAuth = () => useContext(AuthContext)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [status, setStatus] = useState('idle') // idle | syncing | synced | error
+  const [syncNote, setSyncNote] = useState(null) // { level:'warn'|'over', pct, bytes } | null
   const pushTimer = useRef(null)
 
   // Track auth state (subscribeAuth resolves to an unsubscribe fn).
@@ -60,7 +61,16 @@ export function AuthProvider({ children }) {
     const onChange = () => {
       clearTimeout(pushTimer.current)
       pushTimer.current = setTimeout(() => {
-        pushCloud(user.uid, exportData()).catch(() => setStatus('error'))
+        const info = cloudSizeInfo()
+        if (info.over) {
+          // Too big for a Firestore document — refuse the write that would fail
+          // anyway, and flag it. Local data is untouched; a backup code still works.
+          setSyncNote({ level: 'over', pct: info.pct, bytes: info.bytes })
+          setStatus('error')
+          return
+        }
+        setSyncNote(info.warn ? { level: 'warn', pct: info.pct, bytes: info.bytes } : null)
+        pushCloud(user.uid, exportData()).then(() => setStatus('synced')).catch(() => setStatus('error'))
       }, 1500)
     }
     window.addEventListener('sl-data-changed', onChange)
@@ -74,6 +84,7 @@ export function AuthProvider({ children }) {
     configured: isFirebaseConfigured,
     user,
     status,
+    syncNote,
     signIn: signInWithGoogle,
     signOut: signOutUser,
   }

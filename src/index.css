@@ -537,6 +537,8 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .share-actions .btn { flex: 1; }
 .share-note { margin-top: 4px; }
 
+.sync-warn { margin: 6px 0 0; }
+
 /* ---- iOS data-loss warning ---- */
 .ios-warning { border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); }
 .ios-warning .placeholder-title { margin-bottom: 6px; }

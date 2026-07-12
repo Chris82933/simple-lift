@@ -142,8 +142,20 @@ export default function Profile() {
           <>
             <div className="account-row">
               <span>{auth.user.displayName || auth.user.email}</span>
-              <span className="active-badge">{auth.status === 'syncing' ? 'Syncing…' : 'Synced'}</span>
+              <span className="active-badge">
+                {auth.status === 'syncing' ? 'Syncing…' : auth.syncNote?.level === 'over' ? 'Sync paused' : 'Synced'}
+              </span>
             </div>
+            {auth.syncNote?.level === 'over' && (
+              <p className="muted small sync-warn">
+                ⚠️ Your data has grown past the cloud limit ({auth.syncNote.pct}% of 1&nbsp;MB), so cloud sync is paused — your data is still safe on this device. Trim old sessions in Progress, or keep a backup code below.
+              </p>
+            )}
+            {auth.syncNote?.level === 'warn' && (
+              <p className="muted small sync-warn">
+                Cloud backup is {auth.syncNote.pct}% full. It still syncs, but consider deleting some old sessions in Progress before it fills up.
+              </p>
+            )}
             <button className="btn btn-ghost btn-sm" onClick={() => auth.signOut()}>Sign out</button>
           </>
         )}
