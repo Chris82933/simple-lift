@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadHistory, loadSettings, loadCardio, deleteWorkout, deleteCardio } from '../lib/storage.js'
+import { loadHistory, loadSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { exMeasure } from '../data/exercises.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
 import ProgressChart from '../components/ProgressChart.jsx'
+import ExerciseDetail from '../components/ExerciseDetail.jsx'
+import { useToast } from '../components/Toast.jsx'
 
 // Chart palette — mid-tone hues that stay legible on both light and dark cards.
 const PALETTE = ['#10b981', '#ff4d4d', '#3b9fd6', '#e0a800', '#e84393', '#8b5cf6', '#14b8a6', '#f97316']
@@ -149,27 +151,38 @@ function buildCardioSeries(cardio, metricId) {
 
 export default function Progress() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [, setVersion] = useState(0)
   const refresh = () => setVersion((v) => v + 1)
   const history = loadHistory()
   const cardio = loadCardio()
   const units = loadSettings().units || 'lbs'
+  const [detailEx, setDetailEx] = useState(null) // { id, name } for the detail sheet
 
+  // Delete immediately, offer Undo via toast (no blocking confirm dialog).
   const removeSession = (w) => {
-    if (window.confirm(`Delete "${w.sessionTitle}" from ${new Date(w.date).toLocaleDateString()}? This can't be undone.`)) {
-      deleteWorkout(w.date)
-      refresh()
-    }
+    const idx = history.indexOf(w)
+    deleteWorkout(w.date)
+    refresh()
+    toast.show('Session deleted', { actionLabel: 'Undo', onAction: () => { insertWorkoutAt(w, idx); refresh() } })
   }
   const removeCardio = (c) => {
-    if (window.confirm('Delete this cardio entry?')) {
-      deleteCardio(c.id)
-      refresh()
-    }
+    const idx = cardio.indexOf(c)
+    deleteCardio(c.id)
+    refresh()
+    toast.show('Cardio entry deleted', { actionLabel: 'Undo', onAction: () => { insertCardioAt(c, idx); refresh() } })
   }
   const [weightMetric, setWeightMetric] = useState('top') // 'top' | 'e1rm'
   const allSeries = useMemo(() => buildSeries(history, weightMetric), [history, weightMetric])
   const bwSeries = useMemo(() => buildBodyweightSeries(history), [history])
+  // Every exercise that appears in history, for the tappable per-exercise list.
+  const exercisesTracked = useMemo(() => {
+    const seen = new Map()
+    for (const w of history) for (const e of w.entries || []) {
+      if (!seen.has(e.exerciseId)) seen.set(e.exerciseId, e.name)
+    }
+    return [...seen].map(([id, name]) => ({ id, name }))
+  }, [history])
   const [bwHidden, setBwHidden] = useState(() => new Set())
   const toggleBw = (id) => setBwHidden((h) => {
     const n = new Set(h)
@@ -266,6 +279,22 @@ export default function Progress() {
         </div>
       )}
 
+      {/* ---- Per-exercise history ---- */}
+      {exercisesTracked.length > 0 && (
+        <div className="card">
+          <p className="group-label">Exercise history</p>
+          <p className="muted small">Tap a lift to see its own trend, best marks, and recent sessions.</p>
+          <div className="exercise-history-list">
+            {exercisesTracked.map((ex) => (
+              <button key={ex.id} type="button" className="ex-history-row" onClick={() => setDetailEx(ex)}>
+                <span>{ex.name}</span>
+                <span className="ex-history-chevron" aria-hidden="true">›</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ---- Cardio ---- */}
       <div className="card">
         <div className="week-head">
@@ -318,6 +347,16 @@ export default function Progress() {
           <SessionEntry key={w.date || i} workout={w} units={units} onDelete={removeSession} />
         ))}
       </div>
+      )}
+
+      {detailEx && (
+        <ExerciseDetail
+          exId={detailEx.id}
+          name={detailEx.name}
+          history={history}
+          units={units}
+          onClose={() => setDetailEx(null)}
+        />
       )}
     </section>
   )

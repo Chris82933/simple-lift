@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
+import { ToastProvider } from './components/Toast.jsx'
 import { initInstallPrompt } from './lib/installPrompt.js'
 import { applyTheme } from './lib/theme.js'
 import { loadSettings } from './lib/storage.js'
@@ -20,9 +21,11 @@ applyTheme(loadSettings().theme)
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
-      <HashRouter>
-        <App />
-      </HashRouter>
+      <ToastProvider>
+        <HashRouter>
+          <App />
+        </HashRouter>
+      </ToastProvider>
     </AuthProvider>
   </StrictMode>,
 )

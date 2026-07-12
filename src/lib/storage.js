@@ -9,6 +9,7 @@ const MAXES_KEY = 'simple-lift:maxes'
 const CARDIO_KEY = 'simple-lift:cardio'
 const SKILLS_KEY = 'simple-lift:skills'
 const UPDATED_KEY = 'simple-lift:updatedAt'
+const ACTIVE_SESSION_KEY = 'simple-lift:activeSession' // in-progress workout (resume)
 const LEGACY_PROGRAM_KEY = 'simple-lift:program' // pre-multi-program
 
 // Low-level read that separates "the key is genuinely absent" from "the read
@@ -197,6 +198,13 @@ export function deleteProgram(id) {
   }
 }
 
+// Re-add a deleted program (undo). Won't duplicate if it's somehow back.
+export function restoreProgram(program) {
+  const { ok, programs } = readPrograms()
+  if (!ok || programs.some((p) => p.id === program.id)) return
+  savePrograms([...programs, program])
+}
+
 // ---- Estimated maxes (from the 1RM calculator) ----
 // Shape: { [exerciseId]: { oneRM, weight, reps, rir, units, name, updatedAt } }
 export const loadMaxes = () => read(MAXES_KEY, {})
@@ -224,8 +232,33 @@ export function deleteCardio(id) {
   mutate(CARDIO_KEY, [], (log) => log.filter((e) => e.id !== id))
 }
 
+export function insertCardioAt(entry, idx) {
+  mutate(CARDIO_KEY, [], (log) => {
+    const c = log.slice()
+    c.splice(Math.max(0, Math.min(idx ?? c.length, c.length)), 0, entry)
+    return c
+  })
+}
+
+// ---- In-progress workout (for resuming after a close / crash / iOS eviction) ----
+// Kept local-only (silent) — no need to sync a half-finished session.
+export const loadActiveSession = () => read(ACTIVE_SESSION_KEY, null)
+export const saveActiveSession = (s) => write(ACTIVE_SESSION_KEY, s, { silent: true })
+export function clearActiveSession() {
+  try { localStorage.removeItem(ACTIVE_SESSION_KEY) } catch { /* ignore */ }
+}
+
 // ---- Workout history ----
 export const loadHistory = () => read(HISTORY_KEY, [])
+
+// Re-insert a deleted workout / cardio entry at its original index (undo).
+export function insertWorkoutAt(entry, idx) {
+  mutate(HISTORY_KEY, [], (h) => {
+    const c = h.slice()
+    c.splice(Math.max(0, Math.min(idx ?? c.length, c.length)), 0, entry)
+    return c
+  })
+}
 
 export function appendWorkout(entry) {
   mutate(HISTORY_KEY, [], (history) => [entry, ...history]) // newest first
@@ -353,7 +386,7 @@ export function importCode(code) {
 }
 
 export function clearAll() {
-  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, UPDATED_KEY, LEGACY_PROGRAM_KEY].forEach(
+  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, UPDATED_KEY, ACTIVE_SESSION_KEY, LEGACY_PROGRAM_KEY].forEach(
     (k) => { try { localStorage.removeItem(k) } catch { /* ignore */ } },
   )
   window.dispatchEvent(new CustomEvent('sl-data-changed'))

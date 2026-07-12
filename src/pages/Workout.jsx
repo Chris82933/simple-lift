@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation,
   addCardio, addProgram, updateWorkout, loadHistory, loadMaxes, saveMax,
+  loadActiveSession, saveActiveSession, clearActiveSession,
 } from '../lib/storage.js'
 import { sessionRecords, buildSessionSummary, prShort } from '../lib/records.js'
 import { repsLabel, schemeForGoals, prescriptionFor } from '../data/schemes.js'
@@ -125,6 +126,42 @@ const optionsFor = (sug, units) => {
   return opts
 }
 
+// Fresh set-tracking state for a session: warm-up ramp (rep-measured loaded
+// compounds) + working sets prefilled with the stored working weight.
+function buildInitialSets(session, units) {
+  const initial = {}
+  const inc = incrementForUnits(units)
+  if (session) {
+    for (const ex of session.exercises) {
+      const stored = ex.progression?.weight != null ? ex.progression.weight : ex.startWeight
+      const weight = ex.load !== false && stored !== '' && stored != null ? String(stored) : ''
+      const warms = ex.warmups && weight && exMeasure(ex).type === 'reps'
+        ? warmupSets(Number(weight), inc).map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: false, warmup: true }))
+        : []
+      const working = Array.from({ length: ex.sets }, () => ({ weight, reps: String(ex.repHigh), done: false }))
+      initial[ex.id] = [...warms, ...working]
+    }
+  }
+  return initial
+}
+
+// A "last time" one-liner per exercise from history (most recent done sets).
+function buildLastTimeMap() {
+  const map = {}
+  for (const w of loadHistory()) { // newest first
+    for (const e of w.entries || []) {
+      if (map[e.exerciseId]) continue
+      const done = (e.sets || []).filter((s) => s.done && !s.warmup && Number(s.reps) > 0)
+      if (!done.length) continue
+      map[e.exerciseId] = done.map((s) => {
+        const wt = Number(s.weight) || 0
+        return wt > 0 ? `${wt}×${s.reps}` : `${s.reps}`
+      }).join(', ')
+    }
+  }
+  return map
+}
+
 export default function Workout() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -141,35 +178,29 @@ export default function Workout() {
     const session = raw
       ? { ...raw, exercises: raw.exercises.map((e) => (e.progression ? applyStage(e) : e)) }
       : null
-    return { program, dayIndex, session }
+    // A saved in-progress session for THIS program+day, with real progress
+    // (at least one logged set) → offer to resume it.
+    const saved = loadActiveSession()
+    const hasProgress = saved && saved.sets && Object.values(saved.sets).some(
+      (rows) => Array.isArray(rows) && rows.some((r) => r.done),
+    )
+    const resumed = saved && program && saved.programId === program.id && saved.dayIndex === dayIndex
+      && Array.isArray(saved.exercises) && saved.exercises.length > 0 && hasProgress
+      ? saved : null
+    return { program, dayIndex, session, resumed }
   })
-  const { program, dayIndex, session } = snapshot
+  const { program, dayIndex, session, resumed } = snapshot
   const goals = program?.goals || program?.meta?.goals || []
   const method = methodFor(program)
+  // "Last time" numbers per exercise (computed once at mount).
+  const [lastTime] = useState(() => buildLastTimeMap())
 
-  // Set-tracking state: prefilled from each exercise's stored working values
-  // (so values carry over session-to-session, even when sets weren't ticked).
-  const [sets, setSets] = useState(() => {
-    const initial = {}
-    const inc = incrementForUnits(units)
-    if (session) {
-      for (const ex of session.exercises) {
-        const stored = ex.progression?.weight != null ? ex.progression.weight : ex.startWeight
-        const weight = ex.load !== false && stored !== '' && stored != null ? String(stored) : ''
-        // Warm-up ramp leading into the working sets (rep-measured compound
-        // lifts with a weight — timed moves like carries don't ramp).
-        const warms = ex.warmups && weight && exMeasure(ex).type === 'reps'
-          ? warmupSets(Number(weight), inc).map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: false, warmup: true }))
-          : []
-        const working = Array.from({ length: ex.sets }, () => ({ weight, reps: String(ex.repHigh), done: false }))
-        initial[ex.id] = [...warms, ...working]
-      }
-    }
-    return initial
-  })
+  // Set-tracking state: resumed from a saved session, else prefilled fresh.
+  const [sets, setSets] = useState(() => (resumed ? resumed.sets : buildInitialSets(session, units)))
 
   // Live, editable exercise list (lets users add/remove/adjust mid-workout).
-  const [exercises, setExercises] = useState(() => (session ? session.exercises : []))
+  const [exercises, setExercises] = useState(() => (resumed ? resumed.exercises : (session ? session.exercises : [])))
+  const [showResumed, setShowResumed] = useState(!!resumed)
   const [editMode, setEditMode] = useState(false)
   // Snapshot taken when entering edit mode, so "Cancel changes" can revert.
   const [editSnapshot, setEditSnapshot] = useState(null)
@@ -199,6 +230,24 @@ export default function Workout() {
   const [saveChoice, setSaveChoice] = useState('none') // 'none' | 'update' | 'new'
   const [difficulty, setDifficulty] = useState(null)
   const [notes, setNotes] = useState('')
+
+  // Persist the live session (debounced) so it survives a close / crash / iOS
+  // storage eviction — and can be resumed. Cleared once the workout finishes.
+  useEffect(() => {
+    if (!session || finished) return
+    const t = setTimeout(() => {
+      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, savedAt: Date.now() })
+    }, 500)
+    return () => clearTimeout(t)
+  }, [exercises, sets, finished, program, dayIndex, session])
+
+  // Discard a resumed session and start this day fresh.
+  const startOver = () => {
+    clearActiveSession()
+    setExercises(session ? session.exercises : [])
+    setSets(buildInitialSets(session, units))
+    setShowResumed(false)
+  }
 
   // Add an exercise to this session (one-off — not saved to the program).
   const addExercise = (ex) => {
@@ -382,6 +431,7 @@ export default function Workout() {
     // Detect PRs and fresh 1RM estimates against the history *before* this session.
     const { prs: newPrs, oneRMUpdates } = sessionRecords(entries, loadHistory(), loadMaxes())
     appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries, prs: newPrs })
+    clearActiveSession() // session is logged — no longer resumable
     setPrs(newPrs)
     setRmUpdates(oneRMUpdates)
     setRmDone({})
@@ -671,6 +721,12 @@ export default function Workout() {
       </header>
 
       <div className="step-body">
+        {showResumed && (
+          <div className="card notice resumed-banner">
+            <p className="muted small">↩️ Resumed your in-progress session — your logged sets are back.</p>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={startOver}>Start over</button>
+          </div>
+        )}
         {(() => {
           const n = exercises.filter((ex) => !isDoable(ex, availableSet)).length
           return n > 0 ? (
@@ -709,6 +765,9 @@ export default function Workout() {
                     {sets[ex.id]?.some((r) => r.warmup) ? ' · + warm-ups' : ''}
                     {ex.compound ? ' · compound' : ''}
                   </p>
+                  {lastTime[ex.id] && (
+                    <p className="muted small last-time">↩︎ Last time: {lastTime[ex.id]}</p>
+                  )}
                 </div>
               </div>
 

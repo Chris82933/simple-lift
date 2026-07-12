@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  loadPrograms, getActiveProgramId, setActiveProgramId, deleteProgram,
+  loadPrograms, getActiveProgramId, setActiveProgramId, deleteProgram, restoreProgram,
 } from '../lib/storage.js'
+import { useToast } from '../components/Toast.jsx'
 
 export default function Programs() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [, force] = useState(0)
   const programs = loadPrograms()
   const activeId = getActiveProgramId()
@@ -13,11 +15,14 @@ export default function Programs() {
   const refresh = () => force((n) => n + 1)
 
   const makeActive = (id) => { setActiveProgramId(id); refresh() }
-  const remove = (id, name) => {
-    if (window.confirm(`Delete "${name}"? This can't be undone.`)) {
-      deleteProgram(id)
-      refresh()
-    }
+  const remove = (program) => {
+    const wasActive = program.id === activeId
+    deleteProgram(program.id)
+    refresh()
+    toast.show(`Deleted "${program.name}"`, {
+      actionLabel: 'Undo',
+      onAction: () => { restoreProgram(program); if (wasActive) setActiveProgramId(program.id); refresh() },
+    })
   }
 
   return (
@@ -75,7 +80,7 @@ export default function Programs() {
                   Edit
                 </button>
               )}
-              <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => remove(p.id, p.name)}>
+              <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => remove(p)}>
                 Delete
               </button>
             </div>
