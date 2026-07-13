@@ -110,6 +110,10 @@ const BASE_EXERCISES = [
   { id: 'weighted_pullup', name: 'Weighted Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar', 'dumbbells'], compound: true, tags: ['climbing'], cues: 'Hang a dumbbell from a belt or squeeze it between your feet; full range, chin over the bar.' },
   { id: 'wrist_curl', name: 'Wrist Curl', pattern: 'biceps', regions: ['arms'], requires: ['dumbbells'], compound: false, tags: ['climbing'], cues: 'Forearms on your thighs, curl the dumbbell with the wrist only — forearm/finger-flexor strength.' },
   { id: 'reverse_wrist_curl', name: 'Reverse Wrist Curl', pattern: 'biceps', regions: ['arms'], requires: ['dumbbells'], compound: false, tags: ['climbing'], cues: 'Palms down, lift the dumbbell with the wrist — balances the forearms and protects the elbows.' },
+  { id: 'max_hangs', name: 'Hangboard Max Hangs', pattern: 'vert_pull', regions: ['arms', 'back'], requires: ['pullup_bar'], compound: false, load: true, hold: true, unit: 'sec', tags: ['climbing'], cues: 'On a hangboard (or a comfortable bar edge), hang 7–10s on an edge you could just barely hold ~13s all-out — RPE 9, never to failure. Rest ~3 min between hangs. Add weight or a smaller edge as it gets easy. Finger strength’s #1 tool. Not for beginners — build ~a year of climbing first, and warm the fingers up thoroughly.' },
+  { id: 'repeaters', name: 'Hangboard Repeaters', pattern: 'vert_pull', regions: ['arms', 'back'], requires: ['pullup_bar'], compound: false, tags: ['climbing'], cues: 'Sub-maximal edge: hang 7s, rest 3s — 6 hangs make one set (log each 7s hang as a rep). Builds finger strength-endurance. Add hangs, then a little weight. Warm up first; ease off if fingers ache.' },
+  { id: 'front_lever_tuck', name: 'Tuck Front Lever', pattern: 'core', regions: ['core', 'back'], requires: ['pullup_bar'], compound: true, load: false, hold: true, unit: 'sec', tags: ['climbing'], cues: 'Hang, pull the shoulders down and back, and tuck your knees to your chest with the torso horizontal. Hold for time — the body tension climbing lives on. As it gets easy, extend one leg, then both (advanced tuck → one-leg → full front lever).' },
+  { id: 'finger_ext_band', name: 'Finger Extensions', pattern: 'biceps', regions: ['arms'], requires: [], compound: false, load: false, tags: ['climbing'], cues: 'Loop a rubber band (or hair tie) around your fingertips and open the hand against it. Balances the forearm flexors you crush climbing with — key prehab against climber’s elbow.' },
 
   // ---- Core ----
   { id: 'farmer_carry', name: 'Farmer’s Carry', pattern: 'core', regions: ['core', 'arms', 'back'], requires: ['dumbbells'], compound: true, hold: true, unit: 'sec', tags: ['climbing'], cues: 'Grab a heavy dumbbell in each hand, stand tall, and walk — shoulders back, ribs down, no leaning. Carry for time. One-bell “suitcase” carries make the core work even harder.' },
@@ -282,6 +286,10 @@ const ALIASES = {
   ez_curl: ['barbell curl', 'ez bar curl', 'ez-bar curl', 'bicep curl'],
   band_curl: ['band bicep curl'],
   wrist_curl: ['forearm curl'],
+  max_hangs: ['hangboard', 'fingerboard', 'max hang', 'finger strength', 'edge hang', 'dead hang weighted'],
+  repeaters: ['hangboard repeaters', 'finger endurance', '7 3 repeaters', 'fingerboard'],
+  front_lever_tuck: ['front lever', 'tuck front lever', 'body tension', 'lever'],
+  finger_ext_band: ['finger extensions', 'reverse finger curl', 'rubber band extensions', 'climbers elbow', 'prehab', 'extensor'],
   // Triceps
   db_skullcrusher: ['skull crusher', 'skullcrusher', 'lying triceps extension', 'nose breaker', 'tricep'],
   db_overhead_ext: ['french press', 'overhead dumbbell extension', 'seated triceps extension', 'overhead tricep extension', 'tricep extension', 'triceps extension', 'tricep'],
