@@ -95,7 +95,7 @@ export function prShort(pr, units) {
 }
 
 // Plain-text session recap for sharing (paste into Strava, notes, socials).
-export function buildSessionSummary(title, entries, { units } = {}) {
+export function buildSessionSummary(title, entries, { units, cardio } = {}) {
   const body = []
   let volume = 0
   for (const e of entries || []) {
@@ -107,6 +107,15 @@ export function buildSessionSummary(title, entries, { units } = {}) {
       return w > 0 ? `${w}×${s.reps}` : `${s.reps}`
     })
     body.push(`${e.name} — ${parts.join(', ')}`)
+  }
+  // Any cardio logged this session (treadmill, bike, etc.).
+  for (const c of cardio || []) {
+    const bits = []
+    if (Number(c.durationMin) > 0) bits.push(`${c.durationMin} min`)
+    if (Number(c.distance) > 0) bits.push(`${c.distance}${c.distanceUnit || ''}`)
+    if (Number(c.avgHr) > 0) bits.push(`${c.avgHr} bpm`)
+    if (Number(c.calories) > 0) bits.push(`${c.calories} cal`)
+    if (bits.length) body.push(`${c.machineName || 'Cardio'} — ${bits.join(' · ')}`)
   }
   const lines = [`${title} 🏋️`]
   if (volume > 0) lines.push(`${Math.round(volume).toLocaleString()} ${units} volume`)

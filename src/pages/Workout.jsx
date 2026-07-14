@@ -211,6 +211,7 @@ export default function Workout() {
   const [cardioOpen, setCardioOpen] = useState(false)
   const [oneRmOpen, setOneRmOpen] = useState(false)
   const [cardioSaved, setCardioSaved] = useState(0)
+  const [loggedCardio, setLoggedCardio] = useState([]) // this session's cardio, for the share summary
 
   const [rest, setRest] = useState(null)
   const [finished, setFinished] = useState(false)
@@ -340,7 +341,7 @@ export default function Workout() {
   const adjustRest = (exId, delta) =>
     setExercises((list) => list.map((e) => (e.id === exId ? { ...e, restSec: Math.max(0, e.restSec + delta) } : e)))
 
-  const logCardio = (entry) => { addCardio(entry); setCardioSaved((n) => n + 1); setCardioOpen(false) }
+  const logCardio = (entry) => { addCardio(entry); setLoggedCardio((l) => [...l, entry]); setCardioSaved((n) => n + 1); setCardioOpen(false) }
 
   if (!program || !session) {
     return (
@@ -499,7 +500,7 @@ export default function Workout() {
   // Build the shareable text once, on demand.
   const summaryText = () => {
     const entries = exercises.map((ex) => ({ name: ex.name, sets: sets[ex.id] }))
-    return buildSessionSummary(session.title, entries, { units })
+    return buildSessionSummary(session.title, entries, { units, cardio: loggedCardio })
   }
   const canShare = typeof navigator !== 'undefined' && !!navigator.share
   const shareSummary = async () => {
