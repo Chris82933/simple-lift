@@ -1353,6 +1353,11 @@ select.text-input { appearance: none; }
   color: var(--text);
 }
 
+/* ---- GZCLP setup wizard ---- */
+.gz-lift-row { display: flex; align-items: center; gap: 12px; }
+.gz-lift-name { font-weight: 600; font-size: 15px; flex: 1; }
+.gz-input { width: 110px; flex: none; text-align: right; }
+
 /* ---- "When to increase" guide ---- */
 .guide summary {
   cursor: pointer;

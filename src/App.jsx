@@ -11,6 +11,7 @@ import Progress from './pages/Progress.jsx'
 import CardioLog from './pages/CardioLog.jsx'
 import Skills from './pages/Skills.jsx'
 import Onboarding from './pages/Onboarding.jsx'
+import GzclpWizard from './pages/GzclpWizard.jsx'
 import Profile from './pages/Profile.jsx'
 import Workout from './pages/Workout.jsx'
 
@@ -25,6 +26,7 @@ export default function App() {
       <Route path="/one-rep-max" element={<OneRepMax />} />
       <Route path="/cardio" element={<CardioLog />} />
       <Route path="/skills" element={<Skills />} />
+      <Route path="/gzclp" element={<GzclpWizard />} />
 
       {/* Main app shell with bottom navigation */}
       <Route element={<AppLayout />}>

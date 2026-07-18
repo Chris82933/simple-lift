@@ -71,9 +71,18 @@ export default function Templates() {
             </div>
           )}
 
-          <button type="button" className="btn btn-primary" onClick={() => use(t.templateId)}>
-            Use this program
-          </button>
+          {t.setupPath ? (
+            <>
+              <button type="button" className="btn btn-primary" onClick={() => navigate(t.setupPath)}>
+                {t.setupLabel || 'Set this up'}
+              </button>
+              <p className="muted small">A few questions and we&apos;ll work out every starting weight for you.</p>
+            </>
+          ) : (
+            <button type="button" className="btn btn-primary" onClick={() => use(t.templateId)}>
+              Use this program
+            </button>
+          )}
         </div>
       ))}
     </section>

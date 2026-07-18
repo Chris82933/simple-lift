@@ -197,6 +197,10 @@ export const TEMPLATES = [
 
   {
     templateId: 'gzclp',
+    // GZCLP lives or dies on picking the right starting weights, so it gets a
+    // setup wizard instead of a one-tap load — the same job the spreadsheets do.
+    setupPath: '/gzclp',
+    setupLabel: 'Set up GZCLP',
     deloadWeeks: 6,
     deloadNote: 'GZCLP drops stages automatically when you miss, but a planned lighter week every 6 weeks keeps the joints fresh.',
     name: 'GZCLP',
@@ -502,7 +506,7 @@ export const TEMPLATES = [
 export const TEMPLATE_BY_ID = Object.fromEntries(TEMPLATES.map((t) => [t.templateId, t]))
 
 // Presentation-only fields that shouldn't be stored on the instantiated program.
-const TEMPLATE_META_FIELDS = ['templateId', 'description', 'tags', 'equipment', 'level', 'bestFor', 'progressionInfo', 'pros', 'cons']
+const TEMPLATE_META_FIELDS = ['templateId', 'description', 'tags', 'equipment', 'level', 'bestFor', 'progressionInfo', 'pros', 'cons', 'setupPath', 'setupLabel']
 
 // Deep-clone a template into a fresh program ready for addProgram().
 export function instantiateTemplate(templateId) {

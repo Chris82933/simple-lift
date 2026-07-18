@@ -9,13 +9,15 @@ export const GZCLP_SCHEMES = {
     label: 'T1',
     stages: [{ sets: 5, reps: 3 }, { sets: 6, reps: 2 }, { sets: 10, reps: 1 }],
     amrap: true,        // last set is AMRAP ("+")
-    resetFactor: 0.85,  // on final-stage failure, drop to ~85% and restart
+    resetFactor: 0.9,   // on final-stage failure, cut 10% and restart (per the spreadsheet)
   },
   t2: {
     label: 'T2',
     stages: [{ sets: 3, reps: 10 }, { sets: 3, reps: 8 }, { sets: 3, reps: 6 }],
     amrap: false,
-    resetFactor: 1,     // restart at 3×10 keeping the weight (you're stronger now)
+    // Canonical T2 reset: go back to the weight you last *started* Stage 1 with
+    // and add a chunk — you're stronger than when you began that run.
+    restartBump: { lbs: 15, kg: 7.5 },
   },
   t3: {
     label: 'T3',
@@ -111,12 +113,15 @@ export function evaluateProgression(ex, loggedSets, units = 'lbs') {
   }
 
   const success = done.length >= stage.sets && done.every((x) => Number(x.reps) >= stage.reps)
+  // Remember the weight used on the most recent Stage 1 session — a T2 reset
+  // rebuilds from there rather than from the (lighter) final-stage weight.
+  const atStage1 = ex.progression.stage === 0 ? { stage1Weight: baseWeight } : {}
 
   if (success) {
     const inc = increment(ex, units, false)
     return {
       kind: 'increase',
-      progression: { ...ex.progression, weight: baseWeight + inc },
+      progression: { ...ex.progression, ...atStage1, weight: baseWeight + inc },
       inc,
       message: `${ex.name}: completed ${stage.sets}×${stage.reps} — ready for +${inc} ${units} → ${baseWeight + inc} ${units}.`,
     }
@@ -128,16 +133,26 @@ export function evaluateProgression(ex, loggedSets, units = 'lbs') {
     const next = s.stages[ns]
     return {
       kind: 'deload',
-      progression: { ...ex.progression, stage: ns, weight: baseWeight },
+      progression: { ...ex.progression, ...atStage1, stage: ns, weight: baseWeight },
       message: `${ex.name}: missed reps — dropping to Stage ${ns + 1} (${next.sets}×${next.reps}) at ${baseWeight} ${units}.`,
     }
   }
 
-  // Failed the final stage → reset weight and restart at Stage 1 (automatic).
-  const reset = roundTo(baseWeight * s.resetFactor, units === 'kg' ? 2.5 : 5)
+  // Failed the final stage → restart at Stage 1.
+  const step = units === 'kg' ? 2.5 : 5
+  let reset
+  if (s.restartBump) {
+    // T2: back to the weight this Stage 1 run began at, plus the bump.
+    const bump = s.restartBump[units === 'kg' ? 'kg' : 'lbs']
+    const base = ex.progression.stage1Weight ?? baseWeight
+    reset = roundTo(base + bump, step)
+  } else {
+    // T1: cut ~10% off what you were lifting.
+    reset = roundTo(baseWeight * s.resetFactor, step)
+  }
   return {
     kind: 'deload',
-    progression: { ...ex.progression, stage: 0, weight: reset },
+    progression: { ...ex.progression, stage: 0, weight: reset, stage1Weight: reset },
     message: `${ex.name}: reset — back to Stage 1 (${s.stages[0].sets}×${s.stages[0].reps}) at ${reset} ${units}.`,
   }
 }
