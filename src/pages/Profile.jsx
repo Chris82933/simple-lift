@@ -69,6 +69,11 @@ export default function Profile() {
     setSettings(next)
     saveSettings(next)
   }
+  const setRestTimer = (on) => {
+    const next = { ...settings, restTimer: on }
+    setSettings(next)
+    saveSettings(next)
+  }
 
   const theme = settings.theme || 'dark'
   const setTheme = (t) => {
@@ -116,7 +121,7 @@ export default function Profile() {
 
   return (
     <section className="page">
-      <header className="page-header"><h1>Profile</h1></header>
+      <header className="page-header"><h1>Settings</h1></header>
 
       {/* ---- Install to home screen ---- */}
       <InstallApp />
@@ -263,8 +268,8 @@ export default function Profile() {
 
       {/* ---- During workouts ---- */}
       <div className="card">
-        <p className="group-label">Plate calculator</p>
-        <p className="muted small">Show which plates to load on the bar for each set during a workout. Turn off if you already do the math.</p>
+        <p className="group-label">During workouts</p>
+        <p className="muted small" style={{ marginTop: 0 }}>Plate calculator — show which plates to load on the bar. Turn off if you already do the math.</p>
         <div className="seg">
           {[{ id: 'show', label: 'Show' }, { id: 'hide', label: 'Hide' }].map((o) => (
             <button
@@ -272,6 +277,19 @@ export default function Profile() {
               type="button"
               className={'seg-item' + ((settings.hidePlateCalc === true ? 'hide' : 'show') === o.id ? ' is-selected' : '')}
               onClick={() => setHidePlateCalc(o.id === 'hide')}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <p className="muted small" style={{ marginTop: 14 }}>Rest timer — auto-start a rest countdown after each set. Turn off if you time your own rests.</p>
+        <div className="seg">
+          {[{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }].map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={'seg-item' + ((settings.restTimer === false ? 'off' : 'on') === o.id ? ' is-selected' : '')}
+              onClick={() => setRestTimer(o.id === 'on')}
             >
               {o.label}
             </button>

@@ -9,7 +9,7 @@
 
 export const LADDER_EXERCISES = [
   // ---- Vertical pull (toward the one-arm pull-up) ----
-  { id: 'dead_hang', name: 'Dead Hang', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: false, load: false, hold: true, ladderOnly: true, cues: 'Just hang with straight arms and active shoulders. Hold for time.' },
+  { id: 'dead_hang', name: 'Dead Hang', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: false, load: false, hold: true, holdSec: [15, 30], ladderOnly: true, cues: 'Just hang with straight arms and active shoulders. Hold for time.' },
   { id: 'scap_pull', name: 'Scapular Pull', pattern: 'vert_pull', regions: ['back'], requires: ['pullup_bar'], compound: false, load: false, ladderOnly: true, cues: 'From a dead hang, pull your shoulder blades down without bending the elbows.' },
   { id: 'pull_negative', name: 'Negative Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, ladderOnly: true, cues: 'Jump to the top, then lower yourself as slowly as you can (aim 3–5s).' },
   { id: 'pull_band_assist', name: 'Band-Assisted Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar', 'bands'], compound: true, load: false, ladderOnly: true, cues: 'Loop a band under your feet/knee for help; full range, chin over bar.' },
@@ -67,10 +67,22 @@ export const LADDER_EXERCISES = [
 
   // ---- Vertical push: pike push-up → handstand push-up ----
   { id: 'elevated_pike_pushup', name: 'Elevated Pike Push-Up', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: [], compound: true, load: false, ladderOnly: true, cues: 'Feet up on a box so your torso is nearly vertical — lower your head to the floor and press. Bridges the pike and the handstand.' },
-  { id: 'wall_handstand_hold', name: 'Wall Handstand Hold', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: [], compound: false, load: false, hold: true, ladderOnly: true, cues: 'Kick up to the wall, lock the elbows, push tall and hold. Builds the position and shoulder endurance. Hold for time.' },
+  { id: 'wall_handstand_hold', name: 'Wall Handstand Hold', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: [], compound: false, load: false, hold: true, holdSec: [15, 30], ladderOnly: true, cues: 'Kick up to the wall, lock the elbows, push tall and hold. Builds the position and shoulder endurance. Hold for time.' },
   { id: 'wall_hspu_negative', name: 'Wall HSPU Negative', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: [], compound: true, load: false, ladderOnly: true, cues: 'In a wall handstand, lower your head to the floor as slowly as possible, then step down and reset. The key strength-builder.' },
   { id: 'wall_hspu', name: 'Wall Handstand Push-Up', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: [], compound: true, load: false, ladderOnly: true, cues: 'Full range against the wall: lower until your head lightly touches, press back to a lockout. Keep the ribs down and body tight.' },
   { id: 'freestanding_hspu', name: 'Freestanding HSPU', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: [], compound: true, load: false, ladderOnly: true, cues: 'No wall — balance and press. The elite endpoint; expect a long road of handstand practice first.' },
+
+  // ---- Front lever (body tension, toward the full lever) ----
+  { id: 'adv_tuck_front_lever', name: 'Advanced Tuck Front Lever', pattern: 'core', regions: ['core', 'back'], requires: ['pullup_bar'], compound: true, load: false, hold: true, holdSec: [8, 15], ladderOnly: true, cues: 'Same tuck, but open the hips so the back rounds and the knees sit away from the chest (thighs ~90° to the torso). Keep the arms straight and body flat. Own ~15s, then extend one leg.' },
+  { id: 'one_leg_front_lever', name: 'One-Leg Front Lever', pattern: 'core', regions: ['core', 'back'], requires: ['pullup_bar'], compound: true, load: false, hold: true, holdSec: [6, 12], ladderOnly: true, cues: 'Extend one leg straight while the other stays tucked; alternate legs across sets. The bridge to the straddle and full lever.' },
+  { id: 'straddle_front_lever', name: 'Straddle Front Lever', pattern: 'core', regions: ['core', 'back'], requires: ['pullup_bar'], compound: true, load: false, hold: true, holdSec: [5, 12], ladderOnly: true, cues: 'Both legs straight but split wide — the wider the straddle, the easier. Body flat and horizontal, straight arms. Narrow the straddle over time.' },
+  { id: 'front_lever', name: 'Front Lever', pattern: 'core', regions: ['core', 'back'], requires: ['pullup_bar'], compound: true, load: false, hold: true, holdSec: [5, 10], ladderOnly: true, cues: 'Full lever: body straight and horizontal, legs together, arms straight. The payoff. Aim for clean 5–10s holds.' },
+
+  // ---- L-sit (compression + support, toward the V-sit) ----
+  { id: 'foot_l_sit', name: 'Foot-Supported L-Sit', pattern: 'core', regions: ['core', 'arms'], requires: [], compound: true, load: false, hold: true, holdSec: [15, 30], ladderOnly: true, cues: 'Press down on parallettes/bars/floor and lift your hips with your feet still lightly on the ground — grooves the support position before you hold the legs up.' },
+  { id: 'one_leg_l_sit', name: 'One-Leg L-Sit', pattern: 'core', regions: ['core', 'arms'], requires: [], compound: true, load: false, hold: true, holdSec: [10, 20], ladderOnly: true, cues: 'From the tuck, extend one leg straight out while the other stays tucked; swap legs across sets. Straighten both together once each side is solid ~15s.' },
+  { id: 'l_sit', name: 'L-Sit', pattern: 'core', regions: ['core', 'arms'], requires: [], compound: true, load: false, hold: true, holdSec: [10, 20], ladderOnly: true, cues: 'Both legs straight out, hips lifted, arms locked — a clean L. 10s is a solid start, 20s+ intermediate.' },
+  { id: 'v_sit', name: 'V-Sit', pattern: 'core', regions: ['core', 'arms'], requires: [], compound: true, load: false, hold: true, holdSec: [5, 15], ladderOnly: true, cues: 'Raise the straight legs above parallel toward a V — a big jump in compression and hip-flexor strength from the L-sit.' },
 ]
 
 // Ordered easy → hard. Ids may reference base-library exercises too.
@@ -91,4 +103,7 @@ export const LADDERS = [
   { id: 'muscle_up_prog', name: 'Ring Muscle-Up Progression', order: ['ring_pullup', 'false_grip_pullup', 'muscle_up_negative', 'ring_muscle_up'] },
   // ---- Handstand push-up ----
   { id: 'hspu_prog', name: 'Handstand Push-Up Progression', order: ['pike_pushup', 'elevated_pike_pushup', 'wall_handstand_hold', 'wall_hspu_negative', 'wall_hspu', 'freestanding_hspu'] },
+  // ---- Body tension / compression ----
+  { id: 'front_lever_prog', name: 'Front Lever Progression', order: ['front_lever_tuck', 'adv_tuck_front_lever', 'one_leg_front_lever', 'straddle_front_lever', 'front_lever'] },
+  { id: 'l_sit_prog', name: 'L-Sit Progression', order: ['foot_l_sit', 'tuck_l_sit', 'one_leg_l_sit', 'l_sit', 'v_sit'] },
 ]

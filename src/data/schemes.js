@@ -1,6 +1,6 @@
 // Maps training goals to set/rep/rest prescriptions. When multiple goals are
 // chosen, the prescriptions are blended (sets & reps averaged, rest maxed).
-import { exMeasure } from './exercises.js'
+import { exMeasure, EXERCISE_BY_ID } from './exercises.js'
 
 const GOAL_SCHEMES = {
   general: { compound: { sets: 4, repLow: 6, repHigh: 8, rest: 120 }, accessory: { sets: 3, repLow: 10, repHigh: 12, rest: 75 } },
@@ -53,9 +53,11 @@ export function prescriptionFor(exercise, scheme) {
   // A run / bike / row block: one working set, prescribed in minutes.
   if (m.type === 'distance') return { sets: 1, repLow: 2, repHigh: 5, restSec: 60 }
   if (m.type === 'time') {
-    return m.unit === 'min'
-      ? { sets: 1, repLow: 10, repHigh: 20, restSec: 60 } // timed cardio block
-      : { sets: 3, repLow: 20, repHigh: 45, restSec: 60 } // timed hold (plank, hang)
+    if (m.unit === 'min') return { sets: 1, repLow: 10, repHigh: 20, restSec: 60 } // timed cardio block
+    // Timed hold — use the exercise's own natural hold range when it declares
+    // one (short for a front lever, longer for a plank), else a plank default.
+    const [lo, hi] = (EXERCISE_BY_ID[exercise.id] || exercise).holdSec || [20, 45]
+    return { sets: 3, repLow: lo, repHigh: hi, restSec: 60 }
   }
   const style = PATTERN_STYLE[exercise.pattern]
   if (style) return { sets: style.sets, repLow: style.repLow, repHigh: style.repHigh, restSec: style.rest }

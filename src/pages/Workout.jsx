@@ -168,6 +168,7 @@ export default function Workout() {
   const settings = loadSettings()
   const units = settings.units || 'lbs'
   const showPlates = settings.hidePlateCalc !== true
+  const restEnabled = settings.restTimer !== false // rest timer on unless turned off
 
   // Snapshot the program & session once at mount so mid-session edits don't reload the live workout.
   const stateDayIndex = location.state?.dayIndex
@@ -370,7 +371,7 @@ export default function Workout() {
       const nowDone = !row.done
       // No rest after the final set of an exercise — nothing left to rest for.
       const isLastSet = idx === s[exId].length - 1
-      if (nowDone && !isLastSet) setRest({ seconds: restSec, key: `${exId}-${idx}-${Date.now()}` })
+      if (nowDone && !isLastSet && restEnabled) setRest({ seconds: restSec, key: `${exId}-${idx}-${Date.now()}` })
       return { ...s, [exId]: s[exId].map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }
     })
 
@@ -502,7 +503,7 @@ export default function Workout() {
 
   // Build the shareable text once, on demand.
   const summaryText = () => {
-    const entries = exercises.map((ex) => ({ name: ex.name, sets: sets[ex.id] }))
+    const entries = exercises.map((ex) => ({ name: ex.name, exerciseId: ex.id, sets: sets[ex.id] }))
     return buildSessionSummary(session.title, entries, { units, cardio: loggedCardio })
   }
   const canShare = typeof navigator !== 'undefined' && !!navigator.share

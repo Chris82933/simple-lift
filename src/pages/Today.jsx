@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadPrograms, getActiveProgramId, loadHistory, loadSettings, saveSettings } from '../lib/storage.js'
+import { loadPrograms, getActiveProgramId, loadHistory, loadSettings, saveSettings, loadActiveSession } from '../lib/storage.js'
 import { isIOS } from '../lib/platform.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS, resolveExercisesForEquipment } from '../lib/equipment.js'
@@ -10,6 +10,18 @@ import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LAB
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import FocusTiles from '../components/FocusTiles.jsx'
+
+// Short "how long ago" label for an in-progress session's last save.
+function timeAgo(ts) {
+  if (!ts) return ''
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000))
+  if (s < 60) return 'just now'
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m} min ago`
+  const h = Math.round(m / 60)
+  if (h < 24) return `${h} hr ago`
+  return `${Math.round(h / 24)} day${h < 48 ? '' : 's'} ago`
+}
 
 export default function Today() {
   const navigate = useNavigate()
@@ -67,6 +79,15 @@ export default function Today() {
   // training location / equipment changes).
   const previewExercises = resolveExercisesForEquipment(session.exercises, availableSet)
   const needSwap = previewExercises.filter((ex) => !isDoable(ex, availableSet)).length
+
+  // An in-progress session for this program (any logged set) → offer to continue.
+  const inProgress = (() => {
+    const s = loadActiveSession()
+    if (!s || !program || s.programId !== program.id) return null
+    const has = Object.values(s.sets || {}).some((rows) => Array.isArray(rows) && rows.some((r) => r.done))
+    return has ? s : null
+  })()
+  const resumingThisDay = inProgress && inProgress.dayIndex === dayIndex
 
   return (
     <section className="page">
@@ -148,8 +169,20 @@ export default function Today() {
           className="btn btn-primary"
           onClick={() => navigate('/workout', { state: { dayIndex } })}
         >
-          {isScheduledToday ? 'Start workout' : `Start ${session.title} now`}
+          {resumingThisDay ? 'Continue workout' : isScheduledToday ? 'Start workout' : `Start ${session.title} now`}
         </button>
+        {resumingThisDay && (
+          <p className="muted small">▶ Picking up where you left off · {timeAgo(inProgress.savedAt)}</p>
+        )}
+        {inProgress && !resumingThisDay && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => navigate('/workout', { state: { dayIndex: inProgress.dayIndex } })}
+          >
+            ▶ Continue {inProgress.sessionTitle} (in progress · {timeAgo(inProgress.savedAt)})
+          </button>
+        )}
         {needSwap > 0 && (
           <p className="muted small">
             🏠 {needSwap} move{needSwap === 1 ? '' : 's'} need a swap in {profileMeta(activeProfile).name} mode — you can swap them one-tap during the workout.

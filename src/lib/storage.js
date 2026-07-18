@@ -96,7 +96,12 @@ export const saveProfile = (p) => write(PROFILE_KEY, p)
 
 // ---- Settings ----
 export const loadSettings = () => read(SETTINGS_KEY, { units: 'lbs' })
-export const saveSettings = (s) => write(SETTINGS_KEY, s)
+export function saveSettings(s) {
+  const ok = write(SETTINGS_KEY, s)
+  // Announce a user-facing settings save so the UI can flash "Saved".
+  if (ok) { try { window.dispatchEvent(new CustomEvent('sl-saved')) } catch { /* no window */ } }
+  return ok
+}
 
 // ---- Calisthenics skills ({ [skillId]: { level, best, log:[{date,value}] } }) ----
 export const loadSkills = () => read(SKILLS_KEY, {})

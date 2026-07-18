@@ -22,10 +22,10 @@ const ICONS = {
       <polyline points="15 6 21 6 21 12" />
     </>
   ),
-  profile: (
+  settings: (
     <>
-      <circle cx="12" cy="8" r="3.6" />
-      <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M12 2.6v3.2M12 18.2v3.2M4.4 4.4l2.3 2.3M17.3 17.3l2.3 2.3M2.6 12h3.2M18.2 12h3.2M4.4 19.6l2.3-2.3M17.3 6.7l2.3-2.3" />
     </>
   ),
 }
@@ -34,7 +34,7 @@ const tabs = [
   { to: '/today', label: 'Today', icon: 'today' },
   { to: '/program', label: 'Program', icon: 'program' },
   { to: '/progress', label: 'Progress', icon: 'progress' },
-  { to: '/profile', label: 'Profile', icon: 'profile' },
+  { to: '/profile', label: 'Settings', icon: 'settings' },
 ]
 
 function NavIcon({ name }) {

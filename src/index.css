@@ -588,6 +588,30 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 }
 .toast-close { flex: none; background: none; border: none; color: var(--bg); opacity: 0.6; cursor: pointer; font-size: 13px; }
 
+/* ---- Subtle "Saved" flash for auto-saved settings ---- */
+.saved-flash {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translate(-50%, -8px);
+  z-index: 70;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.saved-flash.is-shown { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: reduce) {
+  .saved-flash { transition: opacity 0.15s ease; }
+  .saved-flash.is-shown { transform: translate(-50%, 0); }
+}
+
 /* ---- Workout: resume banner + last-time ---- */
 .resumed-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .resumed-banner .btn { flex: none; }

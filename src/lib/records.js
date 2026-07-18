@@ -98,15 +98,32 @@ export function prShort(pr, units) {
 export function buildSessionSummary(title, entries, { units, cardio } = {}) {
   const body = []
   let volume = 0
+  const wunit = units === 'kg' ? 'kg' : 'lb'
   for (const e of entries || []) {
     const rows = (e.sets || []).filter((s) => s.done && !s.warmup && (Number(s.reps) || 0) > 0)
     if (!rows.length) continue
-    const parts = rows.map((s) => {
-      const w = Number(s.weight) || 0
-      volume += w * (Number(s.reps) || 0)
-      return w > 0 ? `${w}×${s.reps}` : `${s.reps}`
-    })
-    body.push(`${e.name} — ${parts.join(', ')}`)
+    const isTime = exMeasure({ id: e.exerciseId }).type === 'time'
+    const unitWord = isTime ? 'sec' : 'reps'
+    const weights = rows.map((s) => Number(s.weight) || 0)
+    const reps = rows.map((s) => String(s.reps))
+    if (!isTime) rows.forEach((s) => { volume += (Number(s.weight) || 0) * (Number(s.reps) || 0) })
+    const sameW = weights.every((w) => w === weights[0])
+    const sameR = reps.every((r) => r === reps[0])
+    // Load suffix: "@ 185 lb" when weighted; "(bw)" for bodyweight rep work; nothing for bodyweight holds.
+    const loadSuffix = (w) => (w > 0 ? ` @ ${w} ${wunit}` : (isTime ? '' : ' (bw)'))
+    let detail
+    if (sameW && sameR) {
+      detail = `${rows.length} sets × ${reps[0]} ${unitWord}${loadSuffix(weights[0])}`
+    } else if (sameW) {
+      const prefix = weights[0] > 0 ? `${weights[0]} ${wunit}: ` : (isTime ? '' : 'bw · ')
+      detail = `${prefix}${reps.join(', ')} ${unitWord}`
+    } else {
+      detail = rows.map((s) => {
+        const w = Number(s.weight) || 0
+        return w > 0 ? `${w} ${wunit}×${s.reps}` : `${s.reps}${isTime ? ' sec' : ''} bw`
+      }).join(', ')
+    }
+    body.push(`${e.name} — ${detail}`)
   }
   // Any cardio logged this session (treadmill, bike, etc.).
   for (const c of cardio || []) {
@@ -118,7 +135,7 @@ export function buildSessionSummary(title, entries, { units, cardio } = {}) {
     if (bits.length) body.push(`${c.machineName || 'Cardio'} — ${bits.join(' · ')}`)
   }
   const lines = [`${title} 🏋️`]
-  if (volume > 0) lines.push(`${Math.round(volume).toLocaleString()} ${units} volume`)
+  if (volume > 0) lines.push(`${Math.round(volume).toLocaleString()} ${wunit} volume`)
   lines.push('', ...body)
   lines.push('', 'Tracked with Simple Lift')
   return lines.join('\n')
