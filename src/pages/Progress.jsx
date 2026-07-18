@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadHistory, loadSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt } from '../lib/storage.js'
+import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { exMeasure } from '../data/exercises.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
@@ -72,59 +72,103 @@ function topSet(entry) {
 const DIFF_LABELS = {
   easy: '😎 Easy', moderate: '🙂 Just right', hard: '😤 Hard', maxed: '🥵 Maxed out',
 }
+const DIFF_EMOJI = { easy: '😎', moderate: '🙂', hard: '😤', maxed: '🥵' }
+const shortDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
-// One expandable session in the log — collapsed shows the top set per exercise,
-// expanded reveals every set logged. Also surfaces difficulty + notes.
+// A card whose body can be collapsed. The open/closed state is owned by the
+// page (and persisted to settings), so the layout is remembered.
+function CollapsibleCard({ title, subtitle, open, onToggle, children }) {
+  return (
+    <div className="card collapsible">
+      <button type="button" className="collapse-head" onClick={onToggle} aria-expanded={open}>
+        <span className="collapse-title">{title}</span>
+        {subtitle && <span className="muted small collapse-sub">{subtitle}</span>}
+        <span className={'collapse-chevron' + (open ? ' is-open' : '')} aria-hidden="true">▾</span>
+      </button>
+      {open && <div className="collapse-body">{children}</div>}
+    </div>
+  )
+}
+
+// One session in the log. Collapsed it's a compact two-line summary; tapping it
+// opens the detail — per-exercise completion, PRs, rating, notes, and (opt-in)
+// every logged set.
 function SessionEntry({ workout, units, onDelete }) {
   const [open, setOpen] = useState(false)
-  const setCount = workout.entries.reduce((n, e) => n + (e.sets?.filter((s) => s.done).length || 0), 0)
-  const prIds = new Set((workout.prs || []).map((p) => p.exId))
+  const [showSets, setShowSets] = useState(false)
+  const entries = workout.entries || []
+  const working = (e) => (e.sets || []).filter((s) => !s.warmup)
+  const setCount = entries.reduce((n, e) => n + working(e).filter((s) => s.done).length, 0)
+  const exDone = entries.filter((e) => working(e).some((s) => s.done)).length
+  const volume = entries.reduce((v, e) => v + working(e).filter((s) => s.done)
+    .reduce((a, s) => a + (Number(s.weight) || 0) * (Number(s.reps) || 0), 0), 0)
+  const prs = workout.prs || []
+  const prIds = new Set(prs.map((p) => p.exId))
+
   return (
-    <div className="log-entry">
-      <div className="log-head">
-        <span className="ex-name">{workout.sessionTitle}</span>
-        <span className="muted small">{new Date(workout.date).toLocaleDateString()}</span>
-        <button type="button" className="icon-btn log-del" onClick={() => onDelete(workout)} aria-label="Delete this session">✕</button>
-      </div>
-      <div className="log-meta">
-        {workout.difficulty && <span className="diff-badge">{DIFF_LABELS[workout.difficulty] || workout.difficulty}</span>}
-        {prIds.size > 0 && <span className="pr-badge">🏆 {prIds.size} PR{prIds.size === 1 ? '' : 's'}</span>}
-        <span className="muted small">{setCount} set{setCount === 1 ? '' : 's'} done</span>
-      </div>
-      <div className="log-exercises">
-        {workout.entries.map((e, j) => {
-          const total = (e.sets || []).length
-          const done = (e.sets || []).filter((s) => s.done).length
-          const skipped = done === 0
-          return (
-          <div key={j} className={skipped ? 'log-ex is-skipped' : 'log-ex'}>
-            <div className="log-row">
-              <span className="log-ex-name">
-                <span className={'log-status' + (skipped ? '' : ' is-done')} aria-hidden="true">{skipped ? '○' : '✓'}</span>
-                {e.name}{e.adhoc ? ' ＋' : ''}{prIds.has(e.exerciseId) ? ' 🏆' : ''}
-              </span>
-              <span className="muted small">
-                {skipped ? 'not done' : `${done}/${total} sets`}{!skipped ? ` · ${topSet(e)} ${units}` : ''}
-              </span>
-            </div>
-            {open && (
-              <div className="log-sets">
-                {(e.sets || []).map((s, k) => (
-                  <div className="log-set-row" key={k}>
-                    <span>Set {k + 1}{s.done ? ' ✓' : ''}</span>
-                    <span>{Number(s.weight) > 0 ? `${s.weight} ${units} × ` : ''}{s.reps || '–'} reps</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          )
-        })}
-      </div>
-      {workout.notes && <p className="muted small log-note">📝 {workout.notes}</p>}
-      <button type="button" className="log-toggle" onClick={() => setOpen((o) => !o)}>
-        {open ? '▴ Hide sets' : '▾ Show all sets'}
+    <div className={'log-entry' + (open ? ' is-open' : '')}>
+      <button type="button" className="log-summary" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span className="log-summary-text">
+          <span className="log-summary-title">{workout.sessionTitle}</span>
+          <span className="muted small">
+            {exDone}/{entries.length} moves · {setCount} set{setCount === 1 ? '' : 's'}
+            {volume > 0 ? ` · ${Math.round(volume).toLocaleString()} ${units}` : ''}
+          </span>
+        </span>
+        <span className="log-summary-side">
+          {prIds.size > 0 && <span className="pr-badge">🏆 {prIds.size}</span>}
+          {workout.difficulty && <span title={DIFF_LABELS[workout.difficulty]}>{DIFF_EMOJI[workout.difficulty]}</span>}
+          <span className="muted small">{shortDate(workout.date)}</span>
+          <span className={'collapse-chevron' + (open ? ' is-open' : '')} aria-hidden="true">▾</span>
+        </span>
       </button>
+
+      {open && (
+        <div className="log-detail">
+          <div className="log-meta">
+            {workout.difficulty && <span className="diff-badge">{DIFF_LABELS[workout.difficulty]}</span>}
+            <span className="muted small">{new Date(workout.date).toLocaleDateString()}</span>
+          </div>
+          {prs.length > 0 && <p className="muted small">🏆 New records: {prs.map((p) => p.name).join(', ')}</p>}
+          <div className="log-exercises">
+            {entries.map((e, j) => {
+              const rows = working(e)
+              const done = rows.filter((s) => s.done).length
+              const skipped = done === 0
+              return (
+                <div key={j} className={skipped ? 'log-ex is-skipped' : 'log-ex'}>
+                  <div className="log-row">
+                    <span className="log-ex-name">
+                      <span className={'log-status' + (skipped ? '' : ' is-done')} aria-hidden="true">{skipped ? '○' : '✓'}</span>
+                      {e.name}{e.adhoc ? ' ＋' : ''}{prIds.has(e.exerciseId) ? ' 🏆' : ''}
+                    </span>
+                    <span className="muted small">
+                      {skipped ? 'not done' : `${done}/${rows.length} sets · ${topSet(e)} ${units}`}
+                    </span>
+                  </div>
+                  {showSets && (
+                    <div className="log-sets">
+                      {(e.sets || []).map((s, k) => (
+                        <div className="log-set-row" key={k}>
+                          <span>{s.warmup ? 'Warm-up' : `Set ${k + 1}`}{s.done ? ' ✓' : ''}</span>
+                          <span>{Number(s.weight) > 0 ? `${s.weight} ${units} × ` : ''}{s.reps || '–'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          {workout.notes && <p className="muted small log-note">📝 {workout.notes}</p>}
+          <div className="log-detail-actions">
+            <button type="button" className="log-toggle" onClick={() => setShowSets((s) => !s)}>
+              {showSets ? '▴ Hide every set' : '▾ Show every set'}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => onDelete(workout)}>Delete</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -202,6 +246,20 @@ export default function Progress() {
   })
   const visible = allSeries.filter((s) => !hidden.has(s.id))
 
+  // Which cards are expanded — remembered between visits (saving fires the
+  // global "✓ Saved" flash).
+  const [cards, setCards] = useState(() => loadSettings().progressCards || {})
+  const cardOpen = (id) => cards[id] !== false
+  const toggleCard = (id) => {
+    const next = { ...cards, [id]: !cardOpen(id) }
+    setCards(next)
+    saveSettings({ ...loadSettings(), progressCards: next })
+  }
+
+  // Keep the log short by default; load more on demand.
+  const PAGE = 8
+  const [shownSessions, setShownSessions] = useState(PAGE)
+
   if (history.length === 0 && cardio.length === 0) {
     return (
       <section className="page">
@@ -223,12 +281,11 @@ export default function Progress() {
         <p className="muted">{history.length} session{history.length === 1 ? '' : 's'} · {cardio.length} cardio logged.</p>
       </header>
 
-      <div className="card">
-        <div className="week-head">
-          <p className="group-label" style={{ margin: 0 }}>
-            {weightMetric === 'e1rm' ? 'Estimated 1RM' : 'Top set'} over time ({units})
-          </p>
-        </div>
+      <CollapsibleCard
+        title={`${weightMetric === 'e1rm' ? 'Estimated 1RM' : 'Top set'} over time (${units})`}
+        open={cardOpen('weight')}
+        onToggle={() => toggleCard('weight')}
+      >
         <div className="seg metric-seg">
           {[{ id: 'top', label: 'Top set' }, { id: 'e1rm', label: 'Est. 1RM' }].map((m) => (
             <button key={m.id} type="button" className={'seg-item' + (weightMetric === m.id ? ' is-selected' : '')} onClick={() => setWeightMetric(m.id)}>
@@ -255,12 +312,11 @@ export default function Progress() {
         {allSeries.length === 0 && (
           <p className="muted small">Weighted lifts will plot here once you log some.</p>
         )}
-      </div>
+      </CollapsibleCard>
 
       {/* ---- Bodyweight reps ---- */}
       {bwSeries.length > 0 && (
-        <div className="card">
-          <p className="group-label">Bodyweight reps over time</p>
+        <CollapsibleCard title="Bodyweight reps over time" open={cardOpen('bw')} onToggle={() => toggleCard('bw')}>
           <ProgressChart series={bwVisible} />
           <div className="legend">
             {bwSeries.map((s) => (
@@ -276,13 +332,17 @@ export default function Progress() {
             ))}
           </div>
           <p className="muted small">Best set&apos;s reps each session — watch these climb, then level up the movement.</p>
-        </div>
+        </CollapsibleCard>
       )}
 
       {/* ---- Per-exercise history ---- */}
       {exercisesTracked.length > 0 && (
-        <div className="card">
-          <p className="group-label">Exercise history</p>
+        <CollapsibleCard
+          title="Exercise history"
+          subtitle={`${exercisesTracked.length} tracked`}
+          open={cardOpen('exlist')}
+          onToggle={() => toggleCard('exlist')}
+        >
           <p className="muted small">Tap a lift to see its own trend, best marks, and recent sessions.</p>
           <div className="exercise-history-list">
             {exercisesTracked.map((ex) => (
@@ -292,15 +352,17 @@ export default function Progress() {
               </button>
             ))}
           </div>
-        </div>
+        </CollapsibleCard>
       )}
 
       {/* ---- Cardio ---- */}
-      <div className="card">
-        <div className="week-head">
-          <p className="group-label" style={{ margin: 0 }}>Cardio over time</p>
-          <button className="link-sm" onClick={() => navigate('/cardio')}>＋ Log</button>
-        </div>
+      <CollapsibleCard
+        title="Cardio over time"
+        subtitle={cardio.length ? `${cardio.length} logged` : null}
+        open={cardOpen('cardio')}
+        onToggle={() => toggleCard('cardio')}
+      >
+        <button className="link-sm" onClick={() => navigate('/cardio')}>＋ Log cardio</button>
         <div className="seg metric-seg">
           {CARDIO_METRICS.map((m) => (
             <button key={m.id} type="button" className={'seg-item' + (cardioMetric === m.id ? ' is-selected' : '')} onClick={() => setCardioMetric(m.id)}>
@@ -338,15 +400,29 @@ export default function Progress() {
             })}
           </div>
         )}
-      </div>
+      </CollapsibleCard>
 
       {history.length > 0 && (
-      <div className="card">
-        <p className="group-label">Session log</p>
-        {history.map((w, i) => (
-          <SessionEntry key={w.date || i} workout={w} units={units} onDelete={removeSession} />
-        ))}
-      </div>
+        <CollapsibleCard
+          title="Session log"
+          subtitle={`${history.length} session${history.length === 1 ? '' : 's'}`}
+          open={cardOpen('log')}
+          onToggle={() => toggleCard('log')}
+        >
+          {history.slice(0, shownSessions).map((w, i) => (
+            <SessionEntry key={w.date || i} workout={w} units={units} onDelete={removeSession} />
+          ))}
+          {history.length > shownSessions && (
+            <button type="button" className="btn btn-ghost btn-sm show-more" onClick={() => setShownSessions((n) => n + PAGE)}>
+              Show {Math.min(PAGE, history.length - shownSessions)} more · {shownSessions} of {history.length}
+            </button>
+          )}
+          {history.length > PAGE && shownSessions >= history.length && (
+            <button type="button" className="btn btn-ghost btn-sm show-more" onClick={() => setShownSessions(PAGE)}>
+              Collapse list
+            </button>
+          )}
+        </CollapsibleCard>
       )}
 
       {detailEx && (

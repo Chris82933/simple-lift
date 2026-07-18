@@ -1521,6 +1521,69 @@ select.text-input { appearance: none; }
 .log-ex.is-skipped .log-ex-name { color: var(--muted); }
 .log-ex.is-skipped { opacity: 0.6; }
 
+/* Collapsed session row: two tight lines, tappable across the full width. */
+.log-entry { padding: 0; }
+.log-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.log-summary-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.log-summary-title {
+  font-weight: 600;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-summary-side { display: flex; align-items: center; gap: 8px; flex: none; }
+.log-detail { padding: 2px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.log-meta { display: flex; align-items: center; gap: 8px; }
+.log-detail-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.show-more { width: 100%; margin-top: 8px; }
+
+/* ---- Collapsible cards ---- */
+.collapsible { padding-top: 4px; padding-bottom: 4px; }
+.collapse-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.collapse-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex: 1;
+  min-width: 0;
+}
+.collapse-sub { flex: none; }
+.collapse-chevron {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  transition: transform 0.15s ease;
+}
+.collapse-chevron.is-open { transform: rotate(180deg); }
+.collapse-body { padding-bottom: 8px; }
+
 .flow-actions {
   margin-top: auto;
   display: flex;
