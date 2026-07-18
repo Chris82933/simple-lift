@@ -20,7 +20,7 @@ import QuickOneRM from '../components/QuickOneRM.jsx'
 import PlateBreakdown from '../components/PlateBreakdown.jsx'
 import {
   getEquipment, setActiveProfile as storeSetActiveProfile, isDoable, bestSubstitute,
-  missingEquipment, profileMeta, PROFILE_IDS,
+  missingEquipment, profileMeta, PROFILE_IDS, activeEquipmentIds, resolveExercisesForEquipment,
 } from '../lib/equipment.js'
 import { isBarbellLift } from '../lib/plates.js'
 import { ladderInfo } from '../lib/ladder.js'
@@ -175,8 +175,11 @@ export default function Workout() {
     const program = loadActiveProgram()
     const dayIndex = program ? defaultDayIndex(program, stateDayIndex) : 0
     const raw = program?.days[dayIndex] ?? null
+    // Swap each move to the best version for the user's current equipment, then
+    // apply any progression scheme staging.
+    const forGear = raw ? resolveExercisesForEquipment(raw.exercises, activeEquipmentIds()) : []
     const session = raw
-      ? { ...raw, exercises: raw.exercises.map((e) => (e.progression ? applyStage(e) : e)) }
+      ? { ...raw, exercises: forGear.map((e) => (e.progression ? applyStage(e) : e)) }
       : null
     // A saved in-progress session for THIS program+day, with real progress
     // (at least one logged set) → offer to resume it.
@@ -766,6 +769,9 @@ export default function Workout() {
                     {sets[ex.id]?.some((r) => r.warmup) ? ' · + warm-ups' : ''}
                     {ex.compound ? ' · compound' : ''}
                   </p>
+                  {ex.swappedFrom && (
+                    <p className="muted small swapped-note">↔ swapped from {ex.swappedFrom} for your gear</p>
+                  )}
                   {lastTime[ex.id] && (
                     <p className="muted small last-time">↩︎ Last time: {lastTime[ex.id]}</p>
                   )}

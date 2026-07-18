@@ -20,6 +20,11 @@ function ex(id, sets, reps, rest, startWeight = '') {
   }
 }
 
+// Attach ordered equipment fallbacks (most→least optimal, same training
+// purpose). The app auto-swaps to the first `alts` entry the user can do, and
+// re-optimizes when their equipment changes.
+const alt = (exercise, alts) => ({ ...exercise, alts })
+
 // GZCLP tier helpers — attach the authentic progression scheme to each lift.
 const t1 = (id) => ({ ...ex(id, 5, 3, 180), amrap: true, progression: { scheme: 't1', stage: 0, weight: null } })
 const t2 = (id) => ({ ...ex(id, 3, 10, 120), progression: { scheme: 't2', stage: 0, weight: null } })
@@ -337,19 +342,19 @@ export const TEMPLATES = [
     deloadWeeks: 5,
     deloadNote: 'Fingers and elbows recover slowly. Every ~5 weeks, take an easy week — drop the added weight on hangs, shorten the holds, and cut a set — to stay injury-free.',
     name: 'Climbing Strength (Home)',
-    description: 'A home strength block for rock climbers, ordered the way coaches program it: fingers first while you’re fresh, one hard pull, body tension in the middle, and antagonist + prehab work last to keep elbows and shoulders healthy. Fingers are trained on a hangboard (or a bar edge) with proven protocols — max hangs for peak strength, repeaters for strength-endurance — and each day has a single main pull, so you never stack pull-ups on top of weighted pull-ups. It’s a supplement: pair it with 1–2 days of actual climbing.',
-    tags: ['Climbing', 'Hangboard', '2 days/wk'],
+    description: 'A home strength block for rock climbers, ordered the way coaches program it: fingers first while you’re fresh, one hard pull, body tension in the middle, and antagonist + prehab work last to keep elbows and shoulders healthy. It adapts to your gear — set your equipment (hangboard, a Tindeq-style finger tool, rings, dumbbells) and each move swaps to the best version you can actually do: max hangs → no-hang device pulls → bar hangs; weighted pull-ups → archer → strict pull-ups. Change your equipment and the program re-optimizes. It’s a supplement — pair it with 1–2 days of real climbing.',
+    tags: ['Climbing', 'Adapts to gear', '2 days/wk'],
     level: 'Intermediate',
     bestFor: 'Rock climbing',
-    equipment: 'A pull-up bar and a rubber band are enough. A hangboard, gymnastic rings, and one dumbbell make it better.',
-    progressionInfo: 'Fingers: add weight (or a smaller edge) to max hangs once 10s feels solid at ~RPE 9; add hangs to repeaters, then a little load. Pulls use double progression — build reps, then add weight. Grow the timed holds (max hang, lock-off, front lever) a second or two at a time, and advance the tuck front lever toward one-leg then full as it gets easy. Long rests (~3 min) on fingers and max-pull work — quality over fatigue.',
+    equipment: 'Just a pull-up bar and a rubber band work. A hangboard OR a Tindeq-style finger tool for finger training, plus rings and a dumbbell, make it better — set what you have in Profile → Training location.',
+    progressionInfo: 'Finger work uses whichever tool you have: on a hangboard, add weight (or a smaller edge) to max hangs at ~RPE 9; on a Tindeq/block, push the peak force up each session; on just a bar, grow the hang time. Pulls use double progression — build reps, then add weight (or move to a harder archer/one-arm variation if you can’t add load). Grow the timed holds (hang, lock-off, front lever) a second or two at a time. Long rests (~3 min) on fingers and max-pull work — quality over fatigue.',
     pros: [
-      'Trains climbing’s real limiters — finger strength (hangboard), lock-off and pulling power, and body tension (front lever)',
-      'One main pull per day, plus dedicated antagonist/prehab (push, finger extensions, scap + wrist work) that research links to far fewer elbow and shoulder injuries',
-      'Runs on just a pull-up bar and a rubber band; a hangboard, rings, and a dumbbell make it better but aren’t required',
+      'Adapts to your equipment automatically — no hangboard? It uses your Tindeq-style tool or a bar hang instead. Can’t add weight? It uses harder bodyweight pulls',
+      'Trains climbing’s real limiters — finger strength, lock-off and pulling power, and body tension (front lever)',
+      'One main pull per day, plus antagonist/prehab (push, finger extensions, scap + wrist work) that research links to far fewer elbow and shoulder injuries',
     ],
     cons: [
-      'Max hangs are for climbers with ~a year of experience — beginners should swap in easy dead hangs and not load the fingers yet',
+      'Loaded finger training (max hangs, no-hang device) is for climbers with ~a year of experience — beginners should stick to easy dead hangs and not push the fingers hard',
       'A supplement, not a replacement — you still need 1–2 climbing sessions a week',
       'Finger training punishes rushing: warm up fully and stop at anything sharp or tweaky',
     ],
@@ -357,22 +362,22 @@ export const TEMPLATES = [
     goals: ['climbing'],
     schedule: { mode: 'rotation', trainingDays: [1, 4] },
     days: [
-      day('Fingers & Max Pull', 'Fingers first while fresh, then your one hard pull. Rest ~3 min on hangs and weighted pulls. New to hangboarding? Do easy dead hangs instead and skip the added weight.', [
-        ex('max_hangs', 5, [7, 10], 180),
-        ex('weighted_pullup', 4, [4, 6], 180),
+      day('Fingers & Max Pull', 'Fingers first while fresh (with whatever tool you have), then your one hard pull. Rest ~3 min on finger and max-pull work. New to loading fingers? Keep it easy.', [
+        alt(ex('max_hangs', 5, [7, 10], 180), ['no_hang_pulls', 'dead_hang']),
+        alt(ex('weighted_pullup', 4, [4, 6], 180), ['archer_pull', 'pullup']),
         ex('lock_off', 3, [8, 15], 120),
         ex('front_lever_tuck', 3, [10, 20], 120),
-        ex('ring_dip', 3, [6, 12], 90),
+        alt(ex('ring_dip', 3, [6, 12], 90), ['dip', 'bench_dip', 'pushup']),
         ex('finger_ext_band', 2, [15, 25], 45),
       ]),
       day('Power & Prehab', 'Finger endurance, bodyweight pulling for volume, core, then antagonist + prehab to protect the elbows and shoulders.', [
-        ex('repeaters', 4, [5, 8], 180),
+        alt(ex('repeaters', 4, [5, 8], 180), ['no_hang_pulls', 'dead_hang']),
         ex('pullup', 4, [5, 8], 150),
-        ex('toes_to_bar', 3, [6, 12], 90),
-        ex('ring_row', 3, [8, 12], 90),
+        alt(ex('toes_to_bar', 3, [6, 12], 90), ['hanging_leg_raise', 'lying_leg_raise']),
+        alt(ex('ring_row', 3, [8, 12], 90), ['inverted_row']),
         ex('pushup', 3, [10, 15], 75),
         ex('scap_pull', 3, [8, 12], 60),
-        ex('reverse_wrist_curl', 2, [15, 20], 45),
+        alt(ex('reverse_wrist_curl', 2, [15, 20], 45), ['finger_ext_band']),
       ]),
     ],
   },

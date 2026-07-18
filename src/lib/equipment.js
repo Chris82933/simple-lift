@@ -91,3 +91,34 @@ export function bestSubstitute(ex, available) {
   candidates.sort((a, b) => score(b) - score(a))
   return candidates[0]
 }
+
+// Resolve a program exercise to the best variant the user can actually do. If
+// the exercise isn't doable but declares an ordered `alts` list (curated,
+// same-purpose fallbacks), swap in the first alternative that IS doable —
+// keeping the prescription (sets/reps/rest/weight). Because this is computed
+// from the current equipment, the program re-optimizes whenever gear changes:
+// add a hangboard and max hangs come back; lose it and it falls to a no-hang
+// tool, then a bar hang.
+export function resolveForEquipment(ex, available) {
+  const have = asSet(available)
+  if (isDoable(ex, have) || !Array.isArray(ex.alts) || ex.alts.length === 0) return ex
+  for (const altId of ex.alts) {
+    const lib = EXERCISE_BY_ID[altId]
+    if (lib && isDoable(lib, have)) {
+      return {
+        ...ex,
+        id: lib.id, name: lib.name, pattern: lib.pattern, regions: lib.regions,
+        compound: lib.compound, load: lib.load !== false, cues: lib.cues,
+        hold: lib.hold || undefined, distance: lib.distance || undefined, unit: lib.unit || undefined,
+        ladderId: lib.ladderId || null, nextId: lib.nextId || null, prevId: lib.prevId || null,
+        swappedFrom: ex.name, // so the UI can note why it changed
+      }
+    }
+  }
+  return ex // nothing doable — leave the original (the workout will flag it)
+}
+
+export function resolveExercisesForEquipment(exercises, available) {
+  const have = asSet(available)
+  return (exercises || []).map((e) => resolveForEquipment(e, have))
+}

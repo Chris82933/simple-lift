@@ -43,6 +43,13 @@ export const EQUIPMENT_GROUPS = [
     ],
   },
   {
+    group: 'Climbing',
+    items: [
+      { id: 'hangboard', label: 'Hangboard / fingerboard' },
+      { id: 'finger_trainer', label: 'Finger-strength tool (Tindeq, lifting block…)' },
+    ],
+  },
+  {
     group: 'Other',
     items: [
       { id: 'bands', label: 'Resistance bands' },

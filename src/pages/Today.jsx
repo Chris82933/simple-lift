@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { loadPrograms, getActiveProgramId, loadHistory, loadSettings, saveSettings } from '../lib/storage.js'
 import { isIOS } from '../lib/platform.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS } from '../lib/equipment.js'
+import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS, resolveExercisesForEquipment } from '../lib/equipment.js'
 import { repsLabel } from '../data/schemes.js'
 import { measureUnit } from '../data/exercises.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
@@ -63,7 +63,10 @@ export default function Today() {
   const lastWorkout = history[0]
 
   const availableSet = new Set(getEquipment().profiles[activeProfile])
-  const needSwap = session.exercises.filter((ex) => !isDoable(ex, availableSet)).length
+  // Swap each move to the best version for the current gear (re-runs when the
+  // training location / equipment changes).
+  const previewExercises = resolveExercisesForEquipment(session.exercises, availableSet)
+  const needSwap = previewExercises.filter((ex) => !isDoable(ex, availableSet)).length
 
   return (
     <section className="page">
@@ -128,10 +131,13 @@ export default function Today() {
         </div>
         {session.note && <p className="muted small">{session.note}</p>}
         <ul className="exercise-preview">
-          {session.exercises.map((ex, j) => (
+          {previewExercises.map((ex, j) => (
             <li key={j}>
               <ExerciseFigure pattern={ex.pattern} size={40} />
-              <span className="ex-name">{ex.name}</span>
+              <span className="ex-name">
+                {ex.name}
+                {ex.swappedFrom && <span className="muted small swapped-note"> · swapped for your gear</span>}
+              </span>
               <FormCheckButton name={ex.name} compact />
               <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)}</span>
             </li>
