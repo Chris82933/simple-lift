@@ -8,6 +8,12 @@ const REPO = 'simple-lift'
 // https://vite.dev/config/
 export default defineConfig({
   base: `/${REPO}/`,
+  // Unit tests cover the pure logic — storage, progression engines, records.
+  // jsdom gives those a real localStorage and window to talk to.
+  test: {
+    environment: 'jsdom',
+    include: ['src/**/*.test.js'],
+  },
   // Local dev only: the dev server is sometimes launched via a Windows 8.3 short path,
   // which trips Vite's fs allow-list. Disabling strict fs has no effect on builds.
   server: {
