@@ -167,7 +167,9 @@ export function buildGzclpProgram(config) {
     name: 'GZCLP',
     templateId: 'gzclp',
     source: 'gzclp-wizard',
-    gzclp: { units, seedMode, dayFormat, t3, extra },
+    // The wizard's own answers, kept so setup can be reopened and the starting
+    // weights recalculated without rebuilding the program from scratch.
+    gzclp: { units, seedMode, dayFormat, t3, extra, maxes },
     createdAt: new Date().toISOString(),
     goals: ['strength'],
     deloadWeeks: 6,

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { addProgram, loadSettings, getMax } from '../lib/storage.js'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { addProgram, updateProgram, getProgram, loadSettings, getMax } from '../lib/storage.js'
 import { getEquipment } from '../lib/equipment.js'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 import {
@@ -14,21 +14,28 @@ const STEPS = ['start', 'maxes', 'schedule', 'accessories', 'review']
 // preferences, then hand back a program with every weight already worked out.
 export default function GzclpWizard() {
   const navigate = useNavigate()
+  const location = useLocation()
   const units = loadSettings().units === 'kg' ? 'kg' : 'lbs'
   const have = new Set(getEquipment().profiles[getEquipment().active] || [])
+
+  // Re-running setup for a program the wizard already built: its answers were
+  // saved on the program, so we can reopen exactly where they left off.
+  const editingId = location.state?.programId || null
+  const existing = editingId ? getProgram(editingId) : null
+  const saved = existing?.gzclp || null
 
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState(() => ({
     units,
-    seedMode: 'oneRM',
+    seedMode: saved?.seedMode || 'oneRM',
     // Prefill from any 1RMs the user has already saved in the app.
-    maxes: Object.fromEntries(GZCLP_LIFTS.map((l) => [l.id, getMax(l.id)?.oneRM || ''])),
-    dayFormat: 3,
-    t3: {
+    maxes: saved?.maxes || Object.fromEntries(GZCLP_LIFTS.map((l) => [l.id, getMax(l.id)?.oneRM || ''])),
+    dayFormat: saved?.dayFormat || 3,
+    t3: saved?.t3 || {
       vert_pull: firstDoable(T3_CHOICES.vert_pull.ids, have),
       horiz_pull: firstDoable(T3_CHOICES.horiz_pull.ids, have),
     },
-    extra: 'none',
+    extra: saved?.extra || 'none',
   }))
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
@@ -45,14 +52,21 @@ export default function GzclpWizard() {
     if (!isValid) return
     if (key === 'start' && draft.seedMode === 'light') { setStep(2); return }
     if (isLast) {
-      addProgram(buildGzclpProgram(draft))
+      const built = buildGzclpProgram(draft)
+      if (existing) {
+        // Keep the program's identity, name, and place in the rotation; replace
+        // the workouts and their freshly computed starting weights.
+        updateProgram({ ...existing, ...built, id: existing.id, name: existing.name })
+      } else {
+        addProgram(built)
+      }
       navigate('/today')
       return
     }
     setStep((s) => s + 1)
   }
   const back = () => {
-    if (step === 0) { navigate('/templates'); return }
+    if (step === 0) { navigate(existing ? '/program' : '/templates'); return }
     if (step === 2 && draft.seedMode === 'light') { setStep(0); return }
     setStep((s) => s - 1)
   }
@@ -64,8 +78,8 @@ export default function GzclpWizard() {
     <section className="page full-flow">
       <header className="page-header">
         <div className="onb-head-row">
-          <p className="eyebrow">GZCLP setup · step {step + 1} of {STEPS.length}</p>
-          <button type="button" className="skip-link" onClick={() => navigate('/templates')}>
+          <p className="eyebrow">{existing ? 'Adjust GZCLP' : 'GZCLP setup'} · step {step + 1} of {STEPS.length}</p>
+          <button type="button" className="skip-link" onClick={() => navigate(existing ? '/program' : '/templates')}>
             Cancel →
           </button>
         </div>
@@ -222,6 +236,15 @@ export default function GzclpWizard() {
                 )}
               </div>
             ))}
+            {existing && (
+              <div className="card notice">
+                <p className="muted small">
+                  ⚠️ <strong>This replaces your current GZCLP weights and stages.</strong> Each lift
+                  restarts at Stage 1 with the weights above, so if a lift had worked its way down
+                  to 6×2 or 10×1 it goes back to 5×3. Your logged history and PRs are untouched.
+                </p>
+              </div>
+            )}
             <div className="card notice">
               <p className="muted small">
                 📈 <strong>How it progresses:</strong> finish every set and the weight goes up next
@@ -237,7 +260,7 @@ export default function GzclpWizard() {
       <div className="flow-actions">
         <button type="button" className="btn btn-ghost" onClick={back}>Back</button>
         <button type="button" className="btn btn-primary" onClick={next} disabled={!isValid}>
-          {isLast ? 'Create my program' : 'Next'}
+          {isLast ? (existing ? 'Update my program' : 'Create my program') : 'Next'}
         </button>
       </div>
     </section>

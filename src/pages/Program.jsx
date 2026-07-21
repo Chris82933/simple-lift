@@ -79,6 +79,22 @@ export default function Program() {
         </div>
       ))}
 
+      {program.source === 'gzclp-wizard' && (
+        <div className="card">
+          <p className="group-label">GZCLP setup</p>
+          <p className="muted small">
+            Retested a max, changed gyms, or want different accessories? Re-run the setup and the
+            starting weights are recalculated for you.
+          </p>
+          <button
+            className="btn btn-ghost"
+            onClick={() => navigate('/gzclp', { state: { programId: program.id } })}
+          >
+            ⚙️ Adjust GZCLP setup
+          </button>
+        </div>
+      )}
+
       {program.source === 'custom' && (
         <div className="card">
           <button className="btn btn-ghost" onClick={() => navigate('/builder', { state: { id: program.id } })}>
