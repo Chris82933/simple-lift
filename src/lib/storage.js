@@ -357,27 +357,92 @@ export function importData(blob) {
 export const getUpdatedAt = () => read(UPDATED_KEY, 0)
 
 // ---- Copy-paste backup codes ----
-// Encodes the full data snapshot into one portable string the user can copy
-// and paste back in (e.g. moving to a new phone). Unicode-safe base64.
-const CODE_PREFIX = 'SLIFT1:'
+// One portable string holding the whole snapshot, for moving to a new phone or
+// surviving iOS wiping local data.
+//
+// v1 was plain base64 of the JSON, which is bulky: the snapshot repeats the same
+// keys for every set of every session, and base64 then adds another third on
+// top. v2 gzips first, which typically cuts a real history by 10–20×. Nothing is
+// dropped — it's lossless compression of the identical snapshot.
+//
+// v1 codes still import, forever. Anyone holding an old code keeps their backup.
+const CODE_PREFIX = 'SLIFT1:'   // base64(json)
+const CODE_PREFIX_V2 = 'SLIFT2:' // base64url(gzip(json))
 
-export function exportCode() {
-  const json = JSON.stringify(exportData())
-  // encodeURIComponent → handles any non-Latin chars before base64.
-  const b64 = btoa(unescape(encodeURIComponent(json)))
-  return CODE_PREFIX + b64
+const hasCompression = () =>
+  typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined'
+
+// base64url — no +/= to be mangled by chat apps, URLs, or note fields.
+const toB64Url = (bytes) => {
+  let bin = ''
+  for (const b of bytes) bin += String.fromCharCode(b)
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+const fromB64Url = (s) => {
+  const b64 = s.replace(/-/g, '+').replace(/_/g, '/')
+  const bin = atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, '='))
+  const out = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+  return out
 }
 
-// Returns true on success, throws an Error with a friendly message otherwise.
-export function importCode(code) {
+// Push bytes through a Compression/DecompressionStream. Written against the raw
+// reader/writer rather than Blob+Response so it works anywhere the stream itself
+// exists. The write is deliberately not awaited before reading starts — waiting
+// on both ends at once deadlocks on backpressure for larger snapshots.
+async function pipeThrough(bytes, stream) {
+  const writer = stream.writable.getWriter()
+  writer.write(bytes).then(() => writer.close(), () => {})
+  const reader = stream.readable.getReader()
+  const chunks = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+    total += value.length
+  }
+  const out = new Uint8Array(total)
+  let at = 0
+  for (const c of chunks) { out.set(c, at); at += c.length }
+  return out
+}
+
+export async function exportCode() {
+  const json = JSON.stringify(exportData())
+  if (hasCompression()) {
+    try {
+      const gz = await pipeThrough(new TextEncoder().encode(json), new CompressionStream('gzip'))
+      return CODE_PREFIX_V2 + toB64Url(gz)
+    } catch { /* fall through to the uncompressed form */ }
+  }
+  // Older browsers (pre-iOS 16.4) — still produce a working, if longer, code.
+  return CODE_PREFIX + btoa(unescape(encodeURIComponent(json)))
+}
+
+// Returns true on success, rejects with a friendly message otherwise.
+export async function importCode(code) {
   if (!code || typeof code !== 'string') throw new Error('Paste your backup code first.')
-  let body = code.trim()
-  if (body.startsWith(CODE_PREFIX)) body = body.slice(CODE_PREFIX.length)
+  const trimmed = code.trim()
+  const v2 = trimmed.startsWith(CODE_PREFIX_V2)
+  let body = trimmed
+  if (v2) body = body.slice(CODE_PREFIX_V2.length)
+  else if (body.startsWith(CODE_PREFIX)) body = body.slice(CODE_PREFIX.length)
   body = body.replace(/\s+/g, '')
+
   let blob
   try {
-    blob = JSON.parse(decodeURIComponent(escape(atob(body))))
-  } catch {
+    if (v2) {
+      if (!hasCompression()) {
+        throw new Error('This browser is too old to read a compressed backup code. Open the code on a newer device, or use an older code if you have one.')
+      }
+      const json = await pipeThrough(fromB64Url(body), new DecompressionStream('gzip'))
+      blob = JSON.parse(new TextDecoder().decode(json))
+    } else {
+      blob = JSON.parse(decodeURIComponent(escape(atob(body))))
+    }
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('This browser')) throw e
     throw new Error('That code doesn’t look valid. Copy the whole thing and try again.')
   }
   if (!blob || typeof blob !== 'object' || (blob.programs === undefined && blob.profile === undefined)) {

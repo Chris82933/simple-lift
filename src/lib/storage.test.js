@@ -162,6 +162,45 @@ describe('export / import', () => {
     expect(loadPrograms()[0].name).toBe('Test Program')
   })
 
+  it('emits a compressed v2 code', async () => {
+    savePrograms([program()])
+    expect(await exportCode()).toMatch(/^SLIFT2:/)
+  })
+
+  it('still imports an old uncompressed v1 code', async () => {
+    // Exactly what the previous version produced: SLIFT1 + plain base64 JSON.
+    const blob = { programs: [program({ name: 'From v1' })], history: [] }
+    const v1 = 'SLIFT1:' + btoa(unescape(encodeURIComponent(JSON.stringify(blob))))
+    await importCode(v1)
+    expect(loadPrograms()[0].name).toBe('From v1')
+  })
+
+  it('compresses a realistic history to a fraction of the v1 size', async () => {
+    // 60 sessions of repetitive JSON — the case that made codes unusably long.
+    const history = Array.from({ length: 60 }, (_, i) => ({
+      date: `2026-01-${(i % 28) + 1}`,
+      sessionTitle: 'A1 · Back Squat',
+      entries: [
+        { exerciseId: 'back_squat', name: 'Back Squat', sets: Array.from({ length: 5 }, () => ({ weight: 225, reps: 3, done: true })) },
+        { exerciseId: 'bench_press', name: 'Bench Press', sets: Array.from({ length: 3 }, () => ({ weight: 150, reps: 10, done: true })) },
+      ],
+    }))
+    importData({ programs: [program()], history })
+
+    const v2 = await exportCode()
+    const v1Length = 'SLIFT1:'.length + btoa(unescape(encodeURIComponent(JSON.stringify(exportData())))).length
+    expect(v2.length).toBeLessThan(v1Length / 10)
+  })
+
+  it('accepts a code with stray whitespace from a wrapped paste', async () => {
+    savePrograms([program()])
+    const code = await exportCode()
+    clearAll()
+    const wrapped = code.slice(0, 20) + '\n  ' + code.slice(20)
+    await importCode(wrapped)
+    expect(loadPrograms()[0].name).toBe('Test Program')
+  })
+
   it('importData leaves untouched keys alone', () => {
     savePrograms([program()])
     saveSettings({ units: 'kg' })

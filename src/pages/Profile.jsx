@@ -31,14 +31,18 @@ export default function Profile() {
   const [importText, setImportText] = useState('')
   const [codeStatus, setCodeStatus] = useState(null) // { ok, msg }
 
-  const generateCode = () => {
-    try { setMyCode(exportCode()); setCodeStatus(null) }
+  // Codes are gzipped, so building one is async.
+  const generateCode = async () => {
+    try { setMyCode(await exportCode()); setCodeStatus(null) }
     catch { setCodeStatus({ ok: false, msg: 'Could not build a code.' }) }
   }
 
   const copyCode = async () => {
-    const code = myCode || exportCode()
-    if (!myCode) setMyCode(code)
+    let code = myCode
+    if (!code) {
+      try { code = await exportCode() } catch { setCodeStatus({ ok: false, msg: 'Could not build a code.' }); return }
+      setMyCode(code)
+    }
     try {
       await navigator.clipboard.writeText(code)
       setCodeStatus({ ok: true, msg: 'Copied! Paste it somewhere safe.' })
@@ -47,10 +51,10 @@ export default function Profile() {
     }
   }
 
-  const runImport = () => {
+  const runImport = async () => {
     if (!window.confirm('Import this code? It will replace the programs, history, and settings on this device.')) return
     try {
-      importCode(importText)
+      await importCode(importText)
       setCodeStatus({ ok: true, msg: 'Imported! Reloading…' })
       setTimeout(() => window.location.reload(), 600)
     } catch (e) {
@@ -341,6 +345,10 @@ export default function Profile() {
           Export a code with <strong>everything</strong> — programs, history, cardio, maxes, and
           settings. Paste it on another device (or back here) to restore it. Great for moving
           phones or keeping a manual backup.
+        </p>
+        <p className="muted small">
+          The code is compressed, so it stays short even after years of training. Codes you saved
+          before still work.
         </p>
         <button type="button" className="btn btn-primary" onClick={copyCode}>📋 Copy my backup code</button>
         <button type="button" className="btn btn-ghost btn-sm" onClick={generateCode}>Show code</button>
