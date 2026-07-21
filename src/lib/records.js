@@ -4,20 +4,33 @@
 // (planks, carries) never touch 1RM math — their "reps" are seconds — and are
 // tracked as heavier-load or longer-hold PRs instead. Warm-ups never count.
 import { estimate1RM } from './oneRepMax.js'
-import { exMeasure } from '../data/exercises.js'
+import { exMeasure, EXERCISE_BY_ID } from '../data/exercises.js'
+
+// On a pull-up or dip the lifter's own bodyweight IS the load, so a 25 lb belt
+// on a 180 lb lifter is a 205 lb lift — scoring it as 25 lb produced nonsense
+// e1RMs. Added only when the user has recorded a bodyweight AND actually hung
+// some weight; unloaded sets stay rep-tracked, which is how people think about
+// them ("I got 12 pull-ups", not "I lifted 180 lb twelve times").
+//
+// The CURRENT bodyweight is used for every session, including old ones. Using
+// each session's historical weight would make past PRs drift every time the
+// user steps on a scale; a single consistent basis keeps comparisons stable.
+const bwOffset = (exerciseId, bodyweight) =>
+  bodyweight > 0 && EXERCISE_BY_ID[exerciseId]?.bwLoad ? bodyweight : 0
 
 // The best a single exercise's sets achieved this session (warm-ups excluded).
-function bestOfSets(sets) {
+function bestOfSets(sets, offset = 0) {
   let topWeight = 0
   let topE1RM = 0
   let topReps = 0
   let bestSet = null
   for (const s of sets || []) {
     if (s.warmup) continue
-    const w = Number(s.weight) || 0
+    const added = Number(s.weight) || 0
     const r = Number(s.reps) || 0
     if (!s.done || r <= 0) continue
     topReps = Math.max(topReps, r)
+    const w = added > 0 ? added + offset : 0
     if (w > 0) {
       topWeight = Math.max(topWeight, w)
       const e = estimate1RM(w, r)
@@ -28,11 +41,11 @@ function bestOfSets(sets) {
 }
 
 // Best weight / e1RM / reps ever recorded per exercise, from prior sessions.
-function historyBests(priorHistory) {
+function historyBests(priorHistory, bodyweight = 0) {
   const byEx = {}
   for (const w of priorHistory || []) {
     for (const e of w.entries || []) {
-      const b = bestOfSets(e.sets)
+      const b = bestOfSets(e.sets, bwOffset(e.exerciseId, bodyweight))
       const cur = byEx[e.exerciseId] || { topWeight: 0, topE1RM: 0, topReps: 0 }
       byEx[e.exerciseId] = {
         topWeight: Math.max(cur.topWeight, b.topWeight),
@@ -47,12 +60,12 @@ function historyBests(priorHistory) {
 // Given this session's entries, the history *before* it, and saved maxes:
 //  • prs          — new personal records set this session
 //  • oneRMUpdates — lifts whose estimated 1RM beat the saved max (offer to save)
-export function sessionRecords(entries, priorHistory, maxes = {}) {
-  const bests = historyBests(priorHistory)
+export function sessionRecords(entries, priorHistory, maxes = {}, { bodyweight = 0 } = {}) {
+  const bests = historyBests(priorHistory, bodyweight)
   const prs = []
   const oneRMUpdates = []
   for (const e of entries || []) {
-    const b = bestOfSets(e.sets)
+    const b = bestOfSets(e.sets, bwOffset(e.exerciseId, bodyweight))
     const prior = bests[e.exerciseId]
     const m = exMeasure({ id: e.exerciseId })
     if (m.type !== 'reps') {

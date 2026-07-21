@@ -1353,6 +1353,21 @@ select.text-input { appearance: none; }
   color: var(--text);
 }
 
+/* ---- Bodyweight ---- */
+.why-list {
+  margin: 4px 0 10px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.why-list strong { color: var(--text); font-weight: 600; }
+.bw-entry { display: flex; align-items: center; gap: 8px; }
+.bw-entry .text-input { flex: 1; }
+.bw-log { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+
 /* ---- GZCLP setup wizard ---- */
 .gz-lift-row { display: flex; align-items: center; gap: 12px; }
 .gz-lift-name { font-weight: 600; font-size: 15px; flex: 1; }

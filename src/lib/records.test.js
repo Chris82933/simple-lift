@@ -61,6 +61,42 @@ describe('personal records', () => {
     expect(sessionRecords(now, prior, { bench_press: { oneRM: 315 } }).oneRMUpdates).toEqual([])
   })
 
+  it('scores a weighted pull-up as bodyweight + added load', () => {
+    const prior = [session([entry('weighted_pullup', 'Weighted Pull-Up', [set(25, 5)])])]
+    const now = [entry('weighted_pullup', 'Weighted Pull-Up', [set(35, 5)])]
+    const { oneRMUpdates } = sessionRecords(now, prior, {}, { bodyweight: 180 })
+    // 215 lb for 5 — not 35 lb for 5.
+    expect(oneRMUpdates[0].weight).toBe(215)
+    expect(oneRMUpdates[0].oneRM).toBeGreaterThan(215)
+  })
+
+  it('falls back to the added weight alone when no bodyweight is recorded', () => {
+    const prior = [session([entry('weighted_pullup', 'Weighted Pull-Up', [set(25, 5)])])]
+    const now = [entry('weighted_pullup', 'Weighted Pull-Up', [set(35, 5)])]
+    expect(sessionRecords(now, prior, {}, {}).oneRMUpdates[0].weight).toBe(35)
+  })
+
+  it('leaves unloaded bodyweight sets as rep PRs, not e1RM', () => {
+    const prior = [session([entry('pullup', 'Pull-Up', [set(0, 8)])])]
+    const now = [entry('pullup', 'Pull-Up', [set(0, 12)])]
+    const { prs, oneRMUpdates } = sessionRecords(now, prior, {}, { bodyweight: 180 })
+    expect(prs[0].kind).toBe('reps')
+    expect(oneRMUpdates).toEqual([])
+  })
+
+  it('does not add bodyweight to a barbell lift', () => {
+    const prior = [session([entry('back_squat', 'Squat', [set(225, 5)])])]
+    const now = [entry('back_squat', 'Squat', [set(245, 5)])]
+    expect(sessionRecords(now, prior, {}, { bodyweight: 180 }).oneRMUpdates[0].weight).toBe(245)
+  })
+
+  it('compares old and new sessions on the same bodyweight basis', () => {
+    // Same added weight and reps as last time — no PR, even though bw is applied.
+    const prior = [session([entry('weighted_pullup', 'Weighted Pull-Up', [set(25, 5)])])]
+    const now = [entry('weighted_pullup', 'Weighted Pull-Up', [set(25, 5)])]
+    expect(sessionRecords(now, prior, {}, { bodyweight: 180 }).prs).toEqual([])
+  })
+
   it('labels each PR kind readably', () => {
     expect(prShort({ kind: 'e1rm', value: 315 }, 'lbs')).toBe('est. 1RM 315 lbs')
     expect(prShort({ kind: 'time', value: 45, unit: 'sec' }, 'lbs')).toBe('45 sec hold')

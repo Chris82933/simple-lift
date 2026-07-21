@@ -14,6 +14,7 @@ import {
   profileMeta, PROFILE_IDS,
 } from '../lib/equipment.js'
 import PlateSettings from '../components/PlateSettings.jsx'
+import BodyweightCard from '../components/BodyweightCard.jsx'
 
 const ALL_EQUIP = EQUIPMENT_GROUPS.flatMap((g) => g.items)
 const labelsFor = (ids = [], src) => ids.map((id) => src.find((x) => x.id === id)?.label).filter(Boolean)
@@ -317,6 +318,9 @@ export default function Profile() {
           ))}
         </div>
       </div>
+
+      {/* ---- Bodyweight ---- */}
+      <BodyweightCard />
 
       {/* ---- Setup summary ---- */}
       {profile ? (

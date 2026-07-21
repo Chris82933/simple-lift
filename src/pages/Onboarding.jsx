@@ -7,14 +7,14 @@ import {
   DAYS_OPTIONS,
   SESSION_OPTIONS,
 } from '../data/options.js'
-import { saveProfile, addProgram, loadProfile } from '../lib/storage.js'
+import { saveProfile, addProgram, loadProfile, logBodyweight, loadSettings } from '../lib/storage.js'
 import { generateProgram } from '../lib/generator.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 
 const toggle = (arr, val) =>
   arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]
 
-const STEPS = ['focus', 'balance', 'equipment', 'schedule', 'goals', 'progression']
+const STEPS = ['focus', 'balance', 'equipment', 'schedule', 'goals', 'progression', 'bodyweight']
 
 const DEFAULT_DRAFT = {
   focusAreas: [],
@@ -24,6 +24,7 @@ const DEFAULT_DRAFT = {
   sessionLength: 45,
   goals: [],
   progressionMethod: DEFAULT_METHOD,
+  bodyweight: '', // optional — see the bodyweight step for why we ask
 }
 
 export default function Onboarding() {
@@ -50,6 +51,7 @@ export default function Onboarding() {
     schedule: !!draft.daysPerWeek && !!draft.sessionLength,
     goals: draft.goals.length >= 1,
     progression: !!draft.progressionMethod,
+    bodyweight: true, // always skippable — never block setup on a weight
   }[STEPS[step]]
 
   const isLast = step === STEPS.length - 1
@@ -61,6 +63,7 @@ export default function Onboarding() {
       saveProfile(profile)
       // Carry the chosen progression style onto the generated program so the
       // after-workout screen recommends the right next step.
+      if (Number(draft.bodyweight) > 0) logBodyweight(Number(draft.bodyweight))
       const program = generateProgram(profile)
       addProgram({ ...program, progressionMethod: draft.progressionMethod })
       navigate('/today')
@@ -129,6 +132,7 @@ export default function Onboarding() {
   }
 
   const selectedMethod = PROGRESSION_METHODS.find((m) => m.id === draft.progressionMethod)
+  const units = loadSettings().units === 'kg' ? 'kg' : 'lbs'
 
   return (
     <section className="page full-flow">
@@ -310,6 +314,39 @@ export default function Onboarding() {
               </div>
             )}
             <p className="muted small">You can change this anytime, and after every workout you still choose what to do.</p>
+          </>
+        )}
+
+        {STEPS[step] === 'bodyweight' && (
+          <>
+            <h1>What do you weigh?</h1>
+            <p className="muted">
+              Optional — skip it and everything still works. Here&apos;s what the app does with it,
+              so you can decide:
+            </p>
+            <ul className="why-list">
+              <li>
+                <strong>Scores weighted pull-ups and dips properly.</strong> A 25 {units} belt on a
+                180 {units} lifter is a 205 {units} lift. Without your weight, the app can only see
+                the 25 and your progress there looks flat.
+              </li>
+              <li><strong>Charts your weight over time</strong> next to your lifts on the Progress tab.</li>
+              <li><strong>Strength-to-weight</strong> — the number that decides most climbing and calisthenics moves.</li>
+            </ul>
+            <input
+              type="number"
+              inputMode="decimal"
+              className="text-input"
+              placeholder={`Your weight in ${units}`}
+              value={draft.bodyweight}
+              onChange={(e) => set({ bodyweight: e.target.value })}
+              aria-label={`Bodyweight in ${units}`}
+            />
+            <p className="muted small">
+              Stays on your device (or your own cloud backup). The app never sets a target weight,
+              never compares you to anyone, and never mentions it unprompted. You can add or change
+              it later in Settings.
+            </p>
           </>
         )}
       </div>

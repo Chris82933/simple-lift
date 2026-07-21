@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt } from '../lib/storage.js'
+import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt, loadBodyweight } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { exMeasure } from '../data/exercises.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
@@ -200,6 +200,7 @@ export default function Progress() {
   const refresh = () => setVersion((v) => v + 1)
   const history = loadHistory()
   const cardio = loadCardio()
+  const bodyweightLog = loadBodyweight()
   const units = loadSettings().units || 'lbs'
   const [detailEx, setDetailEx] = useState(null) // { id, name } for the detail sheet
 
@@ -219,6 +220,16 @@ export default function Progress() {
   const [weightMetric, setWeightMetric] = useState('top') // 'top' | 'e1rm'
   const allSeries = useMemo(() => buildSeries(history, weightMetric), [history, weightMetric])
   const bwSeries = useMemo(() => buildBodyweightSeries(history), [history])
+  // The lifter's own weight — one series, oldest → newest.
+  const bodyweightSeries = useMemo(() => [{
+    id: 'bodyweight',
+    name: 'Bodyweight',
+    color: PALETTE[5],
+    points: [...bodyweightLog]
+      .map((e) => ({ t: new Date(e.date).getTime(), weight: Number(e.weight) || 0 }))
+      .filter((p) => p.weight > 0 && !Number.isNaN(p.t))
+      .sort((a, b) => a.t - b.t),
+  }], [bodyweightLog])
   // Every exercise that appears in history, for the tappable per-exercise list.
   const exercisesTracked = useMemo(() => {
     const seen = new Map()
@@ -260,7 +271,8 @@ export default function Progress() {
   const PAGE = 8
   const [shownSessions, setShownSessions] = useState(PAGE)
 
-  if (history.length === 0 && cardio.length === 0) {
+  // Weigh-ins alone are enough to have something worth showing here.
+  if (history.length === 0 && cardio.length === 0 && bodyweightLog.length < 2) {
     return (
       <section className="page">
         <header className="page-header"><h1>Progress</h1></header>
@@ -313,6 +325,22 @@ export default function Progress() {
           <p className="muted small">Weighted lifts will plot here once you log some.</p>
         )}
       </CollapsibleCard>
+
+      {/* ---- Bodyweight over time ---- */}
+      {bodyweightLog.length > 1 && (
+        <CollapsibleCard
+          title={`Bodyweight over time (${units})`}
+          subtitle={`${bodyweightLog[0].weight} ${units} now`}
+          open={cardOpen('bodyweight')}
+          onToggle={() => toggleCard('bodyweight')}
+        >
+          <ProgressChart series={bodyweightSeries} units={units} />
+          <p className="muted small">
+            From your weigh-ins in Settings. Also used to score weighted pull-ups and dips as
+            bodyweight + added load.
+          </p>
+        </CollapsibleCard>
+      )}
 
       {/* ---- Bodyweight reps ---- */}
       {bwSeries.length > 0 && (

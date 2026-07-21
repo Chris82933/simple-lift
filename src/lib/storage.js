@@ -8,6 +8,7 @@ const SETTINGS_KEY = 'simple-lift:settings'
 const MAXES_KEY = 'simple-lift:maxes'
 const CARDIO_KEY = 'simple-lift:cardio'
 const SKILLS_KEY = 'simple-lift:skills'
+const BODYWEIGHT_KEY = 'simple-lift:bodyweight'
 const UPDATED_KEY = 'simple-lift:updatedAt'
 const ACTIVE_SESSION_KEY = 'simple-lift:activeSession' // in-progress workout (resume)
 const LEGACY_PROGRAM_KEY = 'simple-lift:program' // pre-multi-program
@@ -245,6 +246,36 @@ export function insertCardioAt(entry, idx) {
   })
 }
 
+// ---- Bodyweight log ----
+// Newest-first [{ date, weight }]. Used for the Progress chart and — more
+// importantly — to make weighted bodyweight lifts (pull-ups, dips) score
+// correctly: hanging 25 lb from a 180 lb lifter is a 205 lb lift, not a 25 lb one.
+export const loadBodyweight = () => read(BODYWEIGHT_KEY, [])
+
+export function logBodyweight(weight, date = new Date().toISOString()) {
+  const w = Number(weight) || 0
+  if (w <= 0) return loadBodyweight()
+  const day = date.slice(0, 10)
+  mutate(BODYWEIGHT_KEY, [], (log) => {
+    // One entry per day — re-weighing replaces rather than stacks.
+    const rest = log.filter((e) => (e.date || '').slice(0, 10) !== day)
+    return [{ date, weight: w }, ...rest].sort((a, b) => (a.date < b.date ? 1 : -1))
+  })
+  // Announce it like a settings save so the UI flashes "✓ Saved".
+  try { window.dispatchEvent(new CustomEvent('sl-saved')) } catch { /* no window */ }
+  return loadBodyweight()
+}
+
+export function deleteBodyweight(date) {
+  mutate(BODYWEIGHT_KEY, [], (log) => log.filter((e) => e.date !== date))
+}
+
+// The most recent recorded weight, or 0 when the user has never entered one.
+export function currentBodyweight() {
+  const log = loadBodyweight()
+  return log.length ? Number(log[0].weight) || 0 : 0
+}
+
 // ---- In-progress workout (for resuming after a close / crash / iOS eviction) ----
 // Kept local-only (silent) — no need to sync a half-finished session.
 export const loadActiveSession = () => read(ACTIVE_SESSION_KEY, null)
@@ -307,6 +338,7 @@ export function exportData() {
     maxes: read(MAXES_KEY, {}),
     cardio: read(CARDIO_KEY, []),
     skills: read(SKILLS_KEY, {}),
+    bodyweight: read(BODYWEIGHT_KEY, []),
     updatedAt: read(UPDATED_KEY, 0),
   }
 }
@@ -349,6 +381,7 @@ export function importData(blob) {
   if (blob.maxes !== undefined) write(MAXES_KEY, blob.maxes, { silent: true })
   if (blob.cardio !== undefined) write(CARDIO_KEY, blob.cardio, { silent: true })
   if (blob.skills !== undefined) write(SKILLS_KEY, blob.skills, { silent: true })
+  if (blob.bodyweight !== undefined) write(BODYWEIGHT_KEY, blob.bodyweight, { silent: true })
   if (blob.updatedAt !== undefined) {
     try { localStorage.setItem(UPDATED_KEY, JSON.stringify(blob.updatedAt)) } catch { /* ignore */ }
   }
@@ -456,7 +489,7 @@ export async function importCode(code) {
 }
 
 export function clearAll() {
-  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, UPDATED_KEY, ACTIVE_SESSION_KEY, LEGACY_PROGRAM_KEY].forEach(
+  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, BODYWEIGHT_KEY, UPDATED_KEY, ACTIVE_SESSION_KEY, LEGACY_PROGRAM_KEY].forEach(
     (k) => { try { localStorage.removeItem(k) } catch { /* ignore */ } },
   )
   window.dispatchEvent(new CustomEvent('sl-data-changed'))

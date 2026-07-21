@@ -7,6 +7,7 @@ import {
   loadPrograms, savePrograms, addProgram, updateProgram, deleteProgram,
   loadSettings, saveSettings, loadHistory, appendWorkout, insertWorkoutAt,
   exportData, importData, exportCode, importCode, clearAll, restoreProgram,
+  loadBodyweight, logBodyweight, currentBodyweight,
 } from './storage.js'
 
 const PROGRAMS = 'simple-lift:programs'
@@ -111,6 +112,42 @@ describe('history', () => {
     savePrograms([program()])
     restoreProgram(program())
     expect(loadPrograms()).toHaveLength(1)
+  })
+})
+
+describe('bodyweight log', () => {
+  it('starts empty and reports 0', () => {
+    expect(loadBodyweight()).toEqual([])
+    expect(currentBodyweight()).toBe(0)
+  })
+
+  it('records a weigh-in and reports the latest', () => {
+    logBodyweight(180, '2026-01-01T08:00:00.000Z')
+    logBodyweight(178, '2026-02-01T08:00:00.000Z')
+    expect(currentBodyweight()).toBe(178)
+    expect(loadBodyweight()).toHaveLength(2)
+  })
+
+  it('replaces rather than stacks when re-weighing the same day', () => {
+    logBodyweight(180, '2026-01-01T08:00:00.000Z')
+    logBodyweight(181, '2026-01-01T20:00:00.000Z')
+    expect(loadBodyweight()).toHaveLength(1)
+    expect(currentBodyweight()).toBe(181)
+  })
+
+  it('ignores a zero or junk weight', () => {
+    logBodyweight(0)
+    logBodyweight('not a number')
+    expect(loadBodyweight()).toEqual([])
+  })
+
+  it('travels in the backup snapshot', async () => {
+    logBodyweight(180, '2026-01-01T08:00:00.000Z')
+    const code = await exportCode()
+    clearAll()
+    expect(currentBodyweight()).toBe(0)
+    await importCode(code)
+    expect(currentBodyweight()).toBe(180)
   })
 })
 

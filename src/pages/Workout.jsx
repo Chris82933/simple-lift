@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import {
   loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation,
   addCardio, addProgram, updateWorkout, loadHistory, loadMaxes, saveMax,
-  loadActiveSession, saveActiveSession, clearActiveSession,
+  loadActiveSession, saveActiveSession, clearActiveSession, currentBodyweight,
 } from '../lib/storage.js'
 import { sessionRecords, buildSessionSummary, prShort } from '../lib/records.js'
 import { repsLabel, schemeForGoals, prescriptionFor } from '../data/schemes.js'
@@ -434,7 +434,7 @@ export default function Workout() {
     const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, sets: sets[ex.id] }))
 
     // Detect PRs and fresh 1RM estimates against the history *before* this session.
-    const { prs: newPrs, oneRMUpdates } = sessionRecords(entries, loadHistory(), loadMaxes())
+    const { prs: newPrs, oneRMUpdates } = sessionRecords(entries, loadHistory(), loadMaxes(), { bodyweight: currentBodyweight() })
     appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries, prs: newPrs })
     clearActiveSession() // session is logged — no longer resumable
     setPrs(newPrs)
