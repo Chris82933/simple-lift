@@ -389,6 +389,61 @@ export function importData(blob) {
 
 export const getUpdatedAt = () => read(UPDATED_KEY, 0)
 
+// ---- Sync marker ----
+// Records the state both sides agreed on at the last successful sync. Without
+// it, `updatedAt` alone cannot tell "the cloud is newer, take it" apart from
+// "we both changed since we last agreed" — and the second case silently threw
+// away one device's sessions. Device-local, so it never travels in the snapshot.
+const SYNC_MARKER_KEY = 'simple-lift:syncMarker'
+
+export const getSyncMarker = () => read(SYNC_MARKER_KEY, null)
+export const setSyncMarker = (marker) => write(SYNC_MARKER_KEY, marker, { silent: true })
+export const clearSyncMarker = () => {
+  try { localStorage.removeItem(SYNC_MARKER_KEY) } catch { /* ignore */ }
+}
+
+/**
+ * Compare local and cloud snapshots against the last agreed state.
+ *   'push'     — only local moved
+ *   'pull'     — only the cloud moved
+ *   'conflict' — both moved since the last sync; the user must choose
+ *   'none'     — already in step
+ */
+export function syncDecision(cloud, marker = getSyncMarker(), localUpdatedAt = getUpdatedAt()) {
+  const cloudAt = Number(cloud?.updatedAt) || 0
+  const localAt = Number(localUpdatedAt) || 0
+  if (!cloud) return 'push' // nothing up there yet
+  const agreedCloud = Number(marker?.cloudUpdatedAt) || 0
+  const agreedLocal = Number(marker?.localUpdatedAt) || 0
+
+  if (!marker) {
+    // First sync on this device: no shared history to reason from. Identical
+    // stamps mean the same data; otherwise both sides may hold real work.
+    if (cloudAt === localAt) return 'none'
+    return localAt > 0 ? 'conflict' : 'pull'
+  }
+  const cloudMoved = cloudAt > agreedCloud
+  const localMoved = localAt > agreedLocal
+  if (cloudMoved && localMoved) return 'conflict'
+  if (cloudMoved) return 'pull'
+  if (localMoved) return 'push'
+  return 'none'
+}
+
+// Human-readable "what's in this copy", so a conflict prompt can describe each
+// side instead of asking the user to pick blind.
+export function summarizeSnapshot(blob) {
+  const history = blob?.history || []
+  const last = history[0]?.date
+  return {
+    sessions: history.length,
+    programs: (blob?.programs || []).length,
+    cardio: (blob?.cardio || []).length,
+    lastWorkout: last ? new Date(last).toLocaleDateString() : null,
+    updatedAt: Number(blob?.updatedAt) || 0,
+  }
+}
+
 // ---- Copy-paste backup codes ----
 // One portable string holding the whole snapshot, for moving to a new phone or
 // surviving iOS wiping local data.

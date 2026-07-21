@@ -17,6 +17,24 @@ import PlateSettings from '../components/PlateSettings.jsx'
 import BodyweightCard from '../components/BodyweightCard.jsx'
 
 const ALL_EQUIP = EQUIPMENT_GROUPS.flatMap((g) => g.items)
+
+// "2 min ago" for the last successful sync.
+function syncAgo(ts) {
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000))
+  if (s < 60) return 'just now'
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m} min ago`
+  const h = Math.round(m / 60)
+  if (h < 24) return `${h} hr ago`
+  return `${Math.round(h / 24)} day${h < 48 ? '' : 's'} ago`
+}
+
+// One line describing a copy of the data, so a conflict can be judged on facts.
+const describeCopy = (s) =>
+  s
+    ? `${s.sessions} session${s.sessions === 1 ? '' : 's'} · ${s.programs} program${s.programs === 1 ? '' : 's'}`
+      + (s.lastWorkout ? ` · last workout ${s.lastWorkout}` : '')
+    : 'No details available'
 const labelsFor = (ids = [], src) => ids.map((id) => src.find((x) => x.id === id)?.label).filter(Boolean)
 
 export default function Profile() {
@@ -164,9 +182,40 @@ export default function Profile() {
             <div className="account-row">
               <span>{auth.user.displayName || auth.user.email}</span>
               <span className="active-badge">
-                {auth.status === 'syncing' ? 'Syncing…' : auth.syncNote?.level === 'over' ? 'Sync paused' : 'Synced'}
+                {auth.status === 'syncing' ? 'Syncing…'
+                  : auth.status === 'conflict' ? 'Needs a choice'
+                    : auth.status === 'error' ? 'Sync failed'
+                      : auth.syncNote?.level === 'over' ? 'Sync paused' : 'Synced'}
               </span>
             </div>
+            {auth.lastSyncedAt > 0 && auth.status !== 'conflict' && (
+              <p className="muted small">Last synced {syncAgo(auth.lastSyncedAt)}.</p>
+            )}
+
+            {auth.conflict && (
+              <div className="card notice conflict-card">
+                <p className="placeholder-title">⚠️ Two copies have changed</p>
+                <p className="muted small">
+                  This device and your cloud backup were both updated since they last matched —
+                  probably because you trained on another device, or logged something offline.
+                  Keeping one means losing the other&apos;s changes, so pick the copy you want.
+                </p>
+                <div className="conflict-choices">
+                  <button type="button" className="conflict-option" onClick={() => auth.resolveConflict('local')}>
+                    <span className="path-title">Keep this device</span>
+                    <span className="muted small">{describeCopy(auth.conflict.local)}</span>
+                  </button>
+                  <button type="button" className="conflict-option" onClick={() => auth.resolveConflict('cloud')}>
+                    <span className="path-title">Keep the cloud copy</span>
+                    <span className="muted small">{describeCopy(auth.conflict.cloudSummary)}</span>
+                  </button>
+                </div>
+                <p className="muted small">
+                  Not sure? Copy a backup code from below <em>before</em> choosing — that saves this
+                  device&apos;s copy no matter which side you keep.
+                </p>
+              </div>
+            )}
             {auth.syncNote?.level === 'over' && (
               <p className="muted small sync-warn">
                 ⚠️ Your data has grown past the cloud limit ({auth.syncNote.pct}% of 1&nbsp;MB), so cloud sync is paused — your data is still safe on this device. Trim old sessions in Progress, or keep a backup code below.

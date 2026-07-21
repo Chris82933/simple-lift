@@ -8,6 +8,7 @@ import {
   loadSettings, saveSettings, loadHistory, appendWorkout, insertWorkoutAt,
   exportData, importData, exportCode, importCode, clearAll, restoreProgram,
   loadBodyweight, logBodyweight, currentBodyweight,
+  syncDecision, summarizeSnapshot, getSyncMarker, setSyncMarker,
 } from './storage.js'
 
 const PROGRAMS = 'simple-lift:programs'
@@ -148,6 +149,66 @@ describe('bodyweight log', () => {
     expect(currentBodyweight()).toBe(0)
     await importCode(code)
     expect(currentBodyweight()).toBe(180)
+  })
+})
+
+describe('sync decisions', () => {
+  const cloud = (updatedAt, extra = {}) => ({ updatedAt, programs: [], history: [], ...extra })
+  const marker = (cloudUpdatedAt, localUpdatedAt) => ({ cloudUpdatedAt, localUpdatedAt })
+
+  it('pushes when there is nothing in the cloud yet', () => {
+    expect(syncDecision(null, null, 100)).toBe('push')
+  })
+
+  it('pushes when only this device changed', () => {
+    expect(syncDecision(cloud(100), marker(100, 100), 200)).toBe('push')
+  })
+
+  it('pulls when only the cloud changed', () => {
+    expect(syncDecision(cloud(200), marker(100, 100), 100)).toBe('pull')
+  })
+
+  it('does nothing when both sides are still at the agreed state', () => {
+    expect(syncDecision(cloud(100), marker(100, 100), 100)).toBe('none')
+  })
+
+  // The case that used to silently lose a device's sessions.
+  it('reports a conflict when BOTH sides changed since the last sync', () => {
+    expect(syncDecision(cloud(300), marker(100, 100), 250)).toBe('conflict')
+  })
+
+  it('still conflicts when the local copy is the newer of the two', () => {
+    // Last-writer-wins would have pushed here, discarding the cloud's changes.
+    expect(syncDecision(cloud(250), marker(100, 100), 300)).toBe('conflict')
+  })
+
+  it('treats a first sync with data on both sides as a conflict', () => {
+    expect(syncDecision(cloud(200), null, 100)).toBe('conflict')
+  })
+
+  it('pulls on a first sync onto a fresh device', () => {
+    expect(syncDecision(cloud(200), null, 0)).toBe('pull')
+  })
+
+  it('does nothing on a first sync when the stamps already match', () => {
+    expect(syncDecision(cloud(200), null, 200)).toBe('none')
+  })
+
+  it('keeps the marker out of the exported snapshot', () => {
+    setSyncMarker({ cloudUpdatedAt: 1, localUpdatedAt: 2, at: 3 })
+    expect(exportData().syncMarker).toBeUndefined()
+    expect(getSyncMarker().cloudUpdatedAt).toBe(1)
+  })
+
+  it('summarizes a copy so the user can tell the two apart', () => {
+    const s = summarizeSnapshot({
+      programs: [{ id: 'p1' }],
+      history: [{ date: '2026-02-01T10:00:00.000Z' }, { date: '2026-01-01T10:00:00.000Z' }],
+      updatedAt: 500,
+    })
+    expect(s.sessions).toBe(2)
+    expect(s.programs).toBe(1)
+    expect(s.lastWorkout).toBeTruthy()
   })
 })
 

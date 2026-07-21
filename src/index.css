@@ -1368,6 +1368,24 @@ select.text-input { appearance: none; }
 .bw-entry .text-input { flex: 1; }
 .bw-log { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
 
+/* ---- Sync conflict ---- */
+.conflict-card { border-left: 3px solid var(--accent-4, var(--accent)); }
+.conflict-choices { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.conflict-option {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.conflict-option:hover { border-color: var(--accent); }
+
 /* ---- Equipment capacity ---- */
 .cap-row {
   display: flex;
