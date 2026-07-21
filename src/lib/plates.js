@@ -77,3 +77,15 @@ export function calculatePlates(targetWeight, barWeight, availableWeights) {
   const total = bar + perSide.reduce((a, b) => a + b, 0) * 2
   return { perSide, leftover: Math.max(0, remaining), exact: remaining <= 0.01, total, barOnly: false }
 }
+
+// The smallest weight jump the user can actually load on a bar: twice the
+// lightest plate they own, since plates go on in pairs. Someone without 2.5s
+// can't make a 5 lb jump, so telling them to add 5 lb is useless advice.
+// Returns 0 when nothing is known, meaning "no constraint".
+export function smallestBarJump(units = 'lbs', settings = loadSettings()) {
+  const unit = units === 'kg' ? 'kg' : 'lbs'
+  const { available } = getPlateConfig(settings)
+  const owned = PLATE_WEIGHTS[unit].filter((w) => available[unit]?.[w])
+  if (!owned.length) return 0
+  return Math.min(...owned) * 2
+}

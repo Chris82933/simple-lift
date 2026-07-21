@@ -1,7 +1,7 @@
 // GZCLP progression rules, checked against the published program / the Reddit
 // and LiftVault spreadsheets. These are the numbers people trust the app to get
 // right, so each rule gets an explicit test rather than a spot check.
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { evaluateProgression, applyStage, stageNote, GZCLP_SCHEMES } from './gzclp.js'
 import { buildGzclpProgram, previewRotation, startWeights, oneRMFrom } from './gzclpBuild.js'
 
@@ -46,6 +46,46 @@ describe('T1 — 5×3 → 6×2 → 10×1', () => {
     const r = evaluateProgression(sq, sets(225, 1, 7), 'lbs') // only 7 of 10 singles
     expect(r.progression.stage).toBe(0)
     expect(r.progression.weight).toBe(205) // 225 × 0.9, rounded to 5
+  })
+})
+
+describe('increments respect the plates you actually own', () => {
+  // back_squat requires a barbell, so the plate inventory applies to it.
+  const barSquat = () => ({
+    name: 'Squat', id: 'back_squat', pattern: 'squat', regions: ['legs', 'core'],
+    progression: { scheme: 't1', stage: 0, weight: 225 },
+  })
+  const ownOnly = (weights) => {
+    const available = { lbs: {}, kg: {} }
+    for (const w of [45, 35, 25, 10, 5, 2.5]) available.lbs[w] = weights.includes(w)
+    for (const w of [25, 20, 15, 10, 5, 2.5, 1.25]) available.kg[w] = true
+    window.localStorage.setItem('simple-lift:settings', JSON.stringify({ plates: { available } }))
+  }
+
+  afterEach(() => window.localStorage.clear())
+
+  it('uses the standard jump when every plate is available', () => {
+    expect(evaluateProgression(barSquat(), sets(225, 3, 5), 'lbs').inc).toBe(10)
+  })
+
+  it('rounds a press jump up when the smallest plate is a 5', () => {
+    ownOnly([45, 35, 25, 10, 5]) // no 2.5s → smallest possible jump is 10 lb
+    const ohp = {
+      name: 'OHP', id: 'overhead_press', pattern: 'vert_push', regions: ['shoulders'],
+      progression: { scheme: 't1', stage: 0, weight: 100 },
+    }
+    // A 5 lb jump would need 2.5s, which this user doesn't have.
+    expect(evaluateProgression(ohp, sets(100, 3, 5), 'lbs').inc).toBe(10)
+  })
+
+  it('leaves dumbbell work alone — plates do not apply', () => {
+    ownOnly([45])
+    const row = {
+      name: 'DB Row', id: 'db_row', pattern: 'horiz_pull', regions: ['back'],
+      progression: { scheme: 't3', stage: 0, weight: 50 },
+    }
+    const r = evaluateProgression(row, [...sets(50, 15, 2), { weight: 50, reps: 26, done: true }], 'lbs')
+    expect(r.inc).toBe(5)
   })
 })
 

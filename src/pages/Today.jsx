@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { loadPrograms, getActiveProgramId, loadHistory, loadSettings, saveSettings, loadActiveSession } from '../lib/storage.js'
 import { isIOS } from '../lib/platform.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS, resolveExercisesForEquipment } from '../lib/equipment.js'
+import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS, resolveExercisesForEquipment, activeCapacity } from '../lib/equipment.js'
 import { repsLabel } from '../data/schemes.js'
 import { measureUnit } from '../data/exercises.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
@@ -77,8 +77,9 @@ export default function Today() {
   const availableSet = new Set(getEquipment().profiles[activeProfile])
   // Swap each move to the best version for the current gear (re-runs when the
   // training location / equipment changes).
-  const previewExercises = resolveExercisesForEquipment(session.exercises, availableSet)
-  const needSwap = previewExercises.filter((ex) => !isDoable(ex, availableSet)).length
+  const gear = { capacity: activeCapacity(), units: loadSettings().units }
+  const previewExercises = resolveExercisesForEquipment(session.exercises, availableSet, gear)
+  const needSwap = previewExercises.filter((ex) => !isDoable(ex, availableSet, gear)).length
 
   // An in-progress session for this program (any logged set) → offer to continue.
   const inProgress = (() => {

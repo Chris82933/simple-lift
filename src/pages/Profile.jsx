@@ -11,7 +11,7 @@ import InstallApp from '../components/InstallApp.jsx'
 import { applyTheme } from '../lib/theme.js'
 import {
   getEquipment, setActiveProfile as storeSetActiveProfile, saveProfileEquipment,
-  profileMeta, PROFILE_IDS,
+  saveProfileCapacity, LOAD_SOURCES, profileMeta, PROFILE_IDS,
 } from '../lib/equipment.js'
 import PlateSettings from '../components/PlateSettings.jsx'
 import BodyweightCard from '../components/BodyweightCard.jsx'
@@ -95,6 +95,17 @@ export default function Profile() {
     setEquip((e) => ({ ...e, active: id }))
     storeSetActiveProfile(id)
   }
+  // How much weight each gear type can actually supply, for the active profile.
+  const capacity = equip.capacity?.[activeProfile] || {}
+  const setCapacity = (sourceId, raw) => {
+    const n = Number(raw)
+    const next = { ...capacity }
+    if (raw === '' || !(n > 0)) delete next[sourceId] // blank = unspecified = no limit
+    else next[sourceId] = n
+    setEquip((e) => ({ ...e, capacity: { ...e.capacity, [activeProfile]: next } }))
+    saveProfileCapacity(activeProfile, next)
+  }
+
   const toggleEquip = (itemId) => {
     setEquip((e) => {
       const cur = e.profiles[activeProfile]
@@ -248,6 +259,32 @@ export default function Profile() {
             </div>
           ))}
           <p className="muted small">Bodyweight moves are always available.</p>
+        </details>
+
+        <details className="guide">
+          <summary>How much weight do you have?</summary>
+          <p className="muted small">
+            Owning dumbbells isn&apos;t the same as owning <em>enough</em> weight. Fill these in and
+            the app stops prescribing moves you can&apos;t load properly — a weighted pull-up
+            becomes an archer pull-up if 20 {settings.units || 'lbs'} is all you can hang. Leave any
+            of them blank and it won&apos;t second-guess you.
+          </p>
+          {LOAD_SOURCES.map((src) => (
+            <label className="cap-row" key={src.id}>
+              <span className="cap-label">
+                {src.label}
+                {src.hint && <span className="muted small"> {src.hint}</span>}
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                className="text-input cap-input"
+                placeholder={settings.units || 'lbs'}
+                value={capacity[src.id] ?? ''}
+                onChange={(e) => setCapacity(src.id, e.target.value)}
+              />
+            </label>
+          ))}
         </details>
       </div>
 

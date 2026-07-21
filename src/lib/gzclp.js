@@ -4,6 +4,8 @@
 // failure you drop to the next (harder-to-complete) stage at the same weight,
 // then reset once you fail the final stage.
 
+import { isBarbellLift, smallestBarJump } from './plates.js'
+
 export const GZCLP_SCHEMES = {
   t1: {
     label: 'T1',
@@ -38,8 +40,15 @@ const isLowerMain = (ex) =>
   ex.regions?.includes('legs') && ['squat', 'hinge'].includes(ex.pattern)
 
 function increment(ex, units, isT3) {
-  if (units === 'kg') return isT3 ? 2.5 : isLowerMain(ex) ? 5 : 2.5
-  return isT3 ? 5 : isLowerMain(ex) ? 10 : 5
+  const nominal = units === 'kg'
+    ? (isT3 ? 2.5 : isLowerMain(ex) ? 5 : 2.5)
+    : (isT3 ? 5 : isLowerMain(ex) ? 10 : 5)
+  // Round up to something the user can actually load. Without 2.5 lb plates a
+  // 5 lb jump is impossible, so "+5 lb" would be advice they can't follow.
+  if (!isBarbellLift(ex)) return nominal
+  const jump = smallestBarJump(units)
+  if (jump <= 0) return nominal
+  return Math.max(nominal, Math.ceil(nominal / jump) * jump)
 }
 
 // Return the exercise with its sets/reps set to the current stage.

@@ -20,7 +20,7 @@ import QuickOneRM from '../components/QuickOneRM.jsx'
 import PlateBreakdown from '../components/PlateBreakdown.jsx'
 import {
   getEquipment, setActiveProfile as storeSetActiveProfile, isDoable, bestSubstitute,
-  missingEquipment, profileMeta, PROFILE_IDS, activeEquipmentIds, resolveExercisesForEquipment,
+  missingEquipment, profileMeta, PROFILE_IDS, activeEquipmentIds, resolveExercisesForEquipment, activeCapacity,
 } from '../lib/equipment.js'
 import { isBarbellLift } from '../lib/plates.js'
 import { ladderInfo } from '../lib/ladder.js'
@@ -178,7 +178,7 @@ export default function Workout() {
     const raw = program?.days[dayIndex] ?? null
     // Swap each move to the best version for the user's current equipment, then
     // apply any progression scheme staging.
-    const forGear = raw ? resolveExercisesForEquipment(raw.exercises, activeEquipmentIds()) : []
+    const forGear = raw ? resolveExercisesForEquipment(raw.exercises, activeEquipmentIds(), { capacity: activeCapacity(), units: loadSettings().units }) : []
     const session = raw
       ? { ...raw, exercises: forGear.map((e) => (e.progression ? applyStage(e) : e)) }
       : null
