@@ -8,6 +8,7 @@ import {
 import { sessionRecords, buildSessionSummary, prShort } from '../lib/records.js'
 import { repsLabel, schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { stageNote, applyStage } from '../lib/gzclp.js'
+import { is531, applyWeek, weekNote } from '../lib/fiveThreeOne.js'
 import { extraNote } from '../lib/progression.js'
 import { reviewSession, applyChoices, INCREMENTS } from '../lib/sessionReview.js'
 import { methodFor, recommendChoice, recommendReason, methodName } from '../lib/progressionMethods.js'
@@ -82,13 +83,16 @@ function defaultDayIndex(program, stateIndex) {
 }
 
 // Write the carried-forward values (entered weights, auto GZCLP deloads) to the program.
-function applyPersist(program, dayIndex, persist) {
+function applyPersist(program, dayIndex, persist, units) {
   const exercises = program.days[dayIndex].exercises.map((ex) => {
     const p = persist.find((x) => x.exId === ex.id)
     if (!p) return ex
     let next = { ...ex }
     if (p.startWeight != null) next.startWeight = p.startWeight
-    if (p.progression) next = applyStage({ ...next, progression: p.progression })
+    if (p.progression) {
+      const merged = { ...next, progression: p.progression }
+      next = is531(merged) ? applyWeek(merged, units) : applyStage(merged)
+    }
     return next
   })
   return { ...program, days: program.days.map((d, i) => (i === dayIndex ? { ...d, exercises } : d)) }
@@ -138,7 +142,14 @@ function buildInitialSets(session, units) {
       const warms = ex.warmups && weight && exMeasure(ex).type === 'reps'
         ? warmupSets(Number(weight), inc).map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: false, warmup: true }))
         : []
-      const working = Array.from({ length: ex.sets }, () => ({ weight, reps: String(ex.repHigh), done: false }))
+      // Most schemes prescribe the same weight and reps for every working set.
+      // Percentage-based ones (5/3/1) prescribe each set separately, so honour
+      // per-set values when the exercise supplies them.
+      const working = Array.from({ length: ex.sets }, (_, i) => ({
+        weight: ex.setWeights?.[i] != null ? String(ex.setWeights[i]) : weight,
+        reps: String(ex.setReps?.[i] ?? ex.repHigh),
+        done: false,
+      }))
       initial[ex.id] = [...warms, ...working]
     }
   }
@@ -180,7 +191,7 @@ export default function Workout() {
     // apply any progression scheme staging.
     const forGear = raw ? resolveExercisesForEquipment(raw.exercises, activeEquipmentIds(), { capacity: activeCapacity(), units: loadSettings().units }) : []
     const session = raw
-      ? { ...raw, exercises: forGear.map((e) => (e.progression ? applyStage(e) : e)) }
+      ? { ...raw, exercises: forGear.map((e) => (is531(e) ? applyWeek(e, units) : e.progression ? applyStage(e) : e)) }
       : null
     // A saved in-progress session for THIS program+day, with real progress
     // (at least one logged set) → offer to resume it.
@@ -449,7 +460,7 @@ export default function Workout() {
     result.persist = result.persist.filter((p) => programIds.has(p.exId))
     result.suggestions = result.suggestions.filter((s) => programIds.has(s.exId))
     const fresh = loadActiveProgram()
-    if (fresh) updateProgram(applyPersist(fresh, dayIndex, result.persist))
+    if (fresh) updateProgram(applyPersist(fresh, dayIndex, result.persist, units))
     advanceRotation(program.id, dayIndex)
 
     // Did they restructure the workout since the last save? If so, offer to save.
@@ -802,7 +813,7 @@ export default function Workout() {
               )}
 
               <p className="cue">💡 {ex.cues}</p>
-              {ex.progression && <p className="suggestion">{stageNote(ex, units) || extraNote(ex, units)}</p>}
+              {ex.progression && <p className="suggestion">{weekNote(ex, units) || stageNote(ex, units) || extraNote(ex, units)}</p>}
               {lad && lad.length > 1 && (
                 <div className="ladder-hint">
                   <p className="suggestion" style={{ margin: 0 }}>

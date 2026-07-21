@@ -5,6 +5,7 @@
 //    default is always to keep the weight the same; a lift-appropriate
 //    increment is merely flagged as "recommended".
 import { schemeOf, evaluateProgression, applyStage } from './gzclp.js'
+import { is531, evaluateProgression as eval531 } from './fiveThreeOne.js'
 import { isExtraScheme, evaluateExtra } from './progression.js'
 import { EXERCISE_BY_ID, exMeasure } from '../data/exercises.js'
 
@@ -63,6 +64,17 @@ export function reviewSession(session, setsMap, goals, units, method = 'manual')
           doubleJump: !!result.suggestion.doubleJump, isGzclp: false,
         })
       }
+      continue
+    }
+
+    // --- 5/3/1: the week rolls forward on its own; the training max only moves
+    // at the end of a cycle. Nothing to ask the user, so it never raises a
+    // suggestion — it just reports what happened and advances.
+    if (is531(ex)) {
+      const result = eval531(ex, logged, units)
+      base.progression = result.progression
+      persist.push(base)
+      autoNotes.push(result.message)
       continue
     }
 

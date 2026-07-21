@@ -38,6 +38,13 @@ const lp = (id, sets, reps, rest) => ({ ...ex(id, sets, reps, rest), progression
 // → double jump, miss → reset 10%.
 const gslp = (id, sets, reps, rest) => ({ ...ex(id, sets, reps, rest), amrap: true, progression: { scheme: 'gslp', weight: null, fails: 0 } })
 
+// 5/3/1 main lift: percentage-based, driven by a training max rather than a
+// working weight. The engine in fiveThreeOne.js rewrites the sets each week.
+const t531 = (id) => ({
+  ...ex(id, 3, 5, 180), amrap: true,
+  progression: { scheme: '531', week: 0, cycle: 0, tm: null },
+})
+
 const day = (title, note, exercises) => ({
   title, note, weekday: null, dayLabel: title,
   regions: [...new Set(exercises.flatMap((e) => e.regions))],
@@ -240,6 +247,105 @@ export const TEMPLATES = [
   },
 
   {
+    templateId: 'wendler531_bbb',
+    deloadWeeks: 0, // week 4 of every cycle IS the deload — no separate reminder needed
+    name: '5/3/1 Boring But Big',
+    description: 'Jim Wendler’s 5/3/1 with the Boring But Big assistance template — the standard next step once a linear program stops working. One main lift per day off a training max, then 5×10 of its opposite lift at about half that weight for size. Four-week waves: 5s, 3s, 5/3/1, then a deload.',
+    tags: ['Barbell', 'Strength', 'Intermediate'],
+    level: 'Intermediate',
+    bestFor: 'Breaking a plateau',
+    equipment: 'Barbell, rack, bench',
+    progressionInfo: 'Percentage based off a training max (~90% of your true 1RM), not off what you lifted last time. Weeks run 5s → 3s → 5/3/1 → deload, with the last set of each non-deload week an AMRAP. The training max goes up once per completed cycle (+5 lb upper, +10 lb lower) — slow on purpose, which is exactly why it keeps working long after linear programs die.',
+    pros: [
+      'Built for lifters who have stalled — progress no longer depends on beating last session',
+      'Submaximal by design, so most sessions feel manageable and repeatable',
+      'A deload every fourth week is built in, not something you have to remember',
+    ],
+    cons: [
+      'Deliberately slow — a beginner will progress faster on a linear program',
+      'Needs an honest 1RM estimate to set the training max',
+      'The 5×10 Boring But Big sets are exactly as boring as advertised',
+    ],
+    source: 'template',
+    goals: ['strength', 'size'],
+    schedule: { mode: 'rotation', trainingDays: [1, 2, 4, 5] },
+    // Wendler documents two BBB pairings: 5×10 of the same lift, or of its
+    // opposite. This uses the opposite-lift version — it spreads the volume
+    // across the week instead of hammering one lift twice in a session.
+    days: [
+      day('Press Day', 'T1 Overhead Press 5/3/1, then 5×10 bench at ~50% of its training max.', [
+        t531('overhead_press'),
+        ex('bench_press', 5, 10, 90),
+        alt(ex('chinup', 5, [5, 10], 90), ['lat_pulldown', 'band_pulldown']),
+      ]),
+      day('Deadlift Day', 'T1 Deadlift 5/3/1, then 5×10 squat at ~50%.', [
+        t531('deadlift'),
+        ex('back_squat', 5, 10, 90),
+        ex('hanging_leg_raise', 5, [8, 15], 60),
+      ]),
+      day('Bench Day', 'T1 Bench 5/3/1, then 5×10 overhead press at ~50%.', [
+        t531('bench_press'),
+        ex('overhead_press', 5, 10, 90),
+        ex('db_row', 5, [8, 12], 90),
+      ]),
+      day('Squat Day', 'T1 Squat 5/3/1, then 5×10 front squat at ~50%. (Wendler pairs squat with deadlift here; front squats spare the lower back.)', [
+        t531('back_squat'),
+        ex('front_squat', 5, 10, 90),
+        alt(ex('leg_curl', 5, [10, 15], 60), ['single_leg_glute_bridge']),
+      ]),
+    ],
+  },
+
+  {
+    templateId: 'db_fullbody',
+    deloadWeeks: 6,
+    deloadNote: 'Every ~6 weeks, take an easier week — drop a set per exercise or stay a couple of reps further from failure.',
+    name: 'Dumbbell Full Body',
+    description: 'A complete full-body program that needs nothing but a pair of adjustable dumbbells and a bench. Three sessions a week covering every major pattern — squat, hinge, push, pull, and carry — so training at home with limited kit is a real program, not a compromise.',
+    tags: ['Dumbbells', 'Home', 'Full body'],
+    level: 'Beginner–Intermediate',
+    bestFor: 'Training at home',
+    equipment: 'Adjustable dumbbells and a bench. A pull-up bar helps but is not required.',
+    progressionInfo: 'Double progression — work in the given rep range, and when you hit the top of it on every set, move up to the next dumbbell weight and start again near the bottom. Because dumbbells jump in bigger steps than plates, expect to sit at a weight for a few sessions before it moves.',
+    pros: [
+      'Needs one pair of adjustable dumbbells — no rack, no barbell',
+      'Full body three times a week is efficient and well-supported for size and strength',
+      'Dumbbells are easier on the shoulders and let each side work independently',
+    ],
+    cons: [
+      'Dumbbell jumps are coarse, so progress is less granular than a barbell',
+      'Heavy lower-body work is limited by what you can hold, not what your legs can lift',
+      'You will eventually outgrow the dumbbells for squats and hinges',
+    ],
+    source: 'template',
+    goals: ['general', 'size'],
+    schedule: { mode: 'rotation', trainingDays: [1, 3, 5] },
+    days: [
+      day('Day A', 'Squat-focused full body.', [
+        ex('goblet_squat', 4, [8, 12], 120),
+        alt(ex('db_bench', 4, [8, 12], 120), ['pushup']),
+        ex('db_row', 4, [8, 12], 90),
+        ex('db_rdl', 3, [10, 15], 90),
+        ex('farmer_carry', 3, [30, 45], 75),
+      ]),
+      day('Day B', 'Press-focused full body.', [
+        ex('db_shoulder_press', 4, [8, 12], 120),
+        alt(ex('chinup', 4, [5, 10], 120), ['db_row']),
+        ex('walking_lunge', 3, [10, 15], 90),
+        alt(ex('incline_db_press', 3, [10, 15], 90), ['db_bench', 'pushup']),
+        ex('lateral_raise', 3, [12, 20], 60),
+      ]),
+      day('Day C', 'Hinge-focused full body.', [
+        ex('db_rdl', 4, [8, 12], 120),
+        alt(ex('db_bench', 3, [10, 15], 90), ['pushup']),
+        alt(ex('bulgarian_split', 3, [8, 12], 90), ['reverse_lunge']),
+        ex('db_curl', 3, [10, 15], 60),
+        ex('db_calf_raise', 4, [12, 20], 45),
+      ]),
+    ],
+  },
+
+  {
     templateId: 'reddit_ppl',
     deloadWeeks: 5,
     deloadNote: 'High volume six days a week wears you down. Every ~5 weeks, cut each set to ~90% weight (or drop to 2 sets) for a week, then resume.',
@@ -270,18 +376,25 @@ export const TEMPLATES = [
         ex('incline_db_press', 3, [8, 12], 90),
         ex('lateral_raise', 3, [12, 20], 60),
         ex('db_skullcrusher', 3, [8, 12], 75),
+        // Face pulls on every push AND pull day are a signature of the original
+        // routine — cheap rear-delt/rotator-cuff insurance against all the
+        // pressing volume. Falls back to bands when there's no cable.
+        alt(ex('face_pull', 4, [15, 20], 45), ['band_row', 'band_lateral']),
       ]),
       day('Pull', 'Back & biceps.', [
         ex('barbell_row', 4, [5, 8], 150),
         ex('pullup', 3, [6, 12], 120),
         ex('lat_pulldown', 3, [8, 12], 90),
         ex('seated_cable_row', 3, [8, 12], 90),
+        alt(ex('face_pull', 4, [15, 20], 45), ['band_row', 'band_lateral']),
         ex('db_curl', 3, [8, 12], 60),
       ]),
       day('Legs', 'Quads, hamstrings & calves.', [
         ex('back_squat', 4, [5, 8], 180),
         ex('romanian_dl', 3, [8, 12], 120),
         ex('leg_press', 3, [10, 15], 90),
+        // Direct hamstring work — RDLs alone leave the knee-flexion function untrained.
+        alt(ex('leg_curl', 3, [10, 15], 60), ['single_leg_glute_bridge']),
         ex('db_calf_raise', 4, [12, 20], 45),
       ]),
     ],
@@ -323,6 +436,9 @@ export const TEMPLATES = [
         ex('back_squat', 4, [3, 5], 180),
         ex('deadlift', 3, [3, 5], 180),
         ex('leg_press', 3, [10, 15], 90),
+        // The published PHUL lower days both include a hamstring curl; without
+        // it the only hamstring work is hip-hinging.
+        alt(ex('leg_curl', 3, [8, 12], 60), ['single_leg_glute_bridge']),
         ex('db_calf_raise', 4, [8, 12], 45),
       ]),
       day('Upper Hypertrophy', 'Higher-rep upper-body size work.', [
