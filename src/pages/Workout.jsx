@@ -768,7 +768,7 @@ export default function Workout() {
           return (
             <div className={'card exercise-card' + (doable ? '' : ' is-unavailable')} key={ex.id}>
               <div className="exercise-top">
-                <ExerciseFigure pattern={ex.pattern} size={52} />
+                <ExerciseFigure pattern={ex.pattern} exId={ex.id} size={52} />
                 <div className="exercise-headings">
                   <div className="ex-title-row">
                     <p className="ex-name big">{ex.name}{ex.adhoc ? ' ＋' : ''}</p>

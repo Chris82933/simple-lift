@@ -346,6 +346,57 @@ export const TEMPLATES = [
   },
 
   {
+    templateId: 'kb_fullbody',
+    deloadWeeks: 6,
+    deloadNote: 'Ballistics are sneaky — the swings feel fine until your grip and lower back disagree. Every ~6 weeks, halve the swing volume for a week and keep the get-ups light.',
+    name: 'Kettlebell Full Body',
+    description: 'A complete full-body program built from one or two kettlebells. Day A is the Simple & Sinister pairing — heavy two-hand swings and slow Turkish get-ups — and days B and C add the presses, squats, rows and carries that turn a two-move minimalist plan into a rounded strength program. Three sessions a week, nothing but bells and floor space.',
+    tags: ['Kettlebell', 'Home', 'Full body'],
+    level: 'Beginner–Intermediate',
+    bestFor: 'Strength & conditioning at home',
+    equipment: 'One kettlebell to start (16 kg / 35 lb is a common men’s starting bell, 8–12 kg / 18–26 lb for women). A second matching bell unlocks the double front squat.',
+    progressionInfo: 'Two levers, in this order. First earn the reps: work at the top of each range with clean technique before anything else changes. Then earn the bell: kettlebells jump in big steps (usually 4 kg / 8 lb), so when a weight feels easy, move up and expect the reps to drop back for a few sessions — that is the program working, not a setback. Swings and get-ups are the priority; if a session has to be cut short, do those and go home.',
+    pros: [
+      'Genuinely full body — hinge, squat, press, pull and carry every week from one bell',
+      'The swing trains strength and conditioning at once, so cardio is built in',
+      'Get-ups and carries build shoulder stability and a braced trunk that transfer everywhere',
+      'Takes up a corner of a room and packs in a car boot',
+    ],
+    cons: [
+      'The swing, clean and get-up are skills — budget a few sessions learning them light',
+      'Big jumps between bell sizes make progression coarser than plates',
+      'Hard to load the squat heavily once you are strong, without buying more bells',
+    ],
+    source: 'template',
+    goals: ['general', 'strength', 'endurance'],
+    progressionMethod: 'double',
+    schedule: { mode: 'rotation', trainingDays: [1, 3, 5] },
+    days: [
+      day('Day A · Swing & Get-Up', 'The Simple & Sinister pair. Swings in hard 10-rep sets with real rest; get-ups slow, one rep per side per set. Never rush a get-up.', [
+        alt(ex('kb_swing', 5, [10, 15], 90), ['db_rdl', 'glute_bridge']),
+        alt(ex('kb_turkish_getup', 5, [1, 2], 90), ['plank']),
+        alt(ex('kb_goblet_squat', 3, [8, 12], 90), ['goblet_squat', 'bw_squat']),
+        alt(ex('kb_row', 3, [8, 12], 75), ['db_row', 'inverted_row']),
+        alt(ex('kb_suitcase_carry', 3, [30, 45], 60), ['farmer_carry']),
+      ]),
+      day('Day B · Press & Squat', 'The grinds. Clean the bell to the rack, press it, then squat it — all from the front rack.', [
+        alt(ex('kb_press', 4, [5, 8], 90), ['db_shoulder_press', 'pike_pushup']),
+        alt(ex('kb_front_squat', 4, [6, 10], 120), ['goblet_squat', 'bw_squat']),
+        alt(ex('kb_swing', 4, [10, 15], 90), ['db_rdl', 'glute_bridge']),
+        alt(ex('kb_floor_press', 3, [8, 12], 75), ['db_bench', 'pushup']),
+        alt(ex('kb_racked_carry', 3, [30, 45], 60), ['farmer_carry']),
+      ]),
+      day('Day C · Ballistics & Single Leg', 'Faster, lighter, more skill. Snatches and cleans build power; the single-leg work evens out any side-to-side gap.', [
+        alt(ex('kb_clean', 4, [6, 10], 90), ['kb_swing', 'db_rdl']),
+        alt(ex('kb_single_leg_dl', 3, [8, 12], 90), ['single_leg_rdl']),
+        alt(ex('kb_push_press', 3, [6, 10], 90), ['db_shoulder_press', 'pike_pushup']),
+        alt(ex('kb_windmill', 3, [5, 8], 60), ['side_plank', 'plank']),
+        alt(ex('kb_halo', 3, [8, 10], 45), ['band_lateral', 'lateral_raise']),
+      ]),
+    ],
+  },
+
+  {
     templateId: 'reddit_ppl',
     deloadWeeks: 5,
     deloadNote: 'High volume six days a week wears you down. Every ~5 weeks, cut each set to ~90% weight (or drop to 2 sets) for a week, then resume.',

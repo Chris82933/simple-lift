@@ -155,7 +155,7 @@ export default function Today() {
         <ul className="exercise-preview">
           {previewExercises.map((ex, j) => (
             <li key={j}>
-              <ExerciseFigure pattern={ex.pattern} size={40} />
+              <ExerciseFigure pattern={ex.pattern} exId={ex.id} size={40} />
               <span className="ex-name">
                 {ex.name}
                 {ex.swappedFrom && <span className="muted small swapped-note"> · swapped for your gear</span>}

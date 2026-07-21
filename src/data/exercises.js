@@ -190,6 +190,27 @@ const BASE_EXERCISES = [
   { id: 'skater_jump', name: 'Skater Jumps', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Bound side to side, landing on one leg with the other swept behind — control the landing. Count each side.' },
   { id: 'plank_jack', name: 'Plank Jacks', pattern: 'conditioning', regions: ['core', 'shoulders'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Hold a strong plank and jump the feet wide and back together — brace so the hips stay level.' },
   { id: 'bear_crawl', name: 'Bear Crawl', pattern: 'conditioning', regions: ['core', 'shoulders', 'legs'], requires: [], compound: true, load: false, hold: true, unit: 'sec', tags: ['running'], cues: 'On hands and toes, knees just off the floor, crawl with opposite hand/foot — keep the hips low and steady. For time.' },
+
+  // ---- Kettlebell ----
+  // The classic bell vocabulary: ballistics (swing, clean, snatch), grinds
+  // (press, squat, get-up), and carries. Reps on single-bell work are per side
+  // unless noted.
+  { id: 'kb_deadlift', name: 'Kettlebell Deadlift', pattern: 'hinge', regions: ['legs', 'back'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'Bell between your feet, hinge and grip it, then stand by pushing the floor away. The pattern every swing is built on — own it first.' },
+  { id: 'kb_single_leg_dl', name: 'Kettlebell Single-Leg Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['kettlebells'], compound: true, tags: ['kettlebell', 'running'], cues: 'Bell in one hand, hinge over the opposite standing leg, free leg reaching back in line with your spine. Hips stay square. Reps per side.' },
+  { id: 'kb_clean', name: 'Kettlebell Clean', pattern: 'hinge', regions: ['legs', 'back', 'shoulders'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'Swing the bell back, snap the hips, and guide it around your fist into the front rack — it should land softly, not bang your forearm. Reps per side.' },
+  { id: 'kb_snatch', name: 'Kettlebell Snatch', pattern: 'hinge', regions: ['legs', 'back', 'shoulders'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'One continuous move from between the legs to locked out overhead. Punch your hand through at the top so the bell settles instead of flipping. Reps per side.' },
+  { id: 'kb_high_pull', name: 'Kettlebell High Pull', pattern: 'hinge', regions: ['back', 'shoulders', 'legs'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'A swing that finishes with the elbow pulling high and back, bell staying close to the chest. The bridge between the swing and the snatch. Reps per side.' },
+  { id: 'kb_front_squat', name: 'Kettlebell Front Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'Bell (or two) racked on the chest, elbows tight to the ribs. Sit straight down between your hips and stand tall — the front rack forces an upright torso.' },
+  { id: 'kb_press', name: 'Kettlebell Strict Press', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'From the front rack, press straight overhead with no leg drive. Squeeze the glutes and brace so the ribs stay down. Reps per side.' },
+  { id: 'kb_push_press', name: 'Kettlebell Push Press', pattern: 'vert_push', regions: ['shoulders', 'arms', 'legs'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'A short dip of the knees drives the bell past the sticking point, then lock the arm out. Lets you press a heavier bell than strict. Reps per side.' },
+  { id: 'kb_floor_press', name: 'Kettlebell Floor Press', pattern: 'horiz_push', regions: ['chest', 'arms', 'shoulders'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'Lying on the floor, press the bell up over the shoulder. The floor limits the range and keeps the shoulder comfortable — ideal without a bench. Reps per side.' },
+  { id: 'kb_row', name: 'Kettlebell Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'Hinge over with a flat back, pull the bell to your hip, and control it down. Don’t let the shoulder shrug toward your ear. Reps per side.' },
+  { id: 'kb_halo', name: 'Kettlebell Halo', pattern: 'shoulder_iso', regions: ['shoulders', 'core'], requires: ['kettlebells'], compound: false, tags: ['kettlebell'], cues: 'Hold the bell upside down by the horns and circle it around your head, close and slow. A shoulder warm-up, not a strength move — go light. Count each full circle.' },
+  { id: 'kb_windmill', name: 'Kettlebell Windmill', pattern: 'core', regions: ['core', 'shoulders', 'legs'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'Bell locked overhead, eyes on it, push the same-side hip out and reach the free hand down your front leg. Slow and deliberate. Reps per side.' },
+  { id: 'kb_turkish_getup', name: 'Turkish Get-Up', pattern: 'core', regions: ['core', 'shoulders', 'legs'], requires: ['kettlebells'], compound: true, tags: ['kettlebell'], cues: 'Stand up from lying down with the bell locked overhead the whole time, then reverse it. Never rush and never take your eyes off the bell. One rep per side takes 30–45 seconds — that is normal.' },
+  { id: 'kb_racked_carry', name: 'Kettlebell Front Rack Carry', pattern: 'core', regions: ['core', 'shoulders', 'back'], requires: ['kettlebells'], compound: true, hold: true, unit: 'sec', tags: ['kettlebell'], cues: 'Bell racked on the chest, walk tall and breathe shallow — the rack position punishes any rib flare. Carry for time, swapping sides halfway.' },
+  { id: 'kb_suitcase_carry', name: 'Kettlebell Suitcase Carry', pattern: 'core', regions: ['core', 'back', 'arms'], requires: ['kettlebells'], compound: true, hold: true, unit: 'sec', tags: ['kettlebell'], cues: 'One bell at your side, shoulders level, resist the lean. The anti-side-bend work is the whole point. Carry for time, then swap hands.' },
+  { id: 'kb_goblet_curl', name: 'Kettlebell Curl', pattern: 'biceps', regions: ['arms'], requires: ['kettlebells'], compound: false, tags: ['kettlebell'], cues: 'Bell by the handle, elbow pinned to your side, curl without swinging. The offset weight makes it harder than it looks.' },
 ]
 
 // Merge in the bodyweight ladder variants, then stitch easy↔hard links onto
@@ -246,7 +267,23 @@ const ALIASES = {
   deadlift: ['conventional deadlift', 'barbell deadlift', 'dead lift'],
   romanian_dl: ['rdl', 'romanian deadlift', 'stiff leg deadlift', 'sldl'],
   db_rdl: ['dumbbell romanian deadlift', 'dumbbell rdl'],
-  kb_swing: ['kettlebell swing', 'kb swing'],
+  kb_swing: ['kettlebell swing', 'kb swing', 'two hand swing', 'russian swing', 'hardstyle swing'],
+  kb_deadlift: ['kettlebell deadlift', 'kb deadlift'],
+  kb_single_leg_dl: ['single leg deadlift', 'kb single leg deadlift', 'one legged deadlift', 'sldl'],
+  kb_clean: ['kettlebell clean', 'kb clean'],
+  kb_snatch: ['kettlebell snatch', 'kb snatch'],
+  kb_high_pull: ['kettlebell high pull', 'kb high pull'],
+  kb_front_squat: ['kettlebell front squat', 'kb front squat', 'double front squat', 'racked squat'],
+  kb_press: ['kettlebell press', 'kb press', 'kettlebell military press', 'kb strict press'],
+  kb_push_press: ['kettlebell push press', 'kb push press'],
+  kb_floor_press: ['kettlebell floor press', 'kb floor press'],
+  kb_row: ['kettlebell row', 'kb row', 'kettlebell bent over row'],
+  kb_halo: ['kettlebell halo', 'kb halo'],
+  kb_windmill: ['kettlebell windmill', 'kb windmill'],
+  kb_turkish_getup: ['turkish get up', 'turkish getup', 'tgu', 'get up', 'getup'],
+  kb_racked_carry: ['front rack carry', 'racked carry', 'rack walk'],
+  kb_suitcase_carry: ['suitcase carry', 'suitcase walk', 'one arm carry'],
+  kb_goblet_curl: ['kettlebell curl', 'kb curl'],
   hip_thrust: ['barbell hip thrust', 'glute thrust', 'glute bridge'],
   glute_bridge: ['hip bridge', 'bridge'],
   single_leg_rdl: ['single leg deadlift', 'one leg rdl'],
