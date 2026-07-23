@@ -4,6 +4,7 @@ import { repsLabel } from '../data/schemes.js'
 import { measureUnit } from '../data/exercises.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
+import ShareProgram from '../components/ShareProgram.jsx'
 
 const GOAL_LABEL = {
   general: 'General', strength: 'Strength', size: 'Size',
@@ -48,6 +49,7 @@ export default function Program() {
           Switch / manage{programCount > 1 ? ` (${programCount})` : ''}
         </Link>
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/schedule')}>📅 Schedule</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/import-program')}>📥 Import</button>
       </div>
 
       {program.days.map((day, i) => (
@@ -102,6 +104,8 @@ export default function Program() {
           </button>
         </div>
       )}
+
+      <ShareProgram program={program} />
     </section>
   )
 }

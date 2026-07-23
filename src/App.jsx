@@ -12,6 +12,7 @@ import CardioLog from './pages/CardioLog.jsx'
 import Skills from './pages/Skills.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import GzclpWizard from './pages/GzclpWizard.jsx'
+import ImportProgram from './pages/ImportProgram.jsx'
 import Profile from './pages/Profile.jsx'
 import Workout from './pages/Workout.jsx'
 
@@ -27,6 +28,7 @@ export default function App() {
       <Route path="/cardio" element={<CardioLog />} />
       <Route path="/skills" element={<Skills />} />
       <Route path="/gzclp" element={<GzclpWizard />} />
+      <Route path="/import-program" element={<ImportProgram />} />
 
       {/* Main app shell with bottom navigation */}
       <Route element={<AppLayout />}>

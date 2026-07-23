@@ -43,6 +43,7 @@ const BASE_EXERCISES = [
   { id: 'bw_lunge', name: 'Bodyweight Lunge', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Step forward, drop straight down, keep your torso tall.' },
   { id: 'bulgarian_split', name: 'Bulgarian Split Squat', pattern: 'lunge', regions: ['legs', 'core'], requires: ['flat_bench'], compound: true, tags: ['running'], cues: 'Rear foot on the bench, lower straight down, front-leg focus.' },
   { id: 'step_up', name: 'Step-Up', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Full foot on the box, drive up without pushing off the back leg.' },
+  { id: 'weighted_step_up', name: 'Weighted Step-Up', pattern: 'lunge', regions: ['legs', 'core'], requires: ['dumbbells'], compound: true, tags: ['running'], cues: 'A dumbbell in each hand, step onto a knee-height box (≈12–16 in / 30–40 cm) with the whole foot, and drive up through that heel — don’t push off the trailing foot or bounce. Lower under control. Hits quads, glutes and hamstrings, and evens out side-to-side. 3–4 sets of 8–12 reps per leg. Reps per leg.' },
   { id: 'reverse_lunge', name: 'Reverse Lunge', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Step straight back, drop the back knee toward the floor, drive through the front heel to stand — gentler on the knees than forward lunges. Reps per leg.' },
   { id: 'peterson_step_down', name: 'Peterson Step Down', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, cues: 'Stand on a low step; on one leg, slowly lower the other heel to tap the floor with the standing knee tracking over the toes — bulletproofs the knee (VMO). Reps per leg.' },
 
@@ -295,6 +296,7 @@ const ALIASES = {
   bw_lunge: ['bodyweight lunge', 'lunges'],
   bulgarian_split: ['bulgarian split squat', 'rear foot elevated split squat', 'rfess', 'split squat'],
   step_up: ['box step up'],
+  weighted_step_up: ['weighted step up', 'dumbbell step up', 'db step up', 'loaded step up'],
   reverse_lunge: ['backward lunge'],
   // Horizontal push
   bench_press: ['barbell bench press', 'flat bench', 'flat barbell bench', 'chest press'],

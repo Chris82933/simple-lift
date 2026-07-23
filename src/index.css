@@ -1050,6 +1050,10 @@ select.text-input { appearance: none; }
 .code-status { margin-top: 6px; }
 .code-status.ok { color: var(--accent-4, #82ab7d); }
 .code-status.err { color: var(--accent-2); }
+.import-error { color: var(--accent-2); }
+/* The manage row now holds three actions; let it wrap on narrow screens. */
+.switch-row { flex-wrap: wrap; }
+.switch-row .btn { flex: 1 1 30%; }
 
 /* ---- Programs list ---- */
 .switch-row { flex-direction: row; gap: 10px; }
