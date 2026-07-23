@@ -114,6 +114,19 @@ export function updateSkill(skillId, patch) {
   return loadSkills()
 }
 
+// The calisthenics skill tree is a fun extra, not a program for everyone, so it
+// is added deliberately rather than shown to all. An explicit setting wins;
+// otherwise anyone who has already logged a skill keeps it (grandfathered), and
+// everyone else starts without it.
+export function isSkillTreeAdded(settings = loadSettings(), skills = loadSkills()) {
+  if (settings.skillTree === true) return true
+  if (settings.skillTree === false) return false
+  return Object.keys(skills || {}).length > 0
+}
+export function setSkillTreeAdded(added) {
+  saveSettings({ ...loadSettings(), skillTree: !!added })
+}
+
 // ---- Programs (multiple) ----
 function migrateLegacy() {
   // Wrap a pre-existing single program into the new array model, once. Only

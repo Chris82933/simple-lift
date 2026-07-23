@@ -4,6 +4,7 @@ import {
   loadPrograms, getActiveProgramId, setActiveProgramId, deleteProgram, restoreProgram,
 } from '../lib/storage.js'
 import { useToast } from '../components/Toast.jsx'
+import SkillTreeCard from '../components/SkillTreeCard.jsx'
 
 export default function Programs() {
   const navigate = useNavigate()
@@ -87,6 +88,8 @@ export default function Programs() {
           </div>
         )
       })}
+
+      <SkillTreeCard />
     </section>
   )
 }

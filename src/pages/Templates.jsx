@@ -6,6 +6,7 @@ import { weightForReps, incrementForUnits } from '../lib/oneRepMax.js'
 import { sessionLengthLabel } from '../lib/duration.js'
 import { trainingMaxFrom } from '../lib/fiveThreeOne.js'
 import { REGIONS } from '../data/options.js'
+import SkillTreeCard from '../components/SkillTreeCard.jsx'
 
 // Conservative starting reps per GZCLP tier (heavier T1, lighter accessory).
 const TIER_START_REPS = { t1: 5, t2: 10, t3: 15 }
@@ -155,6 +156,8 @@ export default function Templates() {
           onUse={use}
         />
       ))}
+
+      <SkillTreeCard />
     </section>
   )
 }

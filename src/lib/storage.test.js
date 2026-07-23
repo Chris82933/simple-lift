@@ -7,7 +7,7 @@ import {
   loadPrograms, savePrograms, addProgram, updateProgram, deleteProgram,
   loadSettings, saveSettings, loadHistory, appendWorkout, insertWorkoutAt,
   exportData, importData, exportCode, importCode, clearAll, restoreProgram,
-  loadBodyweight, logBodyweight, currentBodyweight,
+  loadBodyweight, logBodyweight, currentBodyweight, saveSkills, isSkillTreeAdded, setSkillTreeAdded,
   syncDecision, summarizeSnapshot, getSyncMarker, setSyncMarker,
 } from './storage.js'
 
@@ -209,6 +209,31 @@ describe('sync decisions', () => {
     expect(s.sessions).toBe(2)
     expect(s.programs).toBe(1)
     expect(s.lastWorkout).toBeTruthy()
+  })
+})
+
+describe('calisthenics skill tree (opt-in)', () => {
+  it('is hidden by default for a brand-new user', () => {
+    expect(isSkillTreeAdded()).toBe(false)
+  })
+
+  it('shows once explicitly added, and hides once explicitly removed', () => {
+    setSkillTreeAdded(true)
+    expect(isSkillTreeAdded()).toBe(true)
+    setSkillTreeAdded(false)
+    expect(isSkillTreeAdded()).toBe(false)
+  })
+
+  it('grandfathers an existing user who already logged a skill', () => {
+    // No explicit setting, but skill data is present → keep it visible.
+    saveSkills({ pullup: { level: 2, best: 8, log: [] } })
+    expect(isSkillTreeAdded()).toBe(true)
+  })
+
+  it('an explicit removal wins even for a grandfathered user', () => {
+    saveSkills({ pullup: { level: 2, best: 8, log: [] } })
+    setSkillTreeAdded(false)
+    expect(isSkillTreeAdded()).toBe(false)
   })
 })
 

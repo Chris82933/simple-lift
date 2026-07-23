@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { loadSkills, updateSkill } from '../lib/storage.js'
+import { loadSkills, updateSkill, isSkillTreeAdded, setSkillTreeAdded } from '../lib/storage.js'
 import {
   SKILLS, computeStats, powerLevel, rankFor, calibrateLevel, readyToAdvance, maxIndex,
   planLabel, advanceLabel,
@@ -18,6 +18,11 @@ export default function Skills() {
   const flashTimer = useRef()
   const [calOpen, setCalOpen] = useState(false)
   const [answers, setAnswers] = useState({})
+  // Whether the user has added the skill tree to their programs (it's opt-in).
+  const [added, setAdded] = useState(() => isSkillTreeAdded())
+
+  const addTree = () => { setSkillTreeAdded(true); setAdded(true) }
+  const removeTree = () => { setSkillTreeAdded(false); navigate('/today') }
 
   // Quick +/- on the log input (step by 1 rep, or 5 seconds for holds).
   const bump = (sk, dir) => setDrafts((d) => {
@@ -86,6 +91,18 @@ export default function Skills() {
 
       <div className="step-body">
         <FocusTiles current="skills" />
+
+        {!added && (
+          <div className="card notice">
+            <p className="placeholder-title">🤸 Add this to your programs</p>
+            <p className="muted small">
+              The skill tree is a fun extra, not a full workout program. Add it and it&apos;ll appear
+              alongside your programs; you can remove it anytime and your progress is kept.
+            </p>
+            <button type="button" className="btn btn-primary" onClick={addTree}>➕ Add skill tree</button>
+          </div>
+        )}
+
         {/* ---- Character sheet ---- */}
         <div className="card char-sheet">
           <SkillRadar stats={stats} baseline={baseline} />
@@ -183,6 +200,12 @@ export default function Skills() {
           )
         })}
       </div>
+
+      {added && (
+        <button type="button" className="link-btn skill-remove" onClick={removeTree}>
+          Remove skill tree from my programs
+        </button>
+      )}
 
       <div className="flow-actions">
         <button className="btn btn-primary" onClick={() => navigate('/today')}>Done</button>

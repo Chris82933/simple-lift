@@ -58,7 +58,7 @@ export default function Today() {
           </p>
           <button className="btn btn-primary" onClick={() => navigate('/templates')}>Browse templates</button>
           <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/skills')}>🤸 Or work on calisthenics skills</button>
+          <p className="muted small">Into bodyweight skills? The calisthenics skill tree is in Browse templates.</p>
         </div>
       </section>
     )
