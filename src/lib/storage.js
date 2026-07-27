@@ -11,6 +11,7 @@ const MAXES_KEY = 'simple-lift:maxes'
 const CARDIO_KEY = 'simple-lift:cardio'
 const SKILLS_KEY = 'simple-lift:skills'
 const BODYWEIGHT_KEY = 'simple-lift:bodyweight'
+const CUSTOM_EX_KEY = 'simple-lift:customExercises'
 const UPDATED_KEY = 'simple-lift:updatedAt'
 const ACTIVE_SESSION_KEY = 'simple-lift:activeSession' // in-progress workout (resume)
 const LEGACY_PROGRAM_KEY = 'simple-lift:program' // pre-multi-program
@@ -125,6 +126,28 @@ export function isSkillTreeAdded(settings = loadSettings(), skills = loadSkills(
 }
 export function setSkillTreeAdded(added) {
   saveSettings({ ...loadSettings(), skillTree: !!added })
+}
+
+// ---- User-defined custom exercises ----
+// Stored as full exercise objects so they can be merged straight into the
+// library at startup. They ride along with export/import and cloud sync.
+export const loadCustomExercises = () => read(CUSTOM_EX_KEY, [])
+
+export function saveCustomExercise(ex) {
+  if (!ex || !ex.id) return loadCustomExercises()
+  mutate(CUSTOM_EX_KEY, [], (list) => {
+    const i = list.findIndex((e) => e.id === ex.id)
+    if (i === -1) return [...list, ex]
+    const copy = list.slice()
+    copy[i] = ex
+    return copy
+  })
+  return loadCustomExercises()
+}
+
+export function deleteCustomExercise(id) {
+  mutate(CUSTOM_EX_KEY, [], (list) => list.filter((e) => e.id !== id))
+  return loadCustomExercises()
 }
 
 // ---- Programs (multiple) ----
@@ -354,6 +377,7 @@ export function exportData() {
     cardio: read(CARDIO_KEY, []),
     skills: read(SKILLS_KEY, {}),
     bodyweight: read(BODYWEIGHT_KEY, []),
+    customExercises: read(CUSTOM_EX_KEY, []),
     updatedAt: read(UPDATED_KEY, 0),
   }
 }
@@ -397,6 +421,7 @@ export function importData(blob) {
   if (blob.cardio !== undefined) write(CARDIO_KEY, blob.cardio, { silent: true })
   if (blob.skills !== undefined) write(SKILLS_KEY, blob.skills, { silent: true })
   if (blob.bodyweight !== undefined) write(BODYWEIGHT_KEY, blob.bodyweight, { silent: true })
+  if (blob.customExercises !== undefined) write(CUSTOM_EX_KEY, blob.customExercises, { silent: true })
   if (blob.updatedAt !== undefined) {
     try { localStorage.setItem(UPDATED_KEY, JSON.stringify(blob.updatedAt)) } catch { /* ignore */ }
   }
@@ -518,7 +543,7 @@ export async function importCode(code) {
 }
 
 export function clearAll() {
-  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, BODYWEIGHT_KEY, UPDATED_KEY, ACTIVE_SESSION_KEY, LEGACY_PROGRAM_KEY].forEach(
+  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, BODYWEIGHT_KEY, CUSTOM_EX_KEY, UPDATED_KEY, ACTIVE_SESSION_KEY, LEGACY_PROGRAM_KEY].forEach(
     (k) => { try { localStorage.removeItem(k) } catch { /* ignore */ } },
   )
   window.dispatchEvent(new CustomEvent('sl-data-changed'))

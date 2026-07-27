@@ -212,6 +212,17 @@ const BASE_EXERCISES = [
   { id: 'kb_racked_carry', name: 'Kettlebell Front Rack Carry', pattern: 'core', regions: ['core', 'shoulders', 'back'], requires: ['kettlebells'], compound: true, hold: true, unit: 'sec', tags: ['kettlebell'], cues: 'Bell racked on the chest, walk tall and breathe shallow — the rack position punishes any rib flare. Carry for time, swapping sides halfway.' },
   { id: 'kb_suitcase_carry', name: 'Kettlebell Suitcase Carry', pattern: 'core', regions: ['core', 'back', 'arms'], requires: ['kettlebells'], compound: true, hold: true, unit: 'sec', tags: ['kettlebell'], cues: 'One bell at your side, shoulders level, resist the lean. The anti-side-bend work is the whole point. Carry for time, then swap hands.' },
   { id: 'kb_goblet_curl', name: 'Kettlebell Curl', pattern: 'biceps', regions: ['arms'], requires: ['kettlebells'], compound: false, tags: ['kettlebell'], cues: 'Bell by the handle, elbow pinned to your side, curl without swinging. The offset weight makes it harder than it looks.' },
+
+  // ---- Landmine (one end of a barbell anchored in a corner or a landmine base) ----
+  // These only need a barbell — jam the free end into a corner if you have no
+  // landmine attachment. The arc path is joint-friendly, so they're a favourite
+  // for shoulders and backs that dislike straight overhead or heavy bilateral work.
+  { id: 'landmine_squat', name: 'Landmine Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell'], compound: true, tags: ['landmine'], cues: 'Hold the bar end at your chest with both hands (front-loaded) and sit straight down. The bar’s arc helps you stay upright and hit depth — great if back squats bother your knees or lower back.' },
+  { id: 'landmine_rdl', name: 'Landmine Romanian Deadlift', pattern: 'hinge', regions: ['legs', 'back'], requires: ['barbell'], compound: true, tags: ['landmine'], cues: 'Hold the bar end with both hands, hinge at the hips with soft knees, and feel the hamstrings load. The arc keeps the weight tracking close to you.' },
+  { id: 'landmine_reverse_lunge', name: 'Landmine Reverse Lunge', pattern: 'lunge', regions: ['legs', 'core'], requires: ['barbell'], compound: true, tags: ['landmine'], cues: 'Bar end racked at one shoulder (or both hands at the chest), step straight back and drop the back knee. The front-loaded weight keeps you tall and honest. Reps per leg.' },
+  { id: 'landmine_press', name: 'Landmine Press', pattern: 'vert_push', regions: ['shoulders', 'chest', 'arms'], requires: ['barbell'], compound: true, tags: ['landmine'], cues: 'Half-kneeling or standing, press the bar end up and slightly forward along its arc. Shoulder-friendly overhead pressing for people who can’t go straight up pain-free. Reps per side.' },
+  { id: 'landmine_row', name: 'Landmine Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['barbell'], compound: true, tags: ['landmine'], cues: 'Straddle the bar (or stand to one side), grip near the end or with a handle, and row to your hip driving the elbow back. A strong mid-back builder — the Meadows row is a one-arm version of this.' },
+  { id: 'landmine_rotation', name: 'Landmine Rotation', pattern: 'core', regions: ['core', 'shoulders'], requires: ['barbell'], compound: false, tags: ['landmine'], cues: 'Hold the bar end at arm’s length and sweep it side to side in an arc, rotating through the hips and trunk (not just the arms). Control it — this trains anti-rotation and rotational power. Reps per side.' },
 ]
 
 // Merge in the bodyweight ladder variants, then stitch easy↔hard links onto
@@ -220,6 +231,73 @@ import { LADDER_EXERCISES, LADDERS } from './progressions.js'
 
 export const EXERCISES = [...BASE_EXERCISES, ...LADDER_EXERCISES]
 export const EXERCISE_BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]))
+
+// ---- User-defined custom exercises ----
+// Anything the built-in library is missing, users can add. They're persisted in
+// storage and merged into the live library at startup, so every lookup
+// (measure, figure, records, pickers) treats them exactly like a stock exercise.
+export const CUSTOM_PREFIX = 'custom_'
+export const isCustomExercise = (id) => typeof id === 'string' && id.startsWith(CUSTOM_PREFIX)
+
+// The movement types a custom exercise can be, each seeding sensible defaults so
+// a user only has to type a name and pick a type. `pattern` drives the figure
+// and the default set/rep scheme; `measure` is the default (they can override).
+export const MOVEMENT_TYPES = [
+  { pattern: 'squat', label: 'Squat', regions: ['legs', 'core'], compound: true },
+  { pattern: 'hinge', label: 'Hinge / deadlift', regions: ['legs', 'back'], compound: true },
+  { pattern: 'lunge', label: 'Lunge / split squat', regions: ['legs', 'core'], compound: true },
+  { pattern: 'horiz_push', label: 'Push — chest / bench', regions: ['chest', 'arms'], compound: true },
+  { pattern: 'vert_push', label: 'Push — overhead', regions: ['shoulders', 'arms'], compound: true },
+  { pattern: 'horiz_pull', label: 'Pull — row', regions: ['back', 'arms'], compound: true },
+  { pattern: 'vert_pull', label: 'Pull — pull-up / pulldown', regions: ['back', 'arms'], compound: true },
+  { pattern: 'biceps', label: 'Biceps', regions: ['arms'], compound: false },
+  { pattern: 'triceps', label: 'Triceps', regions: ['arms'], compound: false },
+  { pattern: 'shoulder_iso', label: 'Shoulders — raises', regions: ['shoulders'], compound: false },
+  { pattern: 'calf', label: 'Calves', regions: ['legs'], compound: false },
+  { pattern: 'core', label: 'Core / abs', regions: ['core'], compound: false },
+  { pattern: 'conditioning', label: 'Cardio / conditioning', regions: ['legs', 'core'], compound: false },
+]
+
+// Build a normalized exercise object from the custom-exercise form's fields.
+// Shape matches a library exercise so nothing downstream needs to special-case it.
+export function makeCustomExercise(fields = {}) {
+  const type = MOVEMENT_TYPES.find((t) => t.pattern === fields.pattern) || MOVEMENT_TYPES[0]
+  const measure = fields.measure || 'reps'
+  const ex = {
+    id: fields.id || `${CUSTOM_PREFIX}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    name: (fields.name || 'Custom exercise').trim(),
+    pattern: type.pattern,
+    regions: fields.regions?.length ? fields.regions : type.regions,
+    requires: Array.isArray(fields.requires) ? fields.requires : [],
+    compound: fields.compound != null ? !!fields.compound : type.compound,
+    cues: (fields.cues || '').trim(),
+    custom: true,
+  }
+  // load defaults true; only store the flag when it's a bodyweight move.
+  if (fields.load === false) ex.load = false
+  if (measure === 'time') { ex.hold = true; ex.unit = fields.unit || 'sec' }
+  else if (measure === 'distance') { ex.distance = true; ex.unit = fields.unit || 'km' }
+  return ex
+}
+
+// Merge custom exercises into the live library (idempotent — safe to call on
+// every startup and after each create/delete).
+export function registerCustomExercises(list) {
+  for (const ex of list || []) {
+    if (!ex || !ex.id) continue
+    EXERCISE_BY_ID[ex.id] = ex
+    const i = EXERCISES.findIndex((e) => e.id === ex.id)
+    if (i === -1) EXERCISES.push(ex)
+    else EXERCISES[i] = ex
+  }
+}
+
+// Drop a custom exercise from the live library (after the user deletes it).
+export function unregisterCustomExercise(id) {
+  delete EXERCISE_BY_ID[id]
+  const i = EXERCISES.findIndex((e) => e.id === id)
+  if (i !== -1) EXERCISES.splice(i, 1)
+}
 
 // How an exercise is measured so inputs adapt to it (context-aware):
 //   • 'reps'     — sets × reps (× weight when load-tracked)
@@ -297,6 +375,12 @@ const ALIASES = {
   bulgarian_split: ['bulgarian split squat', 'rear foot elevated split squat', 'rfess', 'split squat'],
   step_up: ['box step up'],
   weighted_step_up: ['weighted step up', 'dumbbell step up', 'db step up', 'loaded step up'],
+  landmine_squat: ['landmine squat', 'landmine front squat', 'front loaded squat', 'landmine goblet squat'],
+  landmine_rdl: ['landmine rdl', 'landmine romanian deadlift', 'landmine deadlift'],
+  landmine_reverse_lunge: ['landmine reverse lunge', 'landmine lunge', 'landmine split squat'],
+  landmine_press: ['landmine press', 'landmine shoulder press', 'landmine overhead press', 'half kneeling landmine press'],
+  landmine_row: ['landmine row', 'meadows row', 'landmine bent over row', 't-bar row', 't bar row'],
+  landmine_rotation: ['landmine rotation', 'landmine twist', 'landmine 180', 'landmine oblique twist'],
   reverse_lunge: ['backward lunge'],
   // Horizontal push
   bench_press: ['barbell bench press', 'flat bench', 'flat barbell bench', 'chest press'],

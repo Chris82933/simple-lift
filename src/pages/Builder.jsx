@@ -11,6 +11,7 @@ import {
 import { weightForReps, incrementForUnits, interpolate1RM } from '../lib/oneRepMax.js'
 import { ladderInfo } from '../lib/ladder.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
+import CustomExerciseForm from '../components/CustomExerciseForm.jsx'
 
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
 
@@ -89,6 +90,7 @@ export default function Builder() {
 
   const [picker, setPicker] = useState(null) // dayIndex being edited, or null
   const [search, setSearch] = useState('')
+  const [creating, setCreating] = useState(false) // custom-exercise form open?
   const [amrapInfo, setAmrapInfo] = useState(false)
   const [warmupInfo, setWarmupInfo] = useState(false)
 
@@ -428,8 +430,19 @@ export default function Builder() {
                 )
               })}
               {filtered.length === 0 && <p className="muted">No matches.</p>}
+              <button type="button" className="picker-item create-custom" onClick={() => setCreating(true)}>
+                <span className="add-plus">＋</span>
+                <span className="ex-name">Create a custom exercise{search.trim() ? ` “${search.trim()}”` : ''}</span>
+              </button>
             </div>
           </div>
+
+          {creating && (
+            <CustomExerciseForm
+              onClose={() => setCreating(false)}
+              onCreate={(ex) => { setCreating(false); addExerciseToDay(picker, ex) }}
+            />
+          )}
         </div>
       )}
 

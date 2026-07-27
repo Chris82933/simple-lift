@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { EXERCISES, matchesQuery } from '../data/exercises.js'
 import ExerciseFigure from './ExerciseFigure.jsx'
+import CustomExerciseForm from './CustomExerciseForm.jsx'
 import { getEquipment, activeEquipmentIds, isDoable, profileMeta } from '../lib/equipment.js'
 
 // Bottom-sheet exercise picker. Calls onPick(exercise) for each tap; stays open
@@ -9,6 +10,7 @@ import { getEquipment, activeEquipmentIds, isDoable, profileMeta } from '../lib/
 export default function ExercisePicker({ onPick, onClose, title = 'Add exercise' }) {
   const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState(false)
+  const [creating, setCreating] = useState(false)
   const q = search.trim().toLowerCase()
   const active = getEquipment().active
   const availableSet = new Set(activeEquipmentIds())
@@ -42,16 +44,27 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
           {filtered.map((ex) => (
             <button key={ex.id} type="button" className="picker-item" onClick={() => onPick(ex)}>
               <ExerciseFigure pattern={ex.pattern} exId={ex.id} size={34} />
-              <span className="ex-name">{ex.name}</span>
+              <span className="ex-name">{ex.name}{ex.custom ? ' ·' : ''}</span>
               <span className="muted small">
-                {ex.compound ? 'compound' : 'accessory'}{ex.requires.length === 0 ? ' · bodyweight' : ''}
+                {ex.custom ? 'custom · ' : ''}{ex.compound ? 'compound' : 'accessory'}{ex.requires.length === 0 ? ' · bodyweight' : ''}
               </span>
               <span className="add-plus">+</span>
             </button>
           ))}
           {filtered.length === 0 && <p className="muted">No matches.</p>}
+          <button type="button" className="picker-item create-custom" onClick={() => setCreating(true)}>
+            <span className="add-plus">＋</span>
+            <span className="ex-name">Create a custom exercise{q ? ` “${search.trim()}”` : ''}</span>
+          </button>
         </div>
       </div>
+
+      {creating && (
+        <CustomExerciseForm
+          onClose={() => setCreating(false)}
+          onCreate={(ex) => { setCreating(false); onPick(ex) }}
+        />
+      )}
     </div>
   )
 }

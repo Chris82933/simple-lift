@@ -8,6 +8,7 @@ import {
   loadSettings, saveSettings, loadHistory, appendWorkout, insertWorkoutAt,
   exportData, importData, exportCode, importCode, clearAll, restoreProgram,
   loadBodyweight, logBodyweight, currentBodyweight, saveSkills, isSkillTreeAdded, setSkillTreeAdded,
+  loadCustomExercises, saveCustomExercise, deleteCustomExercise,
   syncDecision, summarizeSnapshot, getSyncMarker, setSyncMarker,
 } from './storage.js'
 
@@ -234,6 +235,35 @@ describe('calisthenics skill tree (opt-in)', () => {
     saveSkills({ pullup: { level: 2, best: 8, log: [] } })
     setSkillTreeAdded(false)
     expect(isSkillTreeAdded()).toBe(false)
+  })
+})
+
+describe('custom exercises', () => {
+  const ex = (over = {}) => ({ id: 'custom_a', name: 'My Move', pattern: 'squat', regions: ['legs'], requires: [], compound: true, custom: true, ...over })
+
+  it('starts empty', () => {
+    expect(loadCustomExercises()).toEqual([])
+  })
+
+  it('saves, updates in place, and deletes', () => {
+    saveCustomExercise(ex())
+    expect(loadCustomExercises()).toHaveLength(1)
+    saveCustomExercise(ex({ name: 'Renamed' }))
+    expect(loadCustomExercises()).toHaveLength(1) // replaced, not appended
+    expect(loadCustomExercises()[0].name).toBe('Renamed')
+    saveCustomExercise(ex({ id: 'custom_b', name: 'Second' }))
+    expect(loadCustomExercises()).toHaveLength(2)
+    deleteCustomExercise('custom_a')
+    expect(loadCustomExercises().map((e) => e.id)).toEqual(['custom_b'])
+  })
+
+  it('travels in the backup snapshot', async () => {
+    saveCustomExercise(ex())
+    const code = await exportCode()
+    clearAll()
+    expect(loadCustomExercises()).toEqual([])
+    await importCode(code)
+    expect(loadCustomExercises()[0].name).toBe('My Move')
   })
 })
 

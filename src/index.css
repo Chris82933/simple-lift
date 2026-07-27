@@ -880,6 +880,18 @@ select.text-input { appearance: none; }
 .add-plus { font-size: 20px; color: var(--accent); font-weight: 700; }
 .picker-item.is-added { opacity: 0.5; cursor: default; }
 .picker-item.is-added .add-plus { color: var(--accent-4, #82ab7d); }
+/* "Create a custom exercise" row sits at the end of the list, visually distinct. */
+.picker-item.create-custom { border-style: dashed; background: none; }
+.picker-item.create-custom .ex-name { font-weight: 600; color: var(--accent); }
+
+/* ---- Custom exercise form ---- */
+.custom-ex-form { gap: 14px; }
+.cef-field { display: flex; flex-direction: column; gap: 6px; }
+.cef-field .group-label { margin: 0; }
+.cef-toggle { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 1.35; }
+.cef-toggle input { margin-top: 2px; flex: none; }
+.picker-foot { padding-top: 4px; }
+.picker-foot .btn { width: 100%; }
 
 /* ---- Quick 1RM modal ---- */
 .quick-1rm-row { display: flex; gap: 12px; }
