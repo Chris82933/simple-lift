@@ -53,6 +53,19 @@ describe('every template', () => {
   })
 })
 
+describe('planned cardio', () => {
+  it('adds its target time to the session-length estimate', () => {
+    const base = { title: 'D', exercises: [{ id: 'back_squat', sets: 3, repLow: 5, repHigh: 5, restSec: 180 }] }
+    const withCardio = { ...base, cardio: [{ machine: 'treadmill', targetMin: 20 }] }
+    expect(estimateSessionMinutes(withCardio)).toBeGreaterThan(estimateSessionMinutes(base))
+  })
+
+  it('estimates a cardio-only day from its target', () => {
+    const day = { title: 'Conditioning', exercises: [], cardio: [{ machine: 'rower', targetMin: 30 }] }
+    expect(estimateSessionMinutes(day)).toBe(30)
+  })
+})
+
 describe('instantiation', () => {
   it('strips presentation-only fields from the saved program', () => {
     const p = instantiateTemplate('stronglifts')

@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { CARDIO_MACHINES, CARDIO_BY_ID } from '../data/cardio.js'
 
 // Fields for logging a cardio session. Calls onSaved(entry) with the data.
-export default function CardioForm({ onSaved, units = 'lbs' }) {
-  const [machine, setMachine] = useState('treadmill')
+// `initialMachine` preselects a machine (e.g. when logging a planned program block).
+export default function CardioForm({ onSaved, units = 'lbs', initialMachine = 'treadmill' }) {
+  const [machine, setMachine] = useState(initialMachine)
   const [duration, setDuration] = useState('')
   const [distance, setDistance] = useState('')
   const [distUnit, setDistUnit] = useState(units === 'kg' ? 'km' : 'mi')

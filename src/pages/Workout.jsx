@@ -17,6 +17,7 @@ import FormCheckButton from '../components/FormCheckButton.jsx'
 import RestTimer from '../components/RestTimer.jsx'
 import ExercisePicker from '../components/ExercisePicker.jsx'
 import CardioForm from '../components/CardioForm.jsx'
+import { CARDIO_BY_ID } from '../data/cardio.js'
 import QuickOneRM from '../components/QuickOneRM.jsx'
 import PlateBreakdown from '../components/PlateBreakdown.jsx'
 import {
@@ -196,9 +197,12 @@ export default function Workout() {
     // A saved in-progress session for THIS program+day, with real progress
     // (at least one logged set) → offer to resume it.
     const saved = loadActiveSession()
-    const hasProgress = saved && saved.sets && Object.values(saved.sets).some(
+    const loggedSets = saved && saved.sets && Object.values(saved.sets).some(
       (rows) => Array.isArray(rows) && rows.some((r) => r.done),
     )
+    // Cardio logged mid-workout counts as progress too, so a cardio-only session
+    // is still resumable.
+    const hasProgress = loggedSets || (Array.isArray(saved?.cardio) && saved.cardio.length > 0)
     const resumed = saved && program && saved.programId === program.id && saved.dayIndex === dayIndex
       && Array.isArray(saved.exercises) && saved.exercises.length > 0 && hasProgress
       ? saved : null
@@ -224,9 +228,12 @@ export default function Workout() {
   const [baseline, setBaseline] = useState(() => (session ? session.exercises : []))
   const [pickerOpen, setPickerOpen] = useState(false)
   const [cardioOpen, setCardioOpen] = useState(false)
+  const [cardioMachine, setCardioMachine] = useState('treadmill') // preselect for the form
   const [oneRmOpen, setOneRmOpen] = useState(false)
-  const [cardioSaved, setCardioSaved] = useState(0)
-  const [loggedCardio, setLoggedCardio] = useState([]) // this session's cardio, for the share summary
+  // This session's cardio — restored on resume, persisted in the active session,
+  // and fed to the share summary. cardioSaved just drives the little "✓ N logged".
+  const [loggedCardio, setLoggedCardio] = useState(() => (resumed?.cardio ? resumed.cardio : []))
+  const [cardioSaved, setCardioSaved] = useState(() => (resumed?.cardio?.length || 0))
 
   const [rest, setRest] = useState(null)
   const [finished, setFinished] = useState(false)
@@ -252,16 +259,18 @@ export default function Workout() {
   useEffect(() => {
     if (!session || finished) return
     const t = setTimeout(() => {
-      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, savedAt: Date.now() })
+      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, savedAt: Date.now() })
     }, 500)
     return () => clearTimeout(t)
-  }, [exercises, sets, finished, program, dayIndex, session])
+  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session])
 
   // Discard a resumed session and start this day fresh.
   const startOver = () => {
     clearActiveSession()
     setExercises(session ? session.exercises : [])
     setSets(buildInitialSets(session, units))
+    setLoggedCardio([])
+    setCardioSaved(0)
     setShowResumed(false)
   }
 
@@ -911,9 +920,36 @@ export default function Workout() {
           )
         })}
 
+        {Array.isArray(session?.cardio) && session.cardio.length > 0 && (
+          <div className="planned-cardio">
+            <p className="group-label">Cardio</p>
+            {session.cardio.map((c, i) => {
+              const logged = loggedCardio.some((e) => e.machine === c.machine)
+              const target = [
+                Number(c.targetMin) > 0 ? `${c.targetMin} min` : '',
+                Number(c.targetDistance) > 0 ? `${c.targetDistance} ${c.distanceUnit || ''}`.trim() : '',
+              ].filter(Boolean).join(' · ')
+              return (
+                <div className={'planned-cardio-row' + (logged ? ' is-logged' : '')} key={i}>
+                  <span className="machine-icon">{CARDIO_BY_ID[c.machine]?.icon || '❤️'}</span>
+                  <span className="ex-name">{c.machineName || CARDIO_BY_ID[c.machine]?.name || 'Cardio'}</span>
+                  {target && <span className="muted small">{target}</span>}
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setCardioMachine(c.machine || 'treadmill'); setCardioOpen(true) }}
+                  >
+                    {logged ? '✓ Logged' : 'Log'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         <div className="add-row">
           <button type="button" className="add-action" onClick={() => setPickerOpen(true)}>Add exercise</button>
-          <button type="button" className="add-action" onClick={() => setCardioOpen(true)}>Log cardio</button>
+          <button type="button" className="add-action" onClick={() => { setCardioMachine('treadmill'); setCardioOpen(true) }}>Log cardio</button>
           <button type="button" className="add-action" onClick={() => setOneRmOpen(true)}>1RM calc</button>
         </div>
         {cardioSaved > 0 && <p className="muted small">✓ {cardioSaved} cardio session{cardioSaved === 1 ? '' : 's'} logged.</p>}
@@ -947,7 +983,7 @@ export default function Workout() {
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCardioOpen(false)}>Close</button>
             </div>
             <div className="picker-list">
-              <CardioForm onSaved={logCardio} units={units} />
+              <CardioForm onSaved={logCardio} units={units} initialMachine={cardioMachine} />
             </div>
           </div>
         </div>

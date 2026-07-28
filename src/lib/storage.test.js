@@ -9,6 +9,7 @@ import {
   exportData, importData, exportCode, importCode, clearAll, restoreProgram,
   loadBodyweight, logBodyweight, currentBodyweight, saveSkills, isSkillTreeAdded, setSkillTreeAdded,
   loadCustomExercises, saveCustomExercise, deleteCustomExercise,
+  saveActiveSession, loadActiveSession, clearActiveSession,
   syncDecision, summarizeSnapshot, getSyncMarker, setSyncMarker,
 } from './storage.js'
 
@@ -235,6 +236,21 @@ describe('calisthenics skill tree (opt-in)', () => {
     saveSkills({ pullup: { level: 2, best: 8, log: [] } })
     setSkillTreeAdded(false)
     expect(isSkillTreeAdded()).toBe(false)
+  })
+})
+
+describe('active session (resume) carries cardio', () => {
+  it('round-trips logged cardio in the in-progress session', () => {
+    saveActiveSession({
+      programId: 'p1', dayIndex: 0, sessionTitle: 'Legs', exercises: [], sets: {},
+      cardio: [{ machine: 'treadmill', machineName: 'Treadmill', durationMin: 20 }],
+      savedAt: Date.now(),
+    })
+    const s = loadActiveSession()
+    expect(s.cardio).toHaveLength(1)
+    expect(s.cardio[0].machine).toBe('treadmill')
+    clearActiveSession()
+    expect(loadActiveSession()).toBeNull()
   })
 })
 

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS, resolveExercisesForEquipment, activeCapacity } from '../lib/equipment.js'
 import { repsLabel } from '../data/schemes.js'
 import { measureUnit } from '../data/exercises.js'
+import { CARDIO_BY_ID } from '../data/cardio.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
@@ -164,6 +165,19 @@ export default function Today() {
               <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)}</span>
             </li>
           ))}
+          {(session.cardio || []).map((c, j) => {
+            const target = [
+              Number(c.targetMin) > 0 ? `${c.targetMin} min` : '',
+              Number(c.targetDistance) > 0 ? `${c.targetDistance} ${c.distanceUnit || ''}`.trim() : '',
+            ].filter(Boolean).join(' · ')
+            return (
+              <li key={`c${j}`}>
+                <span className="cardio-preview-icon">{CARDIO_BY_ID[c.machine]?.icon || '❤️'}</span>
+                <span className="ex-name">{c.machineName || CARDIO_BY_ID[c.machine]?.name || 'Cardio'}</span>
+                <span className="muted small">{target || 'cardio'}</span>
+              </li>
+            )
+          })}
         </ul>
         <button
           type="button"

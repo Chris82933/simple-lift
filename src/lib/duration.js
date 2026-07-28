@@ -34,7 +34,9 @@ function exerciseSec(ex) {
 
 // Minutes for one training day, rounded to the nearest 5.
 export function estimateSessionMinutes(day) {
-  const total = (day?.exercises || []).reduce((sum, ex) => sum + exerciseSec(ex), 0)
+  let total = (day?.exercises || []).reduce((sum, ex) => sum + exerciseSec(ex), 0)
+  // Planned cardio blocks add their target time (default ~20 min when untargeted).
+  for (const c of day?.cardio || []) total += (Number(c.targetMin) || 20) * 60
   if (total <= 0) return 0
   return Math.max(5, Math.round(total / 60 / 5) * 5)
 }

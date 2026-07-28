@@ -149,6 +149,16 @@ describe('always a new, editable program', () => {
   })
 })
 
+describe('planned cardio', () => {
+  it('carries a day’s cardio blocks through a shared import', () => {
+    const withCardio = program({
+      days: [{ title: 'Legs', exercises: [{ id: 'back_squat', name: 'Squat', pattern: 'squat', regions: ['legs'], sets: 3, repLow: 5, repHigh: 5, restSec: 180 }], cardio: [{ machine: 'treadmill', machineName: 'Treadmill', targetMin: 20 }] }],
+    })
+    const imported = buildImportedProgram(shareableProgram(withCardio), IMPORT_DEFAULTS)
+    expect(imported.days[0].cardio).toEqual([{ machine: 'treadmill', machineName: 'Treadmill', targetMin: 20 }])
+  })
+})
+
 describe('summary for the preview', () => {
   it('counts days and exercises and flags whether weights are attached', () => {
     const s = summarizeProgram(shareableProgram(program()))

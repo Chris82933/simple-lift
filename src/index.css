@@ -148,12 +148,15 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 
 /* ---- Pages ---- */
 .page {
-  padding: 24px 20px 8px;
+  padding: 24px 20px 28px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-.full-flow { min-height: 100dvh; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+/* Full-screen flows have no bottom nav, so their own bottom padding is the only
+   thing between the last button and the screen edge — keep it generous, and add
+   the safe-area inset for phones with a home indicator. */
+.full-flow { min-height: 100dvh; padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
 
 .page-header h1 { font-size: 28px; font-weight: 800; margin: 2px 0 6px; letter-spacing: -0.03em; line-height: 1.12; }
 .eyebrow {
@@ -809,6 +812,34 @@ select.text-input { appearance: none; }
 }
 .builder-ex-top { display: flex; align-items: center; gap: 8px; }
 .builder-ex-top .ex-name { flex: 1; min-width: 0; }
+
+/* Cardio block in the builder — like an exercise card, accented. */
+.builder-cardio {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 3px solid var(--accent-2, var(--accent));
+}
+.cardio-machine-select { flex: 1; min-width: 0; }
+.builder-add-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.builder-add-row .btn { flex: 1; min-width: 130px; }
+
+/* Planned cardio in the live workout. */
+.planned-cardio { display: flex; flex-direction: column; gap: 6px; }
+.planned-cardio-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: 10px;
+}
+.planned-cardio-row .ex-name { flex: 1; min-width: 0; }
+.planned-cardio-row.is-logged { opacity: 0.6; }
+.cardio-preview-icon { font-size: 22px; width: 40px; text-align: center; flex: none; }
 .ex-reorder { display: flex; gap: 2px; }
 .ex-reorder .icon-btn { width: 26px; height: 26px; font-size: 11px; }
 .ex-reorder .icon-btn:disabled { opacity: 0.3; cursor: default; }

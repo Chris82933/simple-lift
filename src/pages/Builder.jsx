@@ -12,6 +12,7 @@ import { weightForReps, incrementForUnits, interpolate1RM } from '../lib/oneRepM
 import { ladderInfo } from '../lib/ladder.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import CustomExerciseForm from '../components/CustomExerciseForm.jsx'
+import { CARDIO_MACHINES, CARDIO_BY_ID } from '../data/cardio.js'
 
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
 
@@ -76,6 +77,7 @@ export default function Builder() {
               repLow: e.repLow ?? e.reps ?? 8,
               repHigh: e.repHigh ?? e.reps ?? 8,
             })),
+            cardio: d.cardio || [],
           })),
         }
       }
@@ -84,7 +86,7 @@ export default function Builder() {
       name: '',
       goals: profile?.goals?.length ? profile.goals : ['general'],
       progressionMethod: DEFAULT_METHOD,
-      days: [{ weekday: 1, title: 'Day 1', exercises: [] }],
+      days: [{ weekday: 1, title: 'Day 1', exercises: [], cardio: [] }],
     }
   })
 
@@ -107,8 +109,16 @@ export default function Builder() {
 
   const addDay = () =>
     update({
-      days: [...draft.days, { weekday: WEEKDAY_ORDER[draft.days.length % 7], title: `Day ${draft.days.length + 1}`, exercises: [] }],
+      days: [...draft.days, { weekday: WEEKDAY_ORDER[draft.days.length % 7], title: `Day ${draft.days.length + 1}`, exercises: [], cardio: [] }],
     })
+
+  // ---- Cardio blocks on a day (targets are optional reminders) ----
+  const addCardioToDay = (di) =>
+    updateDay(di, { cardio: [...(draft.days[di].cardio || []), { machine: 'treadmill', targetMin: '', targetDistance: '' }] })
+  const updateCardio = (di, ci, patch) =>
+    updateDay(di, { cardio: (draft.days[di].cardio || []).map((c, j) => (j === ci ? { ...c, ...patch } : c)) })
+  const removeCardio = (di, ci) =>
+    updateDay(di, { cardio: (draft.days[di].cardio || []).filter((_, j) => j !== ci) })
   const removeDay = (i) => update({ days: draft.days.filter((_, j) => j !== i) })
   const removeExercise = (di, ei) =>
     updateDay(di, { exercises: draft.days[di].exercises.filter((_, j) => j !== ei) })
@@ -163,7 +173,7 @@ export default function Builder() {
   }
 
   const totalExercises = draft.days.reduce((n, d) => n + d.exercises.length, 0)
-  const canSave = draft.name.trim() && draft.days.some((d) => d.exercises.length > 0)
+  const canSave = draft.name.trim() && draft.days.some((d) => d.exercises.length > 0 || (d.cardio && d.cardio.length > 0))
 
   const save = () => {
     if (!canSave) return
@@ -174,13 +184,21 @@ export default function Builder() {
       goals: draft.goals,
       progressionMethod: draft.progressionMethod || DEFAULT_METHOD,
       days: draft.days
-        .filter((d) => d.exercises.length > 0)
+        .filter((d) => d.exercises.length > 0 || (d.cardio && d.cardio.length > 0))
         .map((d) => ({
           weekday: d.weekday,
           dayLabel: WEEKDAY_LABELS[d.weekday],
           title: d.title.trim() || WEEKDAY_LABELS[d.weekday],
           note: 'Your custom session.',
           regions: [...new Set(d.exercises.flatMap((e) => e.regions))],
+          // Planned cardio for the day. Targets are optional; a bare machine is fine.
+          cardio: (d.cardio || []).map((c) => ({
+            machine: c.machine || 'other',
+            machineName: (CARDIO_BY_ID[c.machine] || CARDIO_BY_ID.other).name,
+            targetMin: Number(c.targetMin) || null,
+            targetDistance: Number(c.targetDistance) || null,
+            distanceUnit: c.distanceUnit || (loadSettings().units === 'kg' ? 'km' : 'mi'),
+          })),
           // Spread the original entry first so advanced fields (GZCLP
           // progression, amrap, ladder links) survive an edit, then override
           // the user-editable numbers.
@@ -381,9 +399,39 @@ export default function Builder() {
               </div>
             ))}
 
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setPicker(di); setSearch('') }}>
-              + Add exercise
-            </button>
+            {(day.cardio || []).map((c, ci) => {
+              const hasDistance = CARDIO_BY_ID[c.machine]?.distance
+              return (
+                <div className="builder-cardio" key={`c${ci}`}>
+                  <div className="builder-ex-top">
+                    <span className="machine-icon">{CARDIO_BY_ID[c.machine]?.icon || '❤️'}</span>
+                    <select
+                      className="text-input cardio-machine-select"
+                      value={c.machine}
+                      onChange={(e) => updateCardio(di, ci, { machine: e.target.value })}
+                    >
+                      {CARDIO_MACHINES.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                    <button type="button" className="icon-btn" onClick={() => removeCardio(di, ci)} aria-label="Remove cardio">✕</button>
+                  </div>
+                  <div className="builder-fields">
+                    <label>Target min<input type="number" inputMode="numeric" value={c.targetMin} placeholder="–" onChange={(e) => updateCardio(di, ci, { targetMin: e.target.value })} /></label>
+                    {hasDistance && (
+                      <label>Target dist<input type="number" inputMode="decimal" value={c.targetDistance} placeholder="–" onChange={(e) => updateCardio(di, ci, { targetDistance: e.target.value })} /></label>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+
+            <div className="builder-add-row">
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setPicker(di); setSearch('') }}>
+                + Add exercise
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => addCardioToDay(di)}>
+                ❤️ Add cardio
+              </button>
+            </div>
           </div>
         ))}
 
