@@ -10,6 +10,7 @@ import {
 import { saveProfile, addProgram, loadProfile, logBodyweight, loadSettings } from '../lib/storage.js'
 import { generateProgram } from '../lib/generator.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
+import ThemeToggle from '../components/ThemeToggle.jsx'
 
 const toggle = (arr, val) =>
   arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]
@@ -96,6 +97,7 @@ export default function Onboarding() {
         </header>
 
         <div className="step-body">
+          <ThemeToggle label="First up — light or dark?" />
           <button type="button" className="path-card is-primary" onClick={startGuided}>
             <div className="path-card-top">
               <span className="path-title">Guided setup</span>

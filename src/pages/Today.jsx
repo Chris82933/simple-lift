@@ -11,6 +11,7 @@ import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LAB
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import FocusTiles from '../components/FocusTiles.jsx'
+import ThemeToggle from '../components/ThemeToggle.jsx'
 
 // Short "how long ago" label for an in-progress session's last save.
 function timeAgo(ts) {
@@ -60,6 +61,7 @@ export default function Today() {
           <button className="btn btn-primary" onClick={() => navigate('/templates')}>Browse templates</button>
           <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
           <p className="muted small">Into bodyweight skills? The calisthenics skill tree is in Browse templates.</p>
+          <ThemeToggle label="Prefer light or dark?" />
         </div>
       </section>
     )

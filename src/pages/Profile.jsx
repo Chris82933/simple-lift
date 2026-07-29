@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { isIOS } from '../lib/platform.js'
 import InstallApp from '../components/InstallApp.jsx'
 import { applyTheme } from '../lib/theme.js'
+import { notificationsSupported, notificationPermission, requestNotifyPermission } from '../lib/notify.js'
 import {
   getEquipment, setActiveProfile as storeSetActiveProfile, saveProfileEquipment,
   saveProfileCapacity, LOAD_SOURCES, profileMeta, PROFILE_IDS,
@@ -96,6 +97,22 @@ export default function Profile() {
     const next = { ...settings, restTimer: on }
     setSettings(next)
     saveSettings(next)
+  }
+  const [notifyBusy, setNotifyBusy] = useState(false)
+  const setRestNotify = async (on) => {
+    if (!on) {
+      const next = { ...settings, restNotify: false }
+      setSettings(next); saveSettings(next); return
+    }
+    setNotifyBusy(true)
+    const granted = await requestNotifyPermission()
+    setNotifyBusy(false)
+    if (!granted) {
+      window.alert('Notifications are blocked. Turn them on for this site in your browser or phone settings, then try again.')
+      return
+    }
+    const next = { ...settings, restNotify: true }
+    setSettings(next); saveSettings(next)
   }
 
   const theme = settings.theme || 'dark'
@@ -386,6 +403,34 @@ export default function Profile() {
             </button>
           ))}
         </div>
+
+        {notificationsSupported() && (
+          <>
+            <p className="muted small" style={{ marginTop: 14 }}>
+              Rest-over notification — buzz you with a notification when the rest timer hits zero, so
+              you can put your phone away between sets.
+            </p>
+            <div className="seg">
+              {[{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }].map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  disabled={notifyBusy}
+                  className={'seg-item' + ((settings.restNotify === true && notificationPermission() === 'granted' ? 'on' : 'off') === o.id ? ' is-selected' : '')}
+                  onClick={() => setRestNotify(o.id === 'on')}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            {settings.restNotify === true && notificationPermission() !== 'granted' && (
+              <p className="muted small">Notifications are blocked in your browser — turn them on for this site to use this.</p>
+            )}
+            {isIOS() && (
+              <p className="muted small">On iPhone/iPad this works best with the app installed to your home screen, and the system may still delay a notification while other apps are open.</p>
+            )}
+          </>
+        )}
       </div>
 
       {/* ---- Units ---- */}

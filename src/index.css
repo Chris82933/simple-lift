@@ -1047,6 +1047,10 @@ select.text-input { appearance: none; }
 .mode-row .seg { flex: 1; }
 .seg-sm { padding: 3px; }
 .seg-sm .seg-item { padding: 6px 0; font-size: 13px; }
+
+/* Light/dark switch shown to new users. */
+.theme-toggle { display: flex; flex-direction: column; gap: 6px; }
+.theme-toggle .seg { width: 100%; }
 .swap-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .swap-banner p { margin: 0; }
 .exercise-card.is-unavailable { opacity: 0.82; border: 1px solid color-mix(in srgb, var(--accent-5) 45%, var(--border)); }
