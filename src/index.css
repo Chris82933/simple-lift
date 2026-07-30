@@ -1048,6 +1048,10 @@ select.text-input { appearance: none; }
 .seg-sm { padding: 3px; }
 .seg-sm .seg-item { padding: 6px 0; font-size: 13px; }
 
+/* Recovery creator disclaimer. */
+.recovery-disclaimer { border-left: 3px solid var(--accent-4, var(--accent)); }
+.recovery-disclaimer p { margin: 0; }
+
 /* Light/dark switch shown to new users. */
 .theme-toggle { display: flex; flex-direction: column; gap: 6px; }
 .theme-toggle .seg { width: 100%; }

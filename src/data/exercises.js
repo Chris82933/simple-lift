@@ -223,6 +223,22 @@ const BASE_EXERCISES = [
   { id: 'landmine_press', name: 'Landmine Press', pattern: 'vert_push', regions: ['shoulders', 'chest', 'arms'], requires: ['barbell'], compound: true, tags: ['landmine'], cues: 'Half-kneeling or standing, press the bar end up and slightly forward along its arc. Shoulder-friendly overhead pressing for people who can’t go straight up pain-free. Reps per side.' },
   { id: 'landmine_row', name: 'Landmine Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['barbell'], compound: true, tags: ['landmine'], cues: 'Straddle the bar (or stand to one side), grip near the end or with a handle, and row to your hip driving the elbow back. A strong mid-back builder — the Meadows row is a one-arm version of this.' },
   { id: 'landmine_rotation', name: 'Landmine Rotation', pattern: 'core', regions: ['core', 'shoulders'], requires: ['barbell'], compound: false, tags: ['landmine'], cues: 'Hold the bar end at arm’s length and sweep it side to side in an arc, rotating through the hips and trunk (not just the arms). Control it — this trains anti-rotation and rotational power. Reps per side.' },
+
+  // ---- Rehab & recovery (physio-style strengthening for cranky joints) ----
+  // Low-load, high-control moves used in prehab/rehab. Most are bodyweight or use
+  // a light band. Not medical advice — if a physio gave you specific exercises,
+  // do theirs.
+  { id: 'straight_leg_raise', name: 'Straight-Leg Raise', pattern: 'core', regions: ['legs', 'core'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'Lie on your back, one knee bent, the other leg locked dead straight. Tighten the thigh, lift the straight leg to the height of the bent knee, pause, and lower slowly. A staple for quad/VMO strength around a cranky knee without bending it. Reps per leg.' },
+  { id: 'wall_sit', name: 'Wall Sit', pattern: 'squat', regions: ['legs'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [20, 45], tags: ['rehab', 'running'], cues: 'Back flat on a wall, slide down until hips and knees are near 90°, weight through the heels. Hold. Builds quad endurance with no joint pounding. Hold for time.' },
+  { id: 'clamshell', name: 'Clamshell', pattern: 'hinge', regions: ['legs'], requires: [], compound: false, load: false, tags: ['rehab', 'running'], cues: 'On your side, knees bent and stacked, heels together. Keep the pelvis still and open the top knee like a clam, squeezing the glute — don’t let the hip roll back. A band above the knees adds load. The classic glute-medius activator. Reps per side.' },
+  { id: 'lateral_band_walk', name: 'Lateral Band Walk', pattern: 'lunge', regions: ['legs'], requires: ['bands'], compound: false, load: false, tags: ['rehab', 'running'], cues: 'Loop a band above the knees or ankles, sink to a quarter-squat, and step sideways keeping constant tension — hips level, toes forward, don’t let the knees cave. Torches the glute medius for knee and ankle stability. Reps per side.' },
+  { id: 'lunge_calf_raise', name: 'Lunge + Calf Raise', pattern: 'lunge', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['rehab', 'running'], cues: 'Step into a lunge; as you drive up on the front leg, rise onto the ball of that foot into a calf raise, then lower under control and step back. Pairs single-leg strength with ankle/calf work and balance. Reps per leg.' },
+  { id: 'bosu_squat', name: 'Bosu Squat', pattern: 'squat', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['rehab', 'running'], cues: 'Stand on a Bosu (dome up) or a folded cushion and squat under control, knees tracking over the toes. The wobble trains ankle and knee stability and balance. No Bosu? Do it slow and single-leg on the floor. Reps.' },
+  { id: 'bird_dog', name: 'Bird Dog', pattern: 'core', regions: ['core', 'back'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'On hands and knees, reach the opposite arm and leg out long, keeping the spine still and hips level — no twisting or sagging. Hold a beat, return with control. A McGill “big 3” staple for a resilient low back. Reps per side.' },
+  { id: 'band_external_rotation', name: 'Band External Rotation', pattern: 'shoulder_iso', regions: ['shoulders', 'arms'], requires: ['bands'], compound: false, load: false, tags: ['rehab'], cues: 'Elbow pinned to your side and bent 90°, rotate your forearm outward against a band, then return slowly. Tuck a rolled towel under the elbow to keep it home. The go-to rotator-cuff strengthener. Reps per side.' },
+  { id: 'band_pull_apart', name: 'Band Pull-Apart', pattern: 'horiz_pull', regions: ['back', 'shoulders'], requires: ['bands'], compound: false, load: false, tags: ['rehab'], cues: 'Hold a band at shoulder height with straight arms and pull it apart by squeezing the shoulder blades together — lead with the pinkies, don’t shrug. Great for posture and shoulder health. Reps.' },
+  { id: 'scap_wall_slide', name: 'Scapular Wall Slide', pattern: 'vert_push', regions: ['shoulders', 'back'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'Back, hips, arms and hands against a wall in a “goalpost”. Slide the arms overhead keeping wrists and elbows on the wall as long as you can, then back down. Restores overhead motion and scapular control. Reps.' },
+  { id: 'single_leg_drop_forward_jump', name: 'Single-Leg Drop Jump + Forward Jump', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['rehab', 'running'], cues: 'Step off a low box and land softly on one leg, absorbing quietly through hip and knee; from that stuck landing, immediately jump forward and stick the next landing. Advanced plyometric for reactive ankle/knee control and power — own soft two-foot landings first. Reps per leg.' },
 ]
 
 // Merge in the bodyweight ladder variants, then stitch easy↔hard links onto
@@ -381,6 +397,17 @@ const ALIASES = {
   landmine_press: ['landmine press', 'landmine shoulder press', 'landmine overhead press', 'half kneeling landmine press'],
   landmine_row: ['landmine row', 'meadows row', 'landmine bent over row', 't-bar row', 't bar row'],
   landmine_rotation: ['landmine rotation', 'landmine twist', 'landmine 180', 'landmine oblique twist'],
+  straight_leg_raise: ['straight leg raise', 'slr', 'straight-leg raise'],
+  wall_sit: ['wall sit', 'wall squat hold', 'wall squat'],
+  clamshell: ['clamshell', 'clam shell', 'clams', 'clam'],
+  lateral_band_walk: ['lateral band walk', 'monster walk', 'banded side steps', 'crab walk', 'band walk'],
+  lunge_calf_raise: ['lunge calf raise', 'lunge to calf raise', 'lunge and calf raise'],
+  bosu_squat: ['bosu squat', 'balance squat', 'wobble squat', 'bosu ball squat'],
+  bird_dog: ['bird dog', 'birddog', 'quadruped', 'pointer'],
+  band_external_rotation: ['external rotation', 'band external rotation', 'rotator cuff', 'shoulder external rotation'],
+  band_pull_apart: ['band pull apart', 'pull apart', 'band pullapart'],
+  scap_wall_slide: ['wall slide', 'scapular wall slide', 'wall angel', 'wall angels'],
+  single_leg_drop_forward_jump: ['single leg drop jump', 'drop jump forward jump', 'single leg hop', 'single leg bound'],
   reverse_lunge: ['backward lunge'],
   // Horizontal push
   bench_press: ['barbell bench press', 'flat bench', 'flat barbell bench', 'chest press'],
