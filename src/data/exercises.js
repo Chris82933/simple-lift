@@ -239,6 +239,12 @@ const BASE_EXERCISES = [
   { id: 'band_pull_apart', name: 'Band Pull-Apart', pattern: 'horiz_pull', regions: ['back', 'shoulders'], requires: ['bands'], compound: false, load: false, tags: ['rehab'], cues: 'Hold a band at shoulder height with straight arms and pull it apart by squeezing the shoulder blades together — lead with the pinkies, don’t shrug. Great for posture and shoulder health. Reps.' },
   { id: 'scap_wall_slide', name: 'Scapular Wall Slide', pattern: 'vert_push', regions: ['shoulders', 'back'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'Back, hips, arms and hands against a wall in a “goalpost”. Slide the arms overhead keeping wrists and elbows on the wall as long as you can, then back down. Restores overhead motion and scapular control. Reps.' },
   { id: 'single_leg_drop_forward_jump', name: 'Single-Leg Drop Jump + Forward Jump', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['rehab', 'running'], cues: 'Step off a low box and land softly on one leg, absorbing quietly through hip and knee; from that stuck landing, immediately jump forward and stick the next landing. Advanced plyometric for reactive ankle/knee control and power — own soft two-foot landings first. Reps per leg.' },
+  { id: 'foot_intrinsics', name: 'Foot Intrinsic Strengthening', pattern: 'calf', regions: ['legs'], requires: [], compound: false, load: false, tags: ['rehab', 'running'], cues: 'Barefoot, keep the toes long and flat and dome the arch by drawing the ball of the foot toward the heel — the “short foot”. Hold a few seconds, release. Towel scrunches with the toes work too. Strengthens the arch to cut pronation stress on the shin. Reps per foot.' },
+  { id: 'chin_tuck', name: 'Chin Tuck', pattern: 'core', regions: ['back'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'Sit or stand tall and glide your head straight back into a gentle “double chin” — a small nod, not a big tuck — to switch on the deep neck flexors. Hold ~5 seconds, relax. Keep it pain-free. Reps.' },
+  { id: 'neck_isometric', name: 'Neck Isometric Holds', pattern: 'core', regions: ['back'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [5, 10], tags: ['rehab'], cues: 'Place a hand on your forehead, then each side, then the back of your head, and press your head gently into it with NO movement — about 20–30% effort. Hold, breathe, release. Strengthens the neck without loading the joints. Hold each direction for time.' },
+  { id: 'median_nerve_glide', name: 'Median Nerve Glide', pattern: 'biceps', regions: ['arms'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'A gentle neurodynamic “floss”, not a stretch: from a bent elbow and neutral wrist, slowly straighten the elbow and extend the wrist to a light tension, then return. Never push into pain, numbness or tingling. Reps per arm.' },
+  { id: 'tendon_glide', name: 'Tendon Gliding', pattern: 'biceps', regions: ['arms'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'Move the fingers through the positions — straight, hook fist, full fist, tabletop, straight fist — pausing a beat in each. Avoid a hard, forceful grip, which itself compresses the median nerve. Cycles per hand.' },
+  { id: 'wrist_flexor_stretch', name: 'Wrist Flexor Stretch', pattern: 'biceps', regions: ['arms'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [20, 30], tags: ['rehab'], cues: 'Arm straight out, palm up; with the other hand gently draw the fingers and palm back toward you until you feel an easy forearm stretch. Hold, breathe, ease off. Do the palm-down version for the extensors too. Hold per side.' },
 ]
 
 // Merge in the bodyweight ladder variants, then stitch easy↔hard links onto
@@ -408,6 +414,12 @@ const ALIASES = {
   band_pull_apart: ['band pull apart', 'pull apart', 'band pullapart'],
   scap_wall_slide: ['wall slide', 'scapular wall slide', 'wall angel', 'wall angels'],
   single_leg_drop_forward_jump: ['single leg drop jump', 'drop jump forward jump', 'single leg hop', 'single leg bound'],
+  foot_intrinsics: ['foot intrinsics', 'short foot', 'toe scrunch', 'towel scrunch', 'arch strengthening'],
+  chin_tuck: ['chin tuck', 'chin tucks', 'deep neck flexor', 'cervical retraction'],
+  neck_isometric: ['neck isometric', 'neck isometrics', 'neck strengthening'],
+  median_nerve_glide: ['median nerve glide', 'nerve glide', 'nerve floss', 'neural glide'],
+  tendon_glide: ['tendon glide', 'tendon gliding', 'finger gliding'],
+  wrist_flexor_stretch: ['wrist flexor stretch', 'wrist stretch', 'forearm stretch'],
   reverse_lunge: ['backward lunge'],
   // Horizontal push
   bench_press: ['barbell bench press', 'flat bench', 'flat barbell bench', 'chest press'],

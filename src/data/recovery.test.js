@@ -16,15 +16,23 @@ describe('every recovery area', () => {
     }
   })
 
-  it.each(RECOVERY_AREAS.map((a) => [a.label, a]))('%s carries a source and rationale', (_label, area) => {
+  it.each(RECOVERY_AREAS.map((a) => [a.label, a]))('%s cites at least 3 sources and a rationale', (_label, area) => {
     expect(area.why).toBeTruthy()
-    expect(area.sources.length).toBeGreaterThan(0)
-    for (const s of area.sources) expect(s.url).toMatch(/^https?:\/\//)
+    expect(area.sources.length).toBeGreaterThanOrEqual(3)
+    for (const s of area.sources) {
+      expect(s.url).toMatch(/^https?:\/\//)
+      expect(s.label).toBeTruthy()
+    }
   })
 
   it('has unique area ids', () => {
     const ids = RECOVERY_AREAS.map((a) => a.id)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('covers the newly requested issues', () => {
+    const ids = RECOVERY_AREAS.map((a) => a.id)
+    for (const id of ['shin_splints', 'neck', 'carpal_tunnel']) expect(ids).toContain(id)
   })
 })
 

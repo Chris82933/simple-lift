@@ -28,8 +28,9 @@ export const RECOVERY_AREAS = [
       { id: 'lateral_band_walk', sets: 2, low: 10, high: 12 },
     ],
     sources: [
-      { label: 'UCSF ankle strengthening protocol', url: 'https://sportsrehab.ucsf.edu/sites/g/files/tkssra10961/files/Ankle%20Strengthening%20Protocol.pdf' },
-      { label: 'Foot & ankle strengthening review (NIH)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11967365/' },
+      { label: 'UCSF Sports Medicine — ankle strengthening protocol', url: 'https://sportsrehab.ucsf.edu/sites/g/files/tkssra10961/files/Ankle%20Strengthening%20Protocol.pdf' },
+      { label: 'Foot & ankle strengthening scoping review (NIH/PMC)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11967365/' },
+      { label: 'Balance & strength training for chronic ankle instability (NIH/PMC)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC6089027/' },
     ],
   },
   {
@@ -48,6 +49,8 @@ export const RECOVERY_AREAS = [
     ],
     sources: [
       { label: 'RunningPhysio — evidence-based glute-med rehab', url: 'https://www.running-physio.com/glutemed/' },
+      { label: 'GHOst trial — targeted gluteal exercise (NIH/PMC)', url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6149073/' },
+      { label: 'Physiopedia — Gluteus Medius', url: 'https://www.physio-pedia.com/Gluteus_Medius' },
     ],
   },
   {
@@ -64,6 +67,8 @@ export const RECOVERY_AREAS = [
       { id: 'single_leg_glute_bridge', sets: 3, low: 8, high: 12 },
     ],
     sources: [
+      { label: 'JOSPT — hip & knee exercise for patellofemoral pain (2018)', url: 'https://www.jospt.org/doi/10.2519/jospt.2018.0502' },
+      { label: 'JOSPT — hip strengthening reduces PFP pain sooner (RCT, 2011)', url: 'https://www.jospt.org/doi/10.2519/jospt.2011.3499' },
       { label: 'Bend + Mend — VMO activation for early knee rehab', url: 'https://bendandmend.com.au/news/physiotherapy/the-seven-best-exercises-for-vmo-activation-early-knee-rehab/' },
     ],
   },
@@ -76,11 +81,13 @@ export const RECOVERY_AREAS = [
     exercises: [
       { id: 'band_external_rotation', sets: 3, low: 12, high: 15 },
       { id: 'band_pull_apart', sets: 3, low: 12, high: 20 },
-      { id: 'face_pull', sets: 3, low: 12, high: 15 },
+      { id: 'band_row', sets: 3, low: 10, high: 15 },
       { id: 'scap_wall_slide', sets: 3, low: 8, high: 12 },
     ],
     sources: [
       { label: 'E3 Rehab — rotator cuff exercises', url: 'https://e3rehab.com/rotator-cuff-exercises/' },
+      { label: 'E3 Rehab — rotator cuff tear rehab', url: 'https://e3rehab.com/rotator-cuff-tear-rehab/' },
+      { label: 'HighBar Health (PT) — rotator cuff strengthening guide', url: 'https://www.highbarhealth.com/best-exercises-for-rotator-cuff-strengthening/' },
     ],
   },
   {
@@ -97,6 +104,66 @@ export const RECOVERY_AREAS = [
     ],
     sources: [
       { label: 'Stuart McGill — the “Big 3” for low-back health', url: 'https://www.backfitpro.com/' },
+      { label: 'JOSPT — quality of reviews on spinal stabilization for chronic LBP', url: 'https://www.jospt.org/doi/10.2519/jospt.2013.4346' },
+      { label: 'Stabilisation exercises for low back pain — systematic review & meta-analysis', url: 'https://link.springer.com/article/10.1186/1471-2474-15-416' },
+    ],
+  },
+
+  {
+    id: 'shin_splints',
+    label: 'Shin splints',
+    emoji: '🦵',
+    blurb: 'Calf and foot strength plus balance to settle medial tibial stress — and a strictly pain-free return to impact.',
+    why: 'Shin-splint (MTSS) rehab centres on calf strength and endurance, foot-intrinsic strength to cut pronation stress, and balance — kept strictly pain-free, easing back to impact gradually.',
+    exercises: [
+      { id: 'single_leg_calf_raise', sets: 3, low: 12, high: 15 },
+      { id: 'tibialis_raise', sets: 3, low: 15, high: 20 },
+      { id: 'foot_intrinsics', sets: 3, low: 10, high: 15 },
+      { id: 'bosu_squat', sets: 3, low: 8, high: 12 },
+      { id: 'clamshell', sets: 3, low: 12, high: 15 },
+    ],
+    sources: [
+      { label: 'StatPearls / NCBI — Medial Tibial Stress Syndrome', url: 'https://www.ncbi.nlm.nih.gov/books/NBK538479/' },
+      { label: 'APTA ChoosePT — physical therapy guide to shin splints', url: 'https://www.choosept.com/guide/physical-therapy-guide-shin-splints-medial-tibial-stress-syndrome-' },
+      { label: 'RunningPhysio — exercises for MTSS', url: 'https://www.running-physio.com/exercises-for-medial-tibial-stress-syndrome-aka-shin-splints/' },
+    ],
+  },
+
+  {
+    id: 'neck',
+    label: 'Neck',
+    emoji: '🧣',
+    blurb: 'Deep-neck-flexor and scapular strengthening for stiff, achy “tech neck”.',
+    why: 'For non-specific neck pain, deep-neck-flexor activation (chin tucks) and gentle neck isometrics, paired with scapular/postural strengthening, cut pain and forward-head posture better than any single move.',
+    exercises: [
+      { id: 'chin_tuck', sets: 3, low: 8, high: 10 },
+      { id: 'neck_isometric', sets: 3, low: 5, high: 10 },
+      { id: 'band_pull_apart', sets: 3, low: 12, high: 20 },
+      { id: 'scap_wall_slide', sets: 3, low: 8, high: 12 },
+    ],
+    sources: [
+      { label: 'Isometric chin tuck ± scapular correction (Int. J. Therapy & Rehab)', url: 'https://www.magonlinelibrary.com/doi/abs/10.12968/ijtr.2021.0184' },
+      { label: 'Scapular + cervical isometric exercises RCT (NIH/PMC)', url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11671652/' },
+      { label: 'Neck stabilization exercise for chronic neck pain (NIH/PMC)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11869567/' },
+    ],
+  },
+
+  {
+    id: 'carpal_tunnel',
+    label: 'Carpal tunnel',
+    emoji: '✋',
+    blurb: 'Gentle nerve and tendon gliding plus forearm work — done softly, never forcing a grip.',
+    why: 'Conservative carpal-tunnel care combines nerve and tendon gliding, forearm stretches, and light wrist strengthening — done gently and avoiding a forceful grip, which itself compresses the median nerve.',
+    exercises: [
+      { id: 'median_nerve_glide', sets: 3, low: 8, high: 10 },
+      { id: 'tendon_glide', sets: 3, low: 5, high: 5 },
+      { id: 'wrist_flexor_stretch', sets: 3, low: 20, high: 30 },
+      { id: 'reverse_wrist_curl', sets: 3, low: 12, high: 15 },
+    ],
+    sources: [
+      { label: 'Tendon & nerve gliding for CTS — systematic review of RCTs (PubMed)', url: 'https://pubmed.ncbi.nlm.nih.gov/26357452/' },
+      { label: 'Nerve gliding exercises for CTS — systematic review (PubMed)', url: 'https://pubmed.ncbi.nlm.nih.gov/27842937/' },
+      { label: 'Neurodynamic techniques for mild-moderate CTS — SR & meta-analysis (NIH/PMC)', url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10419623/' },
     ],
   },
 ]
