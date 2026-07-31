@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { EXERCISES, EXERCISE_BY_ID, exMeasure, matchesQuery } from '../data/exercises.js'
+import { EXERCISES, EXERCISE_BY_ID, exMeasure, matchesQuery, isoHoldFor } from '../data/exercises.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 import { GOALS } from '../data/options.js'
 import { schemeForGoals, prescriptionFor } from '../data/schemes.js'
@@ -424,7 +424,12 @@ export default function Builder() {
                       </button>
                       <button type="button" className="info-icon" onClick={() => setIsoInfo(true)} aria-label="What is an isometric hold?">i</button>
                     </div>
-                    {ex.iso && <p className="muted small">Held for time (in seconds){ex.load ? ' at a fixed weight' : ''} — default 4 × 30 sec, 3-min rest. Edit the numbers above.</p>}
+                    {ex.iso && (
+                      <p className="muted small">
+                        Held for time (in seconds){ex.load ? ' at a fixed weight' : ''} — default 4 × 30 sec, 3-min rest. Edit the numbers above.
+                        {isoHoldFor(ex.id) && <> <strong>Where to hold:</strong> {isoHoldFor(ex.id)}</>}
+                      </p>
+                    )}
                   </>
                 )}
                 <button type="button" className="btn btn-ghost btn-sm recommend-btn" onClick={() => applyRecommended(di, ei)}>

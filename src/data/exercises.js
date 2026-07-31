@@ -333,6 +333,54 @@ export function unregisterCustomExercise(id) {
   if (i !== -1) EXERCISES.splice(i, 1)
 }
 
+// Where an isometric hold makes sense for a normally-dynamic lift, and the best
+// positions to hold. Isometrics pay off most at the STICKING POINT or END RANGE,
+// and strength is joint-angle-specific (~±15° of the trained angle) — so holding
+// at a couple of positions covers more of the range. Heavy holds also build
+// tendon stiffness and can calm tendon pain. Shown when the "isometric hold"
+// toggle is on; the toggle itself works on any rep-based lift.
+// Sources: BarBend isometric training; MTNTactical research review; Cleveland Clinic.
+export const ISO_HOLDS = {
+  pullup: 'Hold at the top (chin over the bar), at ~90° elbow, and just above a dead hang with the shoulders engaged — a few 10–30s holds per position. A top way to earn a first pull-up.',
+  chinup: 'Hold at the top, at ~90°, and near the bottom with the shoulders set — 10–30s per position.',
+  lat_pulldown: 'Hold the bar at your collarbone (fully contracted) or at ~90° for 20–40s — position-specific back strength.',
+  cable_pulldown: 'Hold the fully contracted or ~90° position for 20–40s.',
+  back_squat: 'Pause and hold at the bottom or at parallel (~90°) for 20–45s — trains the sticking point and is easy on the joints.',
+  front_squat: 'Hold at the bottom or at ~90° for 20–45s, chest tall.',
+  goblet_squat: 'Hold at the bottom for 20–45s — a great knee-friendly loaded hold.',
+  bw_squat: 'Hold at the bottom or parallel for 20–45s (a wall sit is the loaded cousin).',
+  bench_press: 'Hold at the mid-range sticking point (elbows ~90°, a few inches off the chest) or at lockout for 15–30s. Use a spotter/rack.',
+  db_bench: 'Hold at the bottom stretch or the mid-range sticking point for 15–30s.',
+  overhead_press: 'Hold at the overhead lockout, or at the ~90° sticking point off the shoulders, for 15–30s.',
+  deadlift: 'Hold the bar just below the knees (mid-shin) with a flat back for 10–30s — a brutal grip and posterior-chain hold.',
+  romanian_dl: 'Hold at mid-shin with a flat back and loaded hamstrings for 15–30s.',
+  barbell_row: 'Hold the bar in the fully contracted position, shoulder blades squeezed, for 15–30s.',
+  db_row: 'Hold at the top, elbow driven back and lat squeezed, for 15–30s per side.',
+  seated_cable_row: 'Hold the fully retracted position for 15–30s.',
+  pushup: 'Hold at the bottom (chest just off the floor) or mid-range for 15–30s.',
+  dip: 'Hold in the bottom stretch or at the top support for 15–30s.',
+  ring_dip: 'Hold the top support (rings turned out) or the bottom for 10–30s.',
+  db_curl: 'Hold at ~90° (forearm parallel to the floor) — the biceps’ hardest point — for 15–30s.',
+  ez_curl: 'Hold at ~90° for 15–30s.',
+  hammer_curl: 'Hold at ~90° for 15–30s.',
+  lateral_raise: 'Hold at the top, arms at shoulder height, for 15–30s.',
+  bulgarian_split: 'Hold the bottom of the split squat for 20–40s per leg.',
+  reverse_lunge: 'Hold the bottom position for 20–40s per leg.',
+  weighted_step_up: 'Hold with the working knee at ~90° (or at the top) for 20–30s per leg.',
+  glute_bridge: 'Hold the top lockout, squeezing the glutes, for 20–45s.',
+  hip_thrust: 'Hold the top lockout for 20–45s — a loaded glute isometric.',
+  db_calf_raise: 'Hold the top (fully up on the toes) or the bottom stretch for 20–45s.',
+  bw_calf_raise: 'Hold the top or the bottom stretch for 20–45s.',
+  leg_curl: 'Hold the fully contracted position for 15–30s.',
+  leg_extension: 'Hold the top (knee locked out) for 15–30s — classic quad/VMO isometric.',
+  face_pull: 'Hold the fully retracted position, elbows high, for 15–30s.',
+  band_pull_apart: 'Hold the band fully apart, shoulder blades squeezed, for 15–30s.',
+}
+
+// Position/angle guidance for holding a normally-dynamic lift isometrically, or
+// null when the app has none for it.
+export const isoHoldFor = (id) => ISO_HOLDS[id] || null
+
 // How an exercise is measured so inputs adapt to it (context-aware):
 //   • 'reps'     — sets × reps (× weight when load-tracked)
 //   • 'time'     — sets × a duration (planks, holds, timed cardio) — unit sec/min

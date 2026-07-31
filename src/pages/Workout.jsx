@@ -26,7 +26,7 @@ import {
 } from '../lib/equipment.js'
 import { isBarbellLift } from '../lib/plates.js'
 import { ladderInfo } from '../lib/ladder.js'
-import { measureUnit, exMeasure, EXERCISE_BY_ID } from '../data/exercises.js'
+import { measureUnit, exMeasure, EXERCISE_BY_ID, isoHoldFor } from '../data/exercises.js'
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
@@ -930,10 +930,14 @@ export default function Workout() {
                 const nextIdx = sets[ex.id].findIndex((r) => !r.done && !r.warmup)
                 if (nextIdx === -1) return null
                 const target = Number(sets[ex.id][nextIdx].reps) || Number(ex.repHigh) || 30
+                const where = ex.iso ? isoHoldFor(ex.id) : null
                 return (
-                  <button type="button" className="btn btn-ghost btn-sm hold-start" onClick={() => startHold(ex)}>
-                    ▶ Time a {target}s hold
-                  </button>
+                  <>
+                    <button type="button" className="btn btn-ghost btn-sm hold-start" onClick={() => startHold(ex)}>
+                      ▶ Time a {target}s hold
+                    </button>
+                    {where && <p className="muted small hold-where"><strong>Where to hold:</strong> {where}</p>}
+                  </>
                 )
               })()}
 

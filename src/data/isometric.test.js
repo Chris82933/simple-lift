@@ -1,7 +1,7 @@
 // Isometrics: the new hold exercises exist, and the per-program `iso` toggle
 // turns any rep-based lift into a timed hold without a separate library entry.
 import { describe, it, expect } from 'vitest'
-import { EXERCISE_BY_ID, exMeasure, measureUnit } from './exercises.js'
+import { EXERCISE_BY_ID, exMeasure, measureUnit, isoHoldFor, ISO_HOLDS } from './exercises.js'
 
 describe('isometric hold exercises', () => {
   it.each([
@@ -43,5 +43,25 @@ describe('the iso toggle on a normal lift', () => {
 
   it('a distance move ignores the iso flag (you cannot hold a run)', () => {
     expect(exMeasure({ id: 'run_10k', iso: true }).type).toBe('distance')
+  })
+})
+
+describe('iso-hold position guidance', () => {
+  it('has where-to-hold guidance for common lifts', () => {
+    for (const id of ['pullup', 'back_squat', 'bench_press', 'deadlift', 'db_curl', 'hip_thrust']) {
+      expect(isoHoldFor(id)).toBeTruthy()
+      expect(typeof isoHoldFor(id)).toBe('string')
+    }
+  })
+
+  it('returns null for a lift with no guidance', () => {
+    expect(isoHoldFor('run_10k')).toBeNull()
+    expect(isoHoldFor('not_a_real_id')).toBeNull()
+  })
+
+  it('every guided id is a real library exercise', () => {
+    for (const id of Object.keys(ISO_HOLDS)) {
+      expect(EXERCISE_BY_ID[id]).toBeTruthy()
+    }
   })
 })
