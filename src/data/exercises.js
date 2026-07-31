@@ -245,6 +245,18 @@ const BASE_EXERCISES = [
   { id: 'median_nerve_glide', name: 'Median Nerve Glide', pattern: 'biceps', regions: ['arms'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'A gentle neurodynamic “floss”, not a stretch: from a bent elbow and neutral wrist, slowly straighten the elbow and extend the wrist to a light tension, then return. Never push into pain, numbness or tingling. Reps per arm.' },
   { id: 'tendon_glide', name: 'Tendon Gliding', pattern: 'biceps', regions: ['arms'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'Move the fingers through the positions — straight, hook fist, full fist, tabletop, straight fist — pausing a beat in each. Avoid a hard, forceful grip, which itself compresses the median nerve. Cycles per hand.' },
   { id: 'wrist_flexor_stretch', name: 'Wrist Flexor Stretch', pattern: 'biceps', regions: ['arms'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [20, 30], tags: ['rehab'], cues: 'Arm straight out, palm up; with the other hand gently draw the fingers and palm back toward you until you feel an easy forearm stretch. Hold, breathe, ease off. Do the palm-down version for the extensors too. Hold per side.' },
+
+  // ---- Isometric holds (train the position — hold for time; add load to scale) ----
+  { id: 'hollow_body_hold', name: 'Hollow Body Hold', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [15, 30], tags: ['rehab'], cues: 'On your back, press the low back into the floor and lift the shoulders and legs into a shallow banana shape. Lower the legs to make it harder. Hold for time.' },
+  { id: 'glute_bridge_hold', name: 'Glute Bridge Hold', pattern: 'hinge', regions: ['legs'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [20, 45], tags: ['rehab', 'running'], cues: 'Bridge up, ribs down, and hold the top squeezing the glutes — don’t arch the low back. Rest a plate or dumbbell on the hips to load it. Hold for time.' },
+  { id: 'hip_thrust_hold', name: 'Hip Thrust Hold', pattern: 'hinge', regions: ['legs'], requires: ['flat_bench'], compound: false, hold: true, unit: 'sec', holdSec: [15, 30], tags: ['running'], cues: 'Shoulders on a bench, weight across the hips, drive up to a flat back and hold the lockout — a loaded isometric for the glutes. Hold for time.' },
+  { id: 'spanish_squat', name: 'Spanish Squat', pattern: 'squat', regions: ['legs'], requires: ['bands'], compound: false, load: false, hold: true, unit: 'sec', holdSec: [20, 45], tags: ['rehab'], cues: 'Loop a stout band behind your knees and anchor it in front; sit back into a squat against the band and hold — the band offloads the knee, a favourite for cranky knees and quad tendons. Hold for time.' },
+  { id: 'iso_split_squat_hold', name: 'Split-Squat Hold', pattern: 'lunge', regions: ['legs', 'core'], requires: [], compound: false, hold: true, unit: 'sec', holdSec: [20, 40], tags: ['running'], cues: 'Sink to the bottom of a split squat — front shin vertical, back knee just off the floor — and hold. Hold dumbbells to load it. Hold for time, per leg.' },
+  { id: 'calf_raise_hold', name: 'Calf Raise Hold', pattern: 'calf', regions: ['legs'], requires: [], compound: false, hold: true, unit: 'sec', holdSec: [20, 45], tags: ['running'], cues: 'Rise onto the balls of the feet (single-leg to progress) and hold the top, ankles stacked. Hold a dumbbell to load it. Hold for time.' },
+  { id: 'overhead_hold', name: 'Overhead Hold', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: ['dumbbells'], compound: false, hold: true, unit: 'sec', holdSec: [15, 30], tags: [], cues: 'Press a weight to a locked-out overhead position and hold it dead still — brace the whole body. Builds overhead stability. Hold for time.' },
+  { id: 'pushup_hold', name: 'Push-Up Hold', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [15, 30], tags: [], cues: 'Hold the bottom (or mid-range) of a push-up in a straight line head to heels, elbows tucked. A brutal isometric for the chest and triceps. Hold for time.' },
+  { id: 'copenhagen_hold', name: 'Copenhagen Hold', pattern: 'core', regions: ['core', 'legs'], requires: ['flat_bench'], compound: false, load: false, hold: true, unit: 'sec', holdSec: [10, 30], tags: ['running'], cues: 'Side plank with the top leg on a bench and the bottom leg hanging — hold, squeezing the inner thigh. The go-to groin/adductor strengthener; start with the knee on the bench. Hold for time, per side.' },
+  { id: 'iso_mid_thigh_pull', name: 'Isometric Mid-Thigh Pull', pattern: 'hinge', regions: ['legs', 'back'], requires: ['barbell', 'rack'], compound: true, load: true, hold: true, unit: 'sec', holdSec: [3, 6], tags: [], cues: 'Set a barbell in a rack at mid-thigh (or pull against immovable pins) and pull up as hard as you can into the fixed bar — an “overcoming” isometric. A few maximal 3–6s efforts with long rest, chest tall, driving through the floor.' },
 ]
 
 // Merge in the bodyweight ladder variants, then stitch easy↔hard links onto
@@ -332,6 +344,9 @@ export function exMeasure(ex) {
   const hold = b.hold ?? ex?.hold
   const unit = b.unit ?? ex?.unit
   if (distance) return { type: 'distance', unit: unit || 'km' }
+  // A per-program "isometric hold" toggle turns any rep-based lift into a timed
+  // hold (e.g. a held lat pulldown), without needing a separate library entry.
+  if (ex?.iso) return { type: 'time', unit: 'sec' }
   if (hold) return { type: 'time', unit: unit || 'sec' }
   return { type: 'reps', unit: 'reps' }
 }
@@ -420,6 +435,16 @@ const ALIASES = {
   median_nerve_glide: ['median nerve glide', 'nerve glide', 'nerve floss', 'neural glide'],
   tendon_glide: ['tendon glide', 'tendon gliding', 'finger gliding'],
   wrist_flexor_stretch: ['wrist flexor stretch', 'wrist stretch', 'forearm stretch'],
+  hollow_body_hold: ['hollow body hold', 'hollow hold', 'hollow body'],
+  glute_bridge_hold: ['glute bridge hold', 'bridge hold', 'isometric glute bridge'],
+  hip_thrust_hold: ['hip thrust hold', 'isometric hip thrust'],
+  spanish_squat: ['spanish squat', 'banded squat hold', 'knee tendon squat'],
+  iso_split_squat_hold: ['split squat hold', 'isometric split squat', 'lunge hold'],
+  calf_raise_hold: ['calf raise hold', 'isometric calf raise', 'heel raise hold'],
+  overhead_hold: ['overhead hold', 'isometric overhead', 'waiter hold', 'overhead carry hold'],
+  pushup_hold: ['push up hold', 'pushup hold', 'isometric push up', 'bottom hold'],
+  copenhagen_hold: ['copenhagen hold', 'copenhagen plank', 'adductor hold', 'groin plank'],
+  iso_mid_thigh_pull: ['isometric mid thigh pull', 'mid thigh pull', 'imtp', 'overcoming isometric pull'],
   reverse_lunge: ['backward lunge'],
   // Horizontal push
   bench_press: ['barbell bench press', 'flat bench', 'flat barbell bench', 'chest press'],

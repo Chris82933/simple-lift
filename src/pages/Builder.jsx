@@ -95,6 +95,7 @@ export default function Builder() {
   const [creating, setCreating] = useState(false) // custom-exercise form open?
   const [amrapInfo, setAmrapInfo] = useState(false)
   const [warmupInfo, setWarmupInfo] = useState(false)
+  const [isoInfo, setIsoInfo] = useState(false)
 
   const scheme = useMemo(() => schemeForGoals(draft.goals), [draft.goals])
   const inc = incrementForUnits(loadSettings().units)
@@ -128,6 +129,19 @@ export default function Builder() {
   const addExerciseToDay = (di, ex) => {
     if (draft.days[di].exercises.some((e) => e.id === ex.id)) return
     updateDay(di, { exercises: [...draft.days[di].exercises, makeExercise(ex, scheme, inc)] })
+  }
+
+  // Turn a rep-based lift into a timed isometric hold (or back). Toggling on
+  // seeds the classic hold protocol — 4 sets × 30 sec with a long 3-min rest —
+  // which the user can still edit; load (if any) is kept, so a held pulldown
+  // still tracks weight.
+  const toggleIso = (di, ei) => {
+    const ex = draft.days[di].exercises[ei]
+    if (ex.iso) {
+      updateExercise(di, ei, { iso: undefined, repLow: 8, repHigh: 12 })
+    } else {
+      updateExercise(di, ei, { iso: true, amrap: undefined, warmups: undefined, sets: 4, repLow: 30, repHigh: 30, restSec: 180 })
+    }
   }
 
   // Reorder an exercise within its day.
@@ -365,7 +379,7 @@ export default function Builder() {
                     </div>
                   )
                 })()}
-                {ex.load && (
+                {ex.load && exMeasure(ex).type === 'reps' && (
                   <div className="amrap-row">
                     <button
                       type="button"
@@ -392,6 +406,26 @@ export default function Builder() {
                     </button>
                     <button type="button" className="info-icon" onClick={() => setAmrapInfo(true)} aria-label="What is AMRAP?">i</button>
                   </div>
+                )}
+                {/* Isometric-hold toggle — only for lifts that are normally rep-based
+                    (a plank is already a hold). Uses the base exercise's measure so
+                    the chip stays visible to toggle back off. */}
+                {exMeasure({ id: ex.id }).type === 'reps' && (
+                  <>
+                    <div className="amrap-row">
+                      <button
+                        type="button"
+                        className={'amrap-chip' + (ex.iso ? ' is-on' : '')}
+                        aria-pressed={!!ex.iso}
+                        onClick={() => toggleIso(di, ei)}
+                      >
+                        <span className="amrap-box">{ex.iso ? '✓' : ''}</span>
+                        Isometric hold
+                      </button>
+                      <button type="button" className="info-icon" onClick={() => setIsoInfo(true)} aria-label="What is an isometric hold?">i</button>
+                    </div>
+                    {ex.iso && <p className="muted small">Held for time (in seconds){ex.load ? ' at a fixed weight' : ''} — default 4 × 30 sec, 3-min rest. Edit the numbers above.</p>}
+                  </>
                 )}
                 <button type="button" className="btn btn-ghost btn-sm recommend-btn" onClick={() => applyRecommended(di, ei)}>
                   ✨ Use recommended{ex.load ? ' (sets, reps, rest & weight from your 1RM)' : ' sets, reps & rest'}
@@ -524,6 +558,24 @@ export default function Builder() {
             </p>
             <p className="muted small">Warm-up weights are figured from your working weight, which comes from your 1RM.</p>
             <button type="button" className="btn btn-primary" onClick={() => setWarmupInfo(false)}>Got it</button>
+          </div>
+        </div>
+      )}
+
+      {isoInfo && (
+        <div className="picker-overlay" role="dialog" aria-label="About isometric holds" onClick={() => setIsoInfo(false)}>
+          <div className="info-sheet" onClick={(e) => e.stopPropagation()}>
+            <p className="info-title">Isometric hold</p>
+            <p className="muted small">
+              Turns this lift into a <strong>timed hold</strong> instead of reps — you hold the position (or push/pull against resistance) for time. Any normal lift can become one: a <strong>held lat pulldown</strong>, a paused squat, a mid-thigh pull.
+            </p>
+            <p className="muted small">
+              It sets the classic protocol — <strong>4 sets × 30 sec, ~3-min rest</strong> — which you can edit. The set columns switch to <strong>seconds</strong>. During the workout you get a countdown to time each hold.
+            </p>
+            <p className="muted small">
+              If the lift is loaded (like a pulldown), it <strong>keeps its weight</strong> — hold that weight for time. Bodyweight holds just track seconds.
+            </p>
+            <button type="button" className="btn btn-primary" onClick={() => setIsoInfo(false)}>Got it</button>
           </div>
         </div>
       )}

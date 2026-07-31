@@ -12,7 +12,8 @@ const secsLeft = (endAt) => Math.max(0, Math.round((endAt - Date.now()) / 1000))
 // just recompute from the clock. When it reaches zero it flashes "Go!" with a
 // chime + vibration. If the user has enabled rest notifications, one is scheduled
 // while the app is backgrounded (and cancelled the moment they come back).
-export default function RestTimer({ seconds, onDone }) {
+export default function RestTimer({ seconds, onDone, mode = 'rest' }) {
+  const isHold = mode === 'hold'
   const [endAt, setEndAt] = useState(() => Date.now() + seconds * 1000)
   const [remaining, setRemaining] = useState(seconds)
   const [phase, setPhase] = useState('count') // 'count' → 'go'
@@ -21,7 +22,8 @@ export default function RestTimer({ seconds, onDone }) {
   doneRef.current = onDone
   const soundRef = useRef(soundOn)
   soundRef.current = soundOn
-  const notifyOn = loadSettings().restNotify === true && notificationPermission() === 'granted'
+  // Background notifications only apply to rest (you're actively holding otherwise).
+  const notifyOn = !isHold && loadSettings().restNotify === true && notificationPermission() === 'granted'
 
   const toggleSound = () => {
     setSoundOn((on) => {
@@ -94,16 +96,16 @@ export default function RestTimer({ seconds, onDone }) {
     return (
       <div className="rest-timer is-go" role="status">
         <div className="rest-timer-inner">
-          <span className="rest-go">Go! 💪</span>
+          <span className="rest-go">{isHold ? 'Done! ✓' : 'Go! 💪'}</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="rest-timer" role="status">
+    <div className={'rest-timer' + (isHold ? ' is-hold' : '')} role="status">
       <div className="rest-timer-inner">
-        <span className="rest-label">Rest</span>
+        <span className="rest-label">{isHold ? 'Hold' : 'Rest'}</span>
         <span className="rest-count">{fmt(Math.max(0, remaining))}</span>
         <div className="rest-actions">
           <button

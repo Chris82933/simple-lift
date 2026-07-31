@@ -236,6 +236,7 @@ export default function Workout() {
   const [cardioSaved, setCardioSaved] = useState(() => (resumed?.cardio?.length || 0))
 
   const [rest, setRest] = useState(null)
+  const [hold, setHold] = useState(null) // in-set isometric hold timer
   const [finished, setFinished] = useState(false)
   const [finishedAt, setFinishedAt] = useState(null)
   const [review, setReview] = useState({ autoNotes: [], suggestions: [] })
@@ -394,6 +395,25 @@ export default function Workout() {
       if (nowDone && !isLastSet && restEnabled) setRest({ seconds: restSec, key: `${exId}-${idx}-${Date.now()}` })
       return { ...s, [exId]: s[exId].map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }
     })
+
+  // Start the in-set countdown for an isometric hold — the next un-done working
+  // set of a time-measured exercise, for its prescribed seconds.
+  const startHold = (ex) => {
+    const rows = sets[ex.id] || []
+    const idx = rows.findIndex((r) => !r.done && !r.warmup)
+    if (idx === -1) return
+    const secs = Number(rows[idx].reps) || Number(ex.repHigh) || 30
+    setHold({ exId: ex.id, idx, seconds: secs, restSec: ex.restSec, key: `${ex.id}-${idx}-${Date.now()}` })
+  }
+  // The hold finished (or was skipped): log the seconds and mark the set done,
+  // which starts the normal rest countdown.
+  const finishHold = () => {
+    if (!hold) return
+    const { exId, idx, seconds, restSec } = hold
+    updateSet(exId, idx, 'reps', String(seconds))
+    toggleDone(exId, idx, restSec)
+    setHold(null)
+  }
 
   // Add or drop a set mid-workout. A new set copies the last row's weight/reps
   // (a sensible default) but starts un-done; keep ex.sets in sync so the review
@@ -906,6 +926,17 @@ export default function Workout() {
                 }) })()}
               </div>
 
+              {exMeasure(ex).type === 'time' && (() => {
+                const nextIdx = sets[ex.id].findIndex((r) => !r.done && !r.warmup)
+                if (nextIdx === -1) return null
+                const target = Number(sets[ex.id][nextIdx].reps) || Number(ex.repHigh) || 30
+                return (
+                  <button type="button" className="btn btn-ghost btn-sm hold-start" onClick={() => startHold(ex)}>
+                    ▶ Time a {target}s hold
+                  </button>
+                )
+              })()}
+
               {editMode && (() => {
                 const working = sets[ex.id].filter((r) => !r.warmup).length
                 return (
@@ -967,6 +998,7 @@ export default function Workout() {
         <button className="btn btn-primary" onClick={finish}>Finish workout</button>
       </div>
 
+      {hold && <RestTimer key={hold.key} seconds={hold.seconds} mode="hold" onDone={finishHold} />}
       {rest && <RestTimer key={rest.key} seconds={rest.seconds} onDone={() => setRest(null)} />}
 
       {pickerOpen && (
