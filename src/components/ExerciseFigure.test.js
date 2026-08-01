@@ -130,3 +130,30 @@ describe('limbs come in pairs', () => {
     },
   )
 })
+
+describe('the movement figures keep their fixes', () => {
+  const strokedPaths = (props) =>
+    [...parse(svgFor(props)).querySelectorAll('g[stroke-width="5"] path')]
+
+  it('the biceps curl shows both arms, not a one-armed figure', () => {
+    // torso + resting arm + curling arm + two legs = at least five limb paths.
+    // Regressing to a single (curling) arm drops this to four.
+    expect(strokedPaths({ pattern: 'biceps' }).length).toBeGreaterThanOrEqual(5)
+  })
+
+  it('the calf raise stands on two feet up on the toes, not a bare stick', () => {
+    // torso + two arms + two legs each with a foot wedge.
+    expect(strokedPaths({ pattern: 'calf' }).length).toBeGreaterThanOrEqual(6)
+  })
+
+  it('the hanging leg raise fans its two legs apart instead of stacking them', () => {
+    // The two raised legs must end at clearly different x positions, or they
+    // merge into a single thick wedge (the bug this figure had).
+    const legs = strokedPaths({ pattern: 'core', exId: 'hanging_leg_raise' })
+      .map((p) => p.getAttribute('d'))
+      .filter((d) => /^M50 60/.test(d)) // both legs start at the hip (50,60)
+    expect(legs).toHaveLength(2)
+    const endX = legs.map((d) => Number(d.match(/L(\d+)/)[1]))
+    expect(Math.abs(endX[0] - endX[1])).toBeGreaterThanOrEqual(4)
+  })
+})

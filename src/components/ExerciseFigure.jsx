@@ -104,17 +104,24 @@ const POSES = {
     </g>
   ),
 
-  // Heels lifted clear of the floor — the whole point of the movement.
+  // Calf raise: up on the balls of both feet. Each foot is a wedge — the ball
+  // drops straight to the floor (y86) while the heel kicks up and out, clear of
+  // it. That heel-lift is the whole point; an earlier flat-footed figure was
+  // indistinguishable from just standing.
   calf: (
     <g>
       <g {...stroke}>
-        <path d="M50 32 V58" />
-        <path d="M44 38 L36 54" />
-        <path d="M56 38 L64 54" />
-        <path d="M50 58 L42 74 L36 82" />
-        <path d="M50 58 L58 74 L64 82" />
+        <path d="M50 30 V54" />
+        <path d="M45 36 L39 55" />
+        <path d="M55 36 L61 55" />
+        <path d="M50 54 L45 74" />
+        <path d="M45 74 L46 86" />
+        <path d="M45 74 L37 78" />
+        <path d="M50 54 L55 74" />
+        <path d="M55 74 L54 86" />
+        <path d="M55 74 L63 78" />
       </g>
-      <Face cx="50" cy="22" />
+      <Face cx="50" cy="20" />
       <Floor />
     </g>
   ),
@@ -214,32 +221,36 @@ const POSES = {
     </g>
   ),
 
-  // Dead hang / hanging leg raise: long body under the bar.
+  // Hanging leg raise: long body under the bar, both legs swept up out front —
+  // fanned apart (not stacked at one point) so they read as two legs, not one.
   hang: (
     <g>
       <line x1="24" y1="16" x2="76" y2="16" {...bar} />
       <g {...stroke}>
         <path d="M44 18 V38" />
         <path d="M56 18 V38" />
-        <path d="M50 38 V62" />
-        <path d="M50 62 L70 68" />
-        <path d="M50 62 L70 76" />
+        <path d="M50 38 V60" />
+        <path d="M50 60 L74 62" />
+        <path d="M50 60 L66 76" />
       </g>
       <Face cx="50" cy="28" r="8" />
     </g>
   ),
 
-  // Biceps curl: elbow pinned, forearm swept up with a dumbbell.
+  // Biceps curl: one arm resting at the side, the other's elbow pinned with the
+  // forearm swept up and a dumbbell at the hand. Both arms present so the figure
+  // never reads as missing a limb.
   curl: (
     <g>
       <g {...stroke}>
-        <path d="M50 34 V60" />
-        <path d="M46 40 L42 54 L52 46" />
-        <path d="M50 60 L44 86" />
-        <path d="M50 60 L56 86" />
+        <path d="M50 32 V58" />
+        <path d="M46 38 L43 58" />
+        <path d="M54 38 L57 52 L49 45" />
+        <path d="M50 58 L44 86" />
+        <path d="M50 58 L56 86" />
       </g>
-      <Bell2 cx="56" cy="44" />
-      <Face cx="50" cy="24" />
+      <Bell2 cx="47" cy="43" />
+      <Face cx="50" cy="22" />
       <Floor />
     </g>
   ),
