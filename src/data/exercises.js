@@ -30,10 +30,12 @@ const BASE_EXERCISES = [
   { id: 'bw_squat', name: 'Bodyweight Squat', pattern: 'squat', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Sit back and down, keep heels planted, stand tall.' },
   { id: 'barbell_hack_squat', name: 'Barbell Hack Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell'], compound: true, cues: 'The original, invented by strongman George Hackenschmidt: stand with a barbell on the floor behind your heels, grip it behind you, and stand up — heels down, torso tall, knees forward. A quad-dominant deadlift-in-reverse. Heels on a small plate helps depth.' },
   { id: 'hack_squat', name: 'Hack Squat (Machine)', pattern: 'squat', regions: ['legs'], requires: ['machines'], compound: true, cues: 'Shoulders and back against the pad, feet mid-platform. Lower under control to ~90° (or below), knees tracking over the toes, and drive through the whole foot. The fixed path lets you push the quads hard with little balance demand.' },
+  { id: 'zercher_squat', name: 'Zercher Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell'], compound: true, cues: 'Named after strongman Ed Zercher: cradle the barbell in the crooks of your elbows against your torso. Sit straight down, elbows inside the knees, chest tall. The front-loaded position hammers the quads, upper back, and core and forces an upright posture.' },
 
   // ---- Hinge ----
   { id: 'deadlift', name: 'Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell'], compound: true, tags: ['climbing'], cues: 'Flat back, push the floor away, lock out with glutes.' },
   { id: 'romanian_dl', name: 'Romanian Deadlift', pattern: 'hinge', regions: ['legs', 'back'], requires: ['barbell'], compound: true, cues: 'Soft knees, push hips back, feel the hamstring stretch.' },
+  { id: 'jefferson_deadlift', name: 'Jefferson Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell'], compound: true, cues: 'An old-time strongman lift (the Jefferson, a.k.a. straddle deadlift): stand over the bar with it between your legs, one foot ahead of the other, and stand up. The straddle stance is easy on the lower back and builds legs, glutes, and grip. Alternate the lead leg across sets.' },
   { id: 'db_rdl', name: 'Dumbbell RDL', pattern: 'hinge', regions: ['legs', 'back'], requires: ['dumbbells'], compound: true, cues: 'Hinge at the hips, bells close to your legs, neutral spine.' },
   { id: 'kb_swing', name: 'Kettlebell Swing', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['kettlebells'], compound: true, tags: ['running'], cues: 'Snap the hips, the bell floats — it’s a hinge, not a squat.' },
   { id: 'hip_thrust', name: 'Barbell Hip Thrust', pattern: 'hinge', regions: ['legs'], requires: ['barbell', 'flat_bench'], compound: true, cues: 'Shoulders on bench, drive hips up, squeeze at the top.' },
@@ -58,12 +60,15 @@ const BASE_EXERCISES = [
 
   // ---- Vertical push ----
   { id: 'overhead_press', name: 'Overhead Press', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: ['barbell'], compound: true, cues: 'Squeeze glutes, press bar over the crown, finish with ribs down.' },
+  { id: 'arnold_press', name: 'Arnold Press', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: ['dumbbells'], compound: true, cues: 'Popularised by Arnold Schwarzenegger: start with dumbbells at your shoulders, palms facing you, and rotate the palms to face forward as you press overhead. Reverse on the way down. The rotation adds front-delt range a standard press skips.' },
   { id: 'db_shoulder_press', name: 'Dumbbell Shoulder Press', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: ['dumbbells'], compound: true, cues: 'Press up and slightly in, don’t flare the ribs.' },
   { id: 'pike_pushup', name: 'Pike Push-Up', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: [], compound: true, load: false, cues: 'Hips high, head toward the floor between your hands.' },
 
   // ---- Horizontal pull ----
   { id: 'barbell_row', name: 'Barbell Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['barbell'], compound: true, tags: ['climbing'], cues: 'Hinge ~45°, pull to the lower ribs, control the lowering.' },
   { id: 'db_row', name: 'One-Arm Dumbbell Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['dumbbells'], compound: true, tags: ['climbing'], cues: 'Flat back, drive the elbow back, squeeze the lat.' },
+  { id: 'pendlay_row', name: 'Pendlay Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['barbell'], compound: true, tags: ['climbing'], cues: 'Named after coach Glenn Pendlay: torso parallel to the floor, each rep starts from a dead stop on the floor and is pulled explosively to the lower chest, then reset. Stricter and more back-thickening than a touch-and-go row.' },
+  { id: 'meadows_row', name: 'Meadows Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['barbell'], compound: true, tags: ['landmine', 'climbing'], cues: 'Created by bodybuilding coach John Meadows: set up a landmine (bar wedged in a corner), stand perpendicular to it, and row the loaded end with one hand from a big stretch up to the hip. Reps per side. A strong lat and upper-back builder.' },
   { id: 'seated_cable_row', name: 'Seated Cable Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['cable'], compound: true, tags: ['climbing'], cues: 'Tall chest, pull to the navel, don’t lean back hard.' },
   { id: 'inverted_row', name: 'Inverted Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, tags: ['climbing'], cues: 'Body in a plank, pull chest to the bar, squeeze shoulder blades.' },
   { id: 'band_row', name: 'Band Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['bands'], compound: true, load: false, cues: 'Anchor the band, pull elbows back, control the return.' },
@@ -79,6 +84,7 @@ const BASE_EXERCISES = [
   // ---- Biceps ----
   { id: 'db_curl', name: 'Dumbbell Curl', pattern: 'biceps', regions: ['arms'], requires: ['dumbbells'], compound: false, cues: 'Elbows pinned, curl without swinging, squeeze at the top.' },
   { id: 'ez_curl', name: 'EZ-Bar Curl', pattern: 'biceps', regions: ['arms'], requires: ['ez_bar'], compound: false, cues: 'Steady elbows, full range, no body english.' },
+  { id: 'zottman_curl', name: 'Zottman Curl', pattern: 'biceps', regions: ['arms'], requires: ['dumbbells'], compound: false, cues: 'Named after 19th-century strongman George Zottman: curl up with palms up (supinated), rotate to palms-down (pronated) at the top, and lower slowly. Trains the biceps on the way up and the forearms/brachialis on the way down.' },
   { id: 'band_curl', name: 'Band Curl', pattern: 'biceps', regions: ['arms'], requires: ['bands'], compound: false, load: false, cues: 'Stand on the band, curl with control, resist the way down.' },
 
   // ---- Triceps ----
@@ -353,12 +359,17 @@ export const ISO_HOLDS = {
   bw_squat: 'Hold at the bottom or parallel for 20–45s (a wall sit is the loaded cousin).',
   barbell_hack_squat: 'Hold at the bottom or at ~90° for 20–40s, heels down and torso tall.',
   hack_squat: 'Pause and hold at ~90° (or the bottom) for 20–45s — a very knee- and back-friendly loaded quad hold.',
+  zercher_squat: 'Hold at the bottom or at ~90° for 20–40s, elbows cradling the bar and chest tall.',
   bench_press: 'Hold at the mid-range sticking point (elbows ~90°, a few inches off the chest) or at lockout for 15–30s. Use a spotter/rack.',
   db_bench: 'Hold at the bottom stretch or the mid-range sticking point for 15–30s.',
   overhead_press: 'Hold at the overhead lockout, or at the ~90° sticking point off the shoulders, for 15–30s.',
+  arnold_press: 'Hold at the overhead lockout, or at the ~90° sticking point, for 15–30s.',
   deadlift: 'Hold the bar just below the knees (mid-shin) with a flat back for 10–30s — a brutal grip and posterior-chain hold.',
   romanian_dl: 'Hold at mid-shin with a flat back and loaded hamstrings for 15–30s.',
+  jefferson_deadlift: 'Hold just below the knees with a flat back for 10–30s — big grip and posterior-chain demand.',
   barbell_row: 'Hold the bar in the fully contracted position, shoulder blades squeezed, for 15–30s.',
+  pendlay_row: 'Hold the bar at the lower chest, shoulder blades squeezed, for 15–30s.',
+  meadows_row: 'Hold at the top, elbow driven back and lat squeezed, for 15–30s per side.',
   db_row: 'Hold at the top, elbow driven back and lat squeezed, for 15–30s per side.',
   seated_cable_row: 'Hold the fully retracted position for 15–30s.',
   pushup: 'Hold at the bottom (chest just off the floor) or mid-range for 15–30s.',
@@ -366,6 +377,7 @@ export const ISO_HOLDS = {
   ring_dip: 'Hold the top support (rings turned out) or the bottom for 10–30s.',
   db_curl: 'Hold at ~90° (forearm parallel to the floor) — the biceps’ hardest point — for 15–30s.',
   ez_curl: 'Hold at ~90° for 15–30s.',
+  zottman_curl: 'Hold at ~90° (palms still up) for 15–30s — the biceps’ hardest point.',
   hammer_curl: 'Hold at ~90° for 15–30s.',
   lateral_raise: 'Hold at the top, arms at shoulder height, for 15–30s.',
   bulgarian_split: 'Hold the bottom of the split squat for 20–40s per leg.',
@@ -432,10 +444,12 @@ const ALIASES = {
   bw_squat: ['bodyweight squat', 'air squat'],
   barbell_hack_squat: ['barbell hack squat', 'hack squat', 'hackenschmidt squat', 'hack lift', 'behind-the-back squat'],
   hack_squat: ['hack squat', 'machine hack squat', 'hack squat machine', 'hack press'],
+  zercher_squat: ['zercher squat', 'zercher', 'elbow squat'],
   leg_extension: ['quad extension', 'knee extension'],
   // Hinge
   deadlift: ['conventional deadlift', 'barbell deadlift', 'dead lift'],
   romanian_dl: ['rdl', 'romanian deadlift', 'stiff leg deadlift', 'sldl'],
+  jefferson_deadlift: ['jefferson deadlift', 'jefferson squat', 'straddle deadlift', 'jefferson lift'],
   db_rdl: ['dumbbell romanian deadlift', 'dumbbell rdl'],
   kb_swing: ['kettlebell swing', 'kb swing', 'two hand swing', 'russian swing', 'hardstyle swing'],
   kb_deadlift: ['kettlebell deadlift', 'kb deadlift'],
@@ -510,12 +524,15 @@ const ALIASES = {
   cable_fly: ['cable crossover', 'cable flye', 'pec fly', 'chest fly'],
   // Vertical push
   overhead_press: ['ohp', 'military press', 'strict press', 'standing shoulder press', 'barbell shoulder press', 'barbell overhead press'],
+  arnold_press: ['arnold press', 'arnold dumbbell press', 'rotating shoulder press'],
   db_shoulder_press: ['dumbbell shoulder press', 'dumbbell overhead press', 'seated dumbbell press', 'db press'],
   pike_pushup: ['pike press'],
   arnold_press: ['arnold dumbbell press'],
   // Horizontal pull
   barbell_row: ['bent over row', 'bent-over row', 'bor', 'barbell bent over row'],
   db_row: ['one arm row', 'single arm row', 'dumbbell row', 'kroc row'],
+  pendlay_row: ['pendlay row', 'dead-stop row', 'dead stop barbell row'],
+  meadows_row: ['meadows row', 'landmine meadows row', 'john meadows row'],
   seated_cable_row: ['cable row', 'seated row', 'low row'],
   inverted_row: ['bodyweight row', 'australian pull up', 'horizontal row'],
   pendlay_row: ['dead stop row'],
@@ -529,6 +546,7 @@ const ALIASES = {
   // Biceps / forearms
   db_curl: ['bicep curl', 'biceps curl', 'dumbbell bicep curl'],
   ez_curl: ['barbell curl', 'ez bar curl', 'ez-bar curl', 'bicep curl'],
+  zottman_curl: ['zottman curl', 'zottman'],
   band_curl: ['band bicep curl'],
   wrist_curl: ['forearm curl'],
   max_hangs: ['hangboard', 'fingerboard', 'max hang', 'finger strength', 'edge hang', 'dead hang weighted'],
