@@ -28,6 +28,8 @@ const BASE_EXERCISES = [
   { id: 'kb_goblet_squat', name: 'Kettlebell Goblet Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['kettlebells'], compound: true, cues: 'Hug the bell, elbows inside knees at the bottom.' },
   { id: 'leg_press', name: 'Leg Press', pattern: 'squat', regions: ['legs'], requires: ['leg_press'], compound: true, cues: 'Feet shoulder-width, lower under control, don’t lock out hard.' },
   { id: 'bw_squat', name: 'Bodyweight Squat', pattern: 'squat', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Sit back and down, keep heels planted, stand tall.' },
+  { id: 'barbell_hack_squat', name: 'Barbell Hack Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell'], compound: true, cues: 'The original, invented by strongman George Hackenschmidt: stand with a barbell on the floor behind your heels, grip it behind you, and stand up — heels down, torso tall, knees forward. A quad-dominant deadlift-in-reverse. Heels on a small plate helps depth.' },
+  { id: 'hack_squat', name: 'Hack Squat (Machine)', pattern: 'squat', regions: ['legs'], requires: ['machines'], compound: true, cues: 'Shoulders and back against the pad, feet mid-platform. Lower under control to ~90° (or below), knees tracking over the toes, and drive through the whole foot. The fixed path lets you push the quads hard with little balance demand.' },
 
   // ---- Hinge ----
   { id: 'deadlift', name: 'Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell'], compound: true, tags: ['climbing'], cues: 'Flat back, push the floor away, lock out with glutes.' },
@@ -349,6 +351,8 @@ export const ISO_HOLDS = {
   front_squat: 'Hold at the bottom or at ~90° for 20–45s, chest tall.',
   goblet_squat: 'Hold at the bottom for 20–45s — a great knee-friendly loaded hold.',
   bw_squat: 'Hold at the bottom or parallel for 20–45s (a wall sit is the loaded cousin).',
+  barbell_hack_squat: 'Hold at the bottom or at ~90° for 20–40s, heels down and torso tall.',
+  hack_squat: 'Pause and hold at ~90° (or the bottom) for 20–45s — a very knee- and back-friendly loaded quad hold.',
   bench_press: 'Hold at the mid-range sticking point (elbows ~90°, a few inches off the chest) or at lockout for 15–30s. Use a spotter/rack.',
   db_bench: 'Hold at the bottom stretch or the mid-range sticking point for 15–30s.',
   overhead_press: 'Hold at the overhead lockout, or at the ~90° sticking point off the shoulders, for 15–30s.',
@@ -426,6 +430,8 @@ const ALIASES = {
   goblet_squat: ['dumbbell squat'],
   leg_press: ['machine leg press'],
   bw_squat: ['bodyweight squat', 'air squat'],
+  barbell_hack_squat: ['barbell hack squat', 'hack squat', 'hackenschmidt squat', 'hack lift', 'behind-the-back squat'],
+  hack_squat: ['hack squat', 'machine hack squat', 'hack squat machine', 'hack press'],
   leg_extension: ['quad extension', 'knee extension'],
   // Hinge
   deadlift: ['conventional deadlift', 'barbell deadlift', 'dead lift'],
