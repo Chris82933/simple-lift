@@ -1,6 +1,9 @@
 // Exercise library. `requires` lists equipment ids that must ALL be present
 // (empty = bodyweight, always available). Movement `pattern` drives how the
-// generator fills each session slot. `load: false` = tracked by reps only.
+// generator fills each session slot. `load: false` = a bodyweight move, tracked
+// by reps; add `bwLoad` (pull-ups/dips — bodyweight is the load, hang more) or
+// `addLoad` (reverse lunges, weighted push-ups — hold/wear extra weight) when
+// weight is OPTIONAL, so the log still offers a weight box. See tracksLoad().
 //
 // Equipment ids come from data/options.js.
 
@@ -27,7 +30,7 @@ const BASE_EXERCISES = [
   { id: 'goblet_squat', name: 'Goblet Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['dumbbells'], compound: true, cues: 'Hold the bell at your chest, sit straight down, chest tall.' },
   { id: 'kb_goblet_squat', name: 'Kettlebell Goblet Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['kettlebells'], compound: true, cues: 'Hug the bell, elbows inside knees at the bottom.' },
   { id: 'leg_press', name: 'Leg Press', pattern: 'squat', regions: ['legs'], requires: ['leg_press'], compound: true, cues: 'Feet shoulder-width, lower under control, don’t lock out hard.' },
-  { id: 'bw_squat', name: 'Bodyweight Squat', pattern: 'squat', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Sit back and down, keep heels planted, stand tall.' },
+  { id: 'bw_squat', name: 'Bodyweight Squat', pattern: 'squat', regions: ['legs'], requires: [], compound: true, addLoad: true, load: false, tags: ['running'], cues: 'Sit back and down, keep heels planted, stand tall.' },
   { id: 'barbell_hack_squat', name: 'Barbell Hack Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell'], compound: true, cues: 'The original, invented by strongman George Hackenschmidt: stand with a barbell on the floor behind your heels, grip it behind you, and stand up — heels down, torso tall, knees forward. A quad-dominant deadlift-in-reverse. Heels on a small plate helps depth.' },
   { id: 'hack_squat', name: 'Hack Squat (Machine)', pattern: 'squat', regions: ['legs'], requires: ['machines'], compound: true, cues: 'Shoulders and back against the pad, feet mid-platform. Lower under control to ~90° (or below), knees tracking over the toes, and drive through the whole foot. The fixed path lets you push the quads hard with little balance demand.' },
   { id: 'zercher_squat', name: 'Zercher Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell'], compound: true, cues: 'Named after strongman Ed Zercher: cradle the barbell in the crooks of your elbows against your torso. Sit straight down, elbows inside the knees, chest tall. The front-loaded position hammers the quads, upper back, and core and forces an upright posture.' },
@@ -39,30 +42,30 @@ const BASE_EXERCISES = [
   { id: 'db_rdl', name: 'Dumbbell RDL', pattern: 'hinge', regions: ['legs', 'back'], requires: ['dumbbells'], compound: true, cues: 'Hinge at the hips, bells close to your legs, neutral spine.' },
   { id: 'kb_swing', name: 'Kettlebell Swing', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['kettlebells'], compound: true, tags: ['running'], cues: 'Snap the hips, the bell floats — it’s a hinge, not a squat.' },
   { id: 'hip_thrust', name: 'Barbell Hip Thrust', pattern: 'hinge', regions: ['legs'], requires: ['barbell', 'flat_bench'], compound: true, cues: 'Shoulders on bench, drive hips up, squeeze at the top.' },
-  { id: 'glute_bridge', name: 'Glute Bridge', pattern: 'hinge', regions: ['legs'], requires: [], compound: false, load: false, cues: 'Heels close, ribs down, squeeze glutes at the top.' },
-  { id: 'single_leg_rdl', name: 'Single-Leg RDL', pattern: 'hinge', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Hips square, reach the floor, stand under control.' },
+  { id: 'glute_bridge', name: 'Glute Bridge', pattern: 'hinge', regions: ['legs'], requires: [], compound: false, addLoad: true, load: false, cues: 'Heels close, ribs down, squeeze glutes at the top.' },
+  { id: 'single_leg_rdl', name: 'Single-Leg RDL', pattern: 'hinge', regions: ['legs', 'core'], requires: [], compound: true, addLoad: true, load: false, tags: ['running'], cues: 'Hips square, reach the floor, stand under control.' },
 
   // ---- Lunge ----
   { id: 'walking_lunge', name: 'Walking Lunge', pattern: 'lunge', regions: ['legs'], requires: ['dumbbells'], compound: true, tags: ['running'], cues: 'Long step, back knee toward the floor, push through front heel.' },
-  { id: 'bw_lunge', name: 'Bodyweight Lunge', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Step forward, drop straight down, keep your torso tall.' },
+  { id: 'bw_lunge', name: 'Bodyweight Lunge', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, addLoad: true, load: false, tags: ['running'], cues: 'Step forward, drop straight down, keep your torso tall.' },
   { id: 'bulgarian_split', name: 'Bulgarian Split Squat', pattern: 'lunge', regions: ['legs', 'core'], requires: ['flat_bench'], compound: true, tags: ['running'], cues: 'Rear foot on the bench, lower straight down, front-leg focus.' },
-  { id: 'step_up', name: 'Step-Up', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Full foot on the box, drive up without pushing off the back leg.' },
+  { id: 'step_up', name: 'Step-Up', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, addLoad: true, load: false, tags: ['running'], cues: 'Full foot on the box, drive up without pushing off the back leg.' },
   { id: 'weighted_step_up', name: 'Weighted Step-Up', pattern: 'lunge', regions: ['legs', 'core'], requires: ['dumbbells'], compound: true, tags: ['running'], cues: 'A dumbbell in each hand, step onto a knee-height box (≈12–16 in / 30–40 cm) with the whole foot, and drive up through that heel — don’t push off the trailing foot or bounce. Lower under control. Hits quads, glutes and hamstrings, and evens out side-to-side. 3–4 sets of 8–12 reps per leg. Reps per leg.' },
-  { id: 'reverse_lunge', name: 'Reverse Lunge', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, tags: ['running'], cues: 'Step straight back, drop the back knee toward the floor, drive through the front heel to stand — gentler on the knees than forward lunges. Reps per leg.' },
-  { id: 'peterson_step_down', name: 'Peterson Step Down', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, cues: 'Stand on a low step; on one leg, slowly lower the other heel to tap the floor with the standing knee tracking over the toes — bulletproofs the knee (VMO). Reps per leg.' },
+  { id: 'reverse_lunge', name: 'Reverse Lunge', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, addLoad: true, load: false, tags: ['running'], cues: 'Step straight back, drop the back knee toward the floor, drive through the front heel to stand — gentler on the knees than forward lunges. Reps per leg.' },
+  { id: 'peterson_step_down', name: 'Peterson Step Down', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, addLoad: true, load: false, cues: 'Stand on a low step; on one leg, slowly lower the other heel to tap the floor with the standing knee tracking over the toes — bulletproofs the knee (VMO). Reps per leg.' },
 
   // ---- Horizontal push ----
   { id: 'bench_press', name: 'Bench Press', pattern: 'horiz_push', regions: ['chest', 'arms', 'shoulders'], requires: ['barbell', 'flat_bench'], compound: true, cues: 'Shoulder blades pinched, bar to mid-chest, drive up evenly.' },
   { id: 'db_bench', name: 'Dumbbell Bench Press', pattern: 'horiz_push', regions: ['chest', 'arms', 'shoulders'], requires: ['dumbbells', 'flat_bench'], compound: true, cues: 'Lower to chest level, press up and slightly together.' },
   { id: 'incline_db_press', name: 'Incline Dumbbell Press', pattern: 'horiz_push', regions: ['chest', 'shoulders', 'arms'], requires: ['dumbbells', 'adj_bench'], compound: true, cues: 'Bench at ~30°, press up over the upper chest.' },
-  { id: 'pushup', name: 'Push-Up', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: [], compound: true, load: false, cues: 'Straight line head to heels, elbows ~45°, full range.' },
+  { id: 'pushup', name: 'Push-Up', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: [], compound: true, addLoad: true, load: false, cues: 'Straight line head to heels, elbows ~45°, full range.' },
   { id: 'dip', name: 'Dip', pattern: 'horiz_push', regions: ['chest', 'arms'], requires: ['dip_station'], bwLoad: true, compound: true, load: false, cues: 'Slight forward lean for chest, lower to a comfortable stretch.' },
 
   // ---- Vertical push ----
   { id: 'overhead_press', name: 'Overhead Press', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: ['barbell'], compound: true, cues: 'Squeeze glutes, press bar over the crown, finish with ribs down.' },
   { id: 'arnold_press', name: 'Arnold Press', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: ['dumbbells'], compound: true, cues: 'Popularised by Arnold Schwarzenegger: start with dumbbells at your shoulders, palms facing you, and rotate the palms to face forward as you press overhead. Reverse on the way down. The rotation adds front-delt range a standard press skips.' },
   { id: 'db_shoulder_press', name: 'Dumbbell Shoulder Press', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: ['dumbbells'], compound: true, cues: 'Press up and slightly in, don’t flare the ribs.' },
-  { id: 'pike_pushup', name: 'Pike Push-Up', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: [], compound: true, load: false, cues: 'Hips high, head toward the floor between your hands.' },
+  { id: 'pike_pushup', name: 'Pike Push-Up', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: [], compound: true, addLoad: true, load: false, cues: 'Hips high, head toward the floor between your hands.' },
 
   // ---- Horizontal pull ----
   { id: 'barbell_row', name: 'Barbell Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['barbell'], compound: true, tags: ['climbing'], cues: 'Hinge ~45°, pull to the lower ribs, control the lowering.' },
@@ -70,7 +73,7 @@ const BASE_EXERCISES = [
   { id: 'pendlay_row', name: 'Pendlay Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['barbell'], compound: true, tags: ['climbing'], cues: 'Named after coach Glenn Pendlay: torso parallel to the floor, each rep starts from a dead stop on the floor and is pulled explosively to the lower chest, then reset. Stricter and more back-thickening than a touch-and-go row.' },
   { id: 'meadows_row', name: 'Meadows Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['barbell'], compound: true, tags: ['landmine', 'climbing'], cues: 'Created by bodybuilding coach John Meadows: set up a landmine (bar wedged in a corner), stand perpendicular to it, and row the loaded end with one hand from a big stretch up to the hip. Reps per side. A strong lat and upper-back builder.' },
   { id: 'seated_cable_row', name: 'Seated Cable Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['cable'], compound: true, tags: ['climbing'], cues: 'Tall chest, pull to the navel, don’t lean back hard.' },
-  { id: 'inverted_row', name: 'Inverted Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, tags: ['climbing'], cues: 'Body in a plank, pull chest to the bar, squeeze shoulder blades.' },
+  { id: 'inverted_row', name: 'Inverted Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, addLoad: true, load: false, tags: ['climbing'], cues: 'Body in a plank, pull chest to the bar, squeeze shoulder blades.' },
   { id: 'band_row', name: 'Band Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['bands'], compound: true, load: false, cues: 'Anchor the band, pull elbows back, control the return.' },
   { id: 'superman', name: 'Superman', pattern: 'horiz_pull', regions: ['back'], requires: [], compound: false, load: false, cues: 'Lift chest and thighs, squeeze the lower back, brief hold.' },
 
@@ -92,9 +95,9 @@ const BASE_EXERCISES = [
   { id: 'db_overhead_ext', name: 'Overhead Triceps Extension', pattern: 'triceps', regions: ['arms'], requires: ['dumbbells'], compound: false, cues: 'Hold one dumbbell overhead in both hands, elbows pointing up and tucked; lower behind your head, then extend to a full lockout. Stretches the long head of the triceps.' },
   { id: 'cable_overhead_ext', name: 'Cable Overhead Triceps Extension', pattern: 'triceps', regions: ['arms'], requires: ['cable'], compound: false, cues: 'Rope on a low pulley, face away and take the arms overhead; extend forward to lockout keeping the elbows high — constant-tension long-head work.' },
   { id: 'band_overhead_ext', name: 'Band Overhead Triceps Extension', pattern: 'triceps', regions: ['arms'], requires: ['bands'], compound: false, load: false, cues: 'Anchor the band low behind you, arms overhead; extend to lockout and control the stretch. Elbows stay pointing forward.' },
-  { id: 'bench_dip', name: 'Bench Dip', pattern: 'triceps', regions: ['arms'], requires: ['flat_bench'], compound: false, load: false, cues: 'Hands on the bench, lower with elbows back, press up.' },
+  { id: 'bench_dip', name: 'Bench Dip', pattern: 'triceps', regions: ['arms'], requires: ['flat_bench'], compound: false, addLoad: true, load: false, cues: 'Hands on the bench, lower with elbows back, press up.' },
   { id: 'band_pushdown', name: 'Band Triceps Pushdown', pattern: 'triceps', regions: ['arms'], requires: ['bands'], compound: false, load: false, cues: 'Pin elbows to your sides, extend fully, slow return.' },
-  { id: 'diamond_pushup', name: 'Diamond Push-Up', pattern: 'triceps', regions: ['arms', 'chest'], requires: [], compound: false, load: false, cues: 'Hands together under the chest, elbows tight to the body.' },
+  { id: 'diamond_pushup', name: 'Diamond Push-Up', pattern: 'triceps', regions: ['arms', 'chest'], requires: [], compound: false, addLoad: true, load: false, cues: 'Hands together under the chest, elbows tight to the body.' },
 
   // ---- Shoulders (isolation) ----
   { id: 'lateral_raise', name: 'Lateral Raise', pattern: 'shoulder_iso', regions: ['shoulders'], requires: ['dumbbells'], compound: false, cues: 'Lead with the elbows, raise to shoulder height, no shrug.' },
@@ -102,16 +105,16 @@ const BASE_EXERCISES = [
 
   // ---- Calves ----
   { id: 'db_calf_raise', name: 'Dumbbell Calf Raise', pattern: 'calf', regions: ['legs'], requires: ['dumbbells'], compound: false, tags: ['running'], cues: 'Full stretch at the bottom, rise onto the balls of your feet.' },
-  { id: 'bw_calf_raise', name: 'Calf Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Up tall on your toes, pause, lower slowly for a stretch.' },
-  { id: 'wall_sit_calf_raise', name: 'Wall Sit Calf Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, load: false, cues: 'Hold a wall sit at 90°, then rise onto the balls of your feet and lower slowly — calves under a steady load.' },
-  { id: 'single_leg_calf_raise', name: 'Single-Leg Calf Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'On one foot (hold a wall for balance), rise all the way up and lower slowly for a deep stretch. Reps per leg.' },
-  { id: 'tibialis_raise', name: 'Tibialis Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Heels planted, back against a wall, lift your toes toward your shins as high as you can — strengthens the tibialis for knee and ankle health.' },
+  { id: 'bw_calf_raise', name: 'Calf Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, addLoad: true, load: false, tags: ['running'], cues: 'Up tall on your toes, pause, lower slowly for a stretch.' },
+  { id: 'wall_sit_calf_raise', name: 'Wall Sit Calf Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, addLoad: true, load: false, cues: 'Hold a wall sit at 90°, then rise onto the balls of your feet and lower slowly — calves under a steady load.' },
+  { id: 'single_leg_calf_raise', name: 'Single-Leg Calf Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, addLoad: true, load: false, tags: ['running'], cues: 'On one foot (hold a wall for balance), rise all the way up and lower slowly for a deep stretch. Reps per leg.' },
+  { id: 'tibialis_raise', name: 'Tibialis Raise', pattern: 'calf', regions: ['legs'], requires: [], compound: false, addLoad: true, load: false, tags: ['running'], cues: 'Heels planted, back against a wall, lift your toes toward your shins as high as you can — strengthens the tibialis for knee and ankle health.' },
 
   // ---- Rings & climbing-focused ----
-  { id: 'ring_row', name: 'Ring Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['rings'], compound: true, load: false, tags: ['climbing'], cues: 'Body straight, pull the rings to your chest, squeeze the shoulder blades. Lower your feet to make it harder.' },
+  { id: 'ring_row', name: 'Ring Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['rings'], compound: true, addLoad: true, load: false, tags: ['climbing'], cues: 'Body straight, pull the rings to your chest, squeeze the shoulder blades. Lower your feet to make it harder.' },
   { id: 'ring_pullup', name: 'Ring Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['rings'], bwLoad: true, compound: true, load: false, tags: ['climbing'], cues: 'Let the rings rotate naturally, pull to your chest, control the descent.' },
   { id: 'ring_dip', name: 'Ring Dip', pattern: 'horiz_push', regions: ['chest', 'arms'], requires: ['rings'], bwLoad: true, compound: true, load: false, tags: ['climbing'], cues: 'Rings tight to the body — a key antagonist for climbers. Pause in the support hold at the top.' },
-  { id: 'ring_pushup', name: 'Ring Push-Up', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: ['rings'], compound: true, load: false, cues: 'Rings just off the floor, turn them out at the top; brace hard against the wobble.' },
+  { id: 'ring_pushup', name: 'Ring Push-Up', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: ['rings'], compound: true, addLoad: true, load: false, cues: 'Rings just off the floor, turn them out at the top; brace hard against the wobble.' },
   { id: 'ring_support_hold', name: 'Ring Support Hold', pattern: 'core', regions: ['arms', 'core'], requires: ['rings'], compound: false, load: false, hold: true, holdSec: [15, 30], tags: ['climbing'], cues: 'Lock the elbows, depress the shoulders, rings turned slightly out. Hold for time.' },
   { id: 'skin_the_cat', name: 'Skin the Cat', pattern: 'core', regions: ['back', 'core'], requires: ['rings'], compound: true, load: false, tags: ['climbing'], cues: 'From a hang, roll backward through the shoulders and return under control — mobility + strength.' },
   { id: 'lock_off', name: 'Lock-Off Hold', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, hold: true, holdSec: [8, 15], tags: ['climbing'], cues: 'Pull up and HOLD at ~90° (or higher) — the isometric pulling strength climbing demands. Hold for time.' },
@@ -130,14 +133,14 @@ const BASE_EXERCISES = [
 
   // ---- Core ----
   { id: 'farmer_carry', name: 'Farmer’s Carry', pattern: 'core', regions: ['core', 'arms', 'back'], requires: ['dumbbells'], compound: true, hold: true, unit: 'sec', tags: ['climbing'], cues: 'Grab a heavy dumbbell in each hand, stand tall, and walk — shoulders back, ribs down, no leaning. Carry for time. One-bell “suitcase” carries make the core work even harder.' },
-  { id: 'plank', name: 'Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, tags: ['climbing', 'running'], cues: 'Straight line, squeeze glutes and abs, breathe. Hold for time.' },
+  { id: 'plank', name: 'Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, addLoad: true, load: false, hold: true, tags: ['climbing', 'running'], cues: 'Straight line, squeeze glutes and abs, breathe. Hold for time.' },
   { id: 'side_plank_leg_lift', name: 'Side Plank + Leg Lift', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, cues: 'Hold a side plank and raise the top leg with control — hits the obliques and hip abductors. Reps per side.' },
-  { id: 'hollow_hold', name: 'Hollow Body Hold', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, cues: 'Low back pressed flat, shoulders and legs off the floor in a shallow banana. Hold for time — the foundation for levers and handstands.' },
-  { id: 'hanging_leg_raise', name: 'Hanging Leg Raise', pattern: 'core', regions: ['core'], requires: ['pullup_bar'], compound: false, load: false, tags: ['climbing'], cues: 'No swinging, lift the legs with the abs, lower slow.' },
+  { id: 'hollow_hold', name: 'Hollow Body Hold', pattern: 'core', regions: ['core'], requires: [], compound: false, addLoad: true, load: false, hold: true, cues: 'Low back pressed flat, shoulders and legs off the floor in a shallow banana. Hold for time — the foundation for levers and handstands.' },
+  { id: 'hanging_leg_raise', name: 'Hanging Leg Raise', pattern: 'core', regions: ['core'], requires: ['pullup_bar'], compound: false, addLoad: true, load: false, tags: ['climbing'], cues: 'No swinging, lift the legs with the abs, lower slow.' },
   { id: 'dead_bug', name: 'Dead Bug', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Low back pinned, extend opposite arm and leg slowly.' },
   { id: 'ab_wheel', name: 'Ab Rollout', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['climbing'], cues: 'Roll out only as far as you can keep the back flat.' },
-  { id: 'russian_twist', name: 'Russian Twist', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, cues: 'Lean back slightly, rotate from the trunk, control the pace.' },
-  { id: 'situp', name: 'Sit-Up', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, cues: 'Feet flat or anchored, curl up through the full range, lower with control.' },
+  { id: 'russian_twist', name: 'Russian Twist', pattern: 'core', regions: ['core'], requires: [], compound: false, addLoad: true, load: false, cues: 'Lean back slightly, rotate from the trunk, control the pace.' },
+  { id: 'situp', name: 'Sit-Up', pattern: 'core', regions: ['core'], requires: [], compound: false, addLoad: true, load: false, cues: 'Feet flat or anchored, curl up through the full range, lower with control.' },
   { id: 'cable_crunch', name: 'Cable Crunch', pattern: 'core', regions: ['core'], requires: ['cable'], compound: false, cues: 'Kneel, rope by your head, crunch down with the abs — don’t just bow at the hips.' },
 
   // ---- Popular additions (r/Fitness favorites) ----
@@ -157,7 +160,7 @@ const BASE_EXERCISES = [
   { id: 'cable_lateral', name: 'Cable Lateral Raise', pattern: 'shoulder_iso', regions: ['shoulders'], requires: ['cable'], compound: false, cues: 'Low pulley across your body, lead with the elbow to shoulder height, no shrug.' },
 
   // ---- Machine & variation staples ----
-  { id: 'wide_pullup', name: 'Wide-Grip Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, load: false, tags: ['climbing'], cues: 'Grip wider than the shoulders, overhand. Lead with the elbows and pull your chest to the bar — extra lat width.' },
+  { id: 'wide_pullup', name: 'Wide-Grip Pull-Up', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['pullup_bar'], compound: true, bwLoad: true, load: false, tags: ['climbing'], cues: 'Grip wider than the shoulders, overhand. Lead with the elbows and pull your chest to the bar — extra lat width.' },
   { id: 'lat_pulldown_wide', name: 'Wide-Grip Lat Pulldown', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['lat_pulldown'], compound: true, tags: ['climbing'], cues: 'Wide overhand grip, chest tall; pull the bar to your collarbone, elbows flaring down for lat width.' },
   { id: 'lat_pulldown_narrow', name: 'Close-Grip Lat Pulldown', pattern: 'vert_pull', regions: ['back', 'arms'], requires: ['lat_pulldown'], compound: true, tags: ['climbing'], cues: 'Close or neutral grip; drive the elbows down to your sides and pull to the upper chest.' },
   { id: 'lat_prayer', name: 'Straight-Arm Pulldown', pattern: 'vert_pull', regions: ['back'], requires: ['cable'], compound: false, tags: ['climbing'], cues: 'High cable, arms nearly straight; keeping the elbows locked, sweep the bar/rope down in an arc to your thighs and squeeze the lats. Also called "lat prayers".' },
@@ -172,7 +175,7 @@ const BASE_EXERCISES = [
   { id: 'db_shrug', name: 'Dumbbell Shrug', pattern: 'horiz_pull', regions: ['back', 'shoulders'], requires: ['dumbbells'], compound: false, cues: 'Dumbbells at your sides; shrug straight up toward the ears and pause — no rolling — then lower slowly. Traps.' },
   { id: 'barbell_shrug', name: 'Barbell Shrug', pattern: 'horiz_pull', regions: ['back', 'shoulders'], requires: ['barbell'], compound: false, cues: 'Bar in front (or behind); shrug the shoulders straight up, pause at the top, lower under control. Traps.' },
   { id: 'single_leg_leg_press', name: 'Single-Leg Leg Press', pattern: 'squat', regions: ['legs'], requires: ['leg_press'], compound: true, tags: ['running'], cues: 'One foot centered on the platform; press without locking out hard and control the descent. Reps per leg — evens out imbalances.' },
-  { id: 'side_plank', name: 'Side Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, unit: 'sec', cues: 'On one forearm, body in a straight line, hips high and stacked. Hold for time, per side.' },
+  { id: 'side_plank', name: 'Side Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, addLoad: true, load: false, hold: true, unit: 'sec', cues: 'On one forearm, body in a straight line, hips high and stacked. Hold for time, per side.' },
 
   // ---- Cardio (time / heart-rate based — great as a warm-up before lifting) ----
   { id: 'running', name: 'Running', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, hold: true, unit: 'min', tags: ['running'], cues: 'Treadmill or outdoors, whatever suits you. For a warm-up keep it easy — an aerobic “zone 2” pace you can chat at. 10–15 min primes the body before lifting; go longer for a full session.' },
@@ -236,11 +239,11 @@ const BASE_EXERCISES = [
   // Low-load, high-control moves used in prehab/rehab. Most are bodyweight or use
   // a light band. Not medical advice — if a physio gave you specific exercises,
   // do theirs.
-  { id: 'straight_leg_raise', name: 'Straight-Leg Raise', pattern: 'core', regions: ['legs', 'core'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'Lie on your back, one knee bent, the other leg locked dead straight. Tighten the thigh, lift the straight leg to the height of the bent knee, pause, and lower slowly. A staple for quad/VMO strength around a cranky knee without bending it. Reps per leg.' },
-  { id: 'wall_sit', name: 'Wall Sit', pattern: 'squat', regions: ['legs'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [20, 45], tags: ['rehab', 'running'], cues: 'Back flat on a wall, slide down until hips and knees are near 90°, weight through the heels. Hold. Builds quad endurance with no joint pounding. Hold for time.' },
+  { id: 'straight_leg_raise', name: 'Straight-Leg Raise', pattern: 'core', regions: ['legs', 'core'], requires: [], compound: false, addLoad: true, load: false, tags: ['rehab'], cues: 'Lie on your back, one knee bent, the other leg locked dead straight. Tighten the thigh, lift the straight leg to the height of the bent knee, pause, and lower slowly. A staple for quad/VMO strength around a cranky knee without bending it. Reps per leg.' },
+  { id: 'wall_sit', name: 'Wall Sit', pattern: 'squat', regions: ['legs'], requires: [], compound: false, addLoad: true, load: false, hold: true, unit: 'sec', holdSec: [20, 45], tags: ['rehab', 'running'], cues: 'Back flat on a wall, slide down until hips and knees are near 90°, weight through the heels. Hold. Builds quad endurance with no joint pounding. Hold for time.' },
   { id: 'clamshell', name: 'Clamshell', pattern: 'hinge', regions: ['legs'], requires: [], compound: false, load: false, tags: ['rehab', 'running'], cues: 'On your side, knees bent and stacked, heels together. Keep the pelvis still and open the top knee like a clam, squeezing the glute — don’t let the hip roll back. A band above the knees adds load. The classic glute-medius activator. Reps per side.' },
   { id: 'lateral_band_walk', name: 'Lateral Band Walk', pattern: 'lunge', regions: ['legs'], requires: ['bands'], compound: false, load: false, tags: ['rehab', 'running'], cues: 'Loop a band above the knees or ankles, sink to a quarter-squat, and step sideways keeping constant tension — hips level, toes forward, don’t let the knees cave. Torches the glute medius for knee and ankle stability. Reps per side.' },
-  { id: 'lunge_calf_raise', name: 'Lunge + Calf Raise', pattern: 'lunge', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['rehab', 'running'], cues: 'Step into a lunge; as you drive up on the front leg, rise onto the ball of that foot into a calf raise, then lower under control and step back. Pairs single-leg strength with ankle/calf work and balance. Reps per leg.' },
+  { id: 'lunge_calf_raise', name: 'Lunge + Calf Raise', pattern: 'lunge', regions: ['legs', 'core'], requires: [], compound: true, addLoad: true, load: false, tags: ['rehab', 'running'], cues: 'Step into a lunge; as you drive up on the front leg, rise onto the ball of that foot into a calf raise, then lower under control and step back. Pairs single-leg strength with ankle/calf work and balance. Reps per leg.' },
   { id: 'bosu_squat', name: 'Bosu Squat', pattern: 'squat', regions: ['legs', 'core'], requires: [], compound: true, load: false, tags: ['rehab', 'running'], cues: 'Stand on a Bosu (dome up) or a folded cushion and squat under control, knees tracking over the toes. The wobble trains ankle and knee stability and balance. No Bosu? Do it slow and single-leg on the floor. Reps.' },
   { id: 'bird_dog', name: 'Bird Dog', pattern: 'core', regions: ['core', 'back'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'On hands and knees, reach the opposite arm and leg out long, keeping the spine still and hips level — no twisting or sagging. Hold a beat, return with control. A McGill “big 3” staple for a resilient low back. Reps per side.' },
   { id: 'band_external_rotation', name: 'Band External Rotation', pattern: 'shoulder_iso', regions: ['shoulders', 'arms'], requires: ['bands'], compound: false, load: false, tags: ['rehab'], cues: 'Elbow pinned to your side and bent 90°, rotate your forearm outward against a band, then return slowly. Tuck a rolled towel under the elbow to keep it home. The go-to rotator-cuff strengthener. Reps per side.' },
@@ -255,15 +258,15 @@ const BASE_EXERCISES = [
   { id: 'wrist_flexor_stretch', name: 'Wrist Flexor Stretch', pattern: 'biceps', regions: ['arms'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [20, 30], tags: ['rehab'], cues: 'Arm straight out, palm up; with the other hand gently draw the fingers and palm back toward you until you feel an easy forearm stretch. Hold, breathe, ease off. Do the palm-down version for the extensors too. Hold per side.' },
 
   // ---- Isometric holds (train the position — hold for time; add load to scale) ----
-  { id: 'hollow_body_hold', name: 'Hollow Body Hold', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [15, 30], tags: ['rehab'], cues: 'On your back, press the low back into the floor and lift the shoulders and legs into a shallow banana shape. Lower the legs to make it harder. Hold for time.' },
-  { id: 'glute_bridge_hold', name: 'Glute Bridge Hold', pattern: 'hinge', regions: ['legs'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [20, 45], tags: ['rehab', 'running'], cues: 'Bridge up, ribs down, and hold the top squeezing the glutes — don’t arch the low back. Rest a plate or dumbbell on the hips to load it. Hold for time.' },
+  { id: 'hollow_body_hold', name: 'Hollow Body Hold', pattern: 'core', regions: ['core'], requires: [], compound: false, addLoad: true, load: false, hold: true, unit: 'sec', holdSec: [15, 30], tags: ['rehab'], cues: 'On your back, press the low back into the floor and lift the shoulders and legs into a shallow banana shape. Lower the legs to make it harder. Hold for time.' },
+  { id: 'glute_bridge_hold', name: 'Glute Bridge Hold', pattern: 'hinge', regions: ['legs'], requires: [], compound: false, addLoad: true, load: false, hold: true, unit: 'sec', holdSec: [20, 45], tags: ['rehab', 'running'], cues: 'Bridge up, ribs down, and hold the top squeezing the glutes — don’t arch the low back. Rest a plate or dumbbell on the hips to load it. Hold for time.' },
   { id: 'hip_thrust_hold', name: 'Hip Thrust Hold', pattern: 'hinge', regions: ['legs'], requires: ['flat_bench'], compound: false, hold: true, unit: 'sec', holdSec: [15, 30], tags: ['running'], cues: 'Shoulders on a bench, weight across the hips, drive up to a flat back and hold the lockout — a loaded isometric for the glutes. Hold for time.' },
   { id: 'spanish_squat', name: 'Spanish Squat', pattern: 'squat', regions: ['legs'], requires: ['bands'], compound: false, load: false, hold: true, unit: 'sec', holdSec: [20, 45], tags: ['rehab'], cues: 'Loop a stout band behind your knees and anchor it in front; sit back into a squat against the band and hold — the band offloads the knee, a favourite for cranky knees and quad tendons. Hold for time.' },
   { id: 'iso_split_squat_hold', name: 'Split-Squat Hold', pattern: 'lunge', regions: ['legs', 'core'], requires: [], compound: false, hold: true, unit: 'sec', holdSec: [20, 40], tags: ['running'], cues: 'Sink to the bottom of a split squat — front shin vertical, back knee just off the floor — and hold. Hold dumbbells to load it. Hold for time, per leg.' },
   { id: 'calf_raise_hold', name: 'Calf Raise Hold', pattern: 'calf', regions: ['legs'], requires: [], compound: false, hold: true, unit: 'sec', holdSec: [20, 45], tags: ['running'], cues: 'Rise onto the balls of the feet (single-leg to progress) and hold the top, ankles stacked. Hold a dumbbell to load it. Hold for time.' },
   { id: 'overhead_hold', name: 'Overhead Hold', pattern: 'vert_push', regions: ['shoulders', 'arms', 'core'], requires: ['dumbbells'], compound: false, hold: true, unit: 'sec', holdSec: [15, 30], tags: [], cues: 'Press a weight to a locked-out overhead position and hold it dead still — brace the whole body. Builds overhead stability. Hold for time.' },
-  { id: 'pushup_hold', name: 'Push-Up Hold', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [15, 30], tags: [], cues: 'Hold the bottom (or mid-range) of a push-up in a straight line head to heels, elbows tucked. A brutal isometric for the chest and triceps. Hold for time.' },
-  { id: 'copenhagen_hold', name: 'Copenhagen Hold', pattern: 'core', regions: ['core', 'legs'], requires: ['flat_bench'], compound: false, load: false, hold: true, unit: 'sec', holdSec: [10, 30], tags: ['running'], cues: 'Side plank with the top leg on a bench and the bottom leg hanging — hold, squeezing the inner thigh. The go-to groin/adductor strengthener; start with the knee on the bench. Hold for time, per side.' },
+  { id: 'pushup_hold', name: 'Push-Up Hold', pattern: 'horiz_push', regions: ['chest', 'arms', 'core'], requires: [], compound: false, addLoad: true, load: false, hold: true, unit: 'sec', holdSec: [15, 30], tags: [], cues: 'Hold the bottom (or mid-range) of a push-up in a straight line head to heels, elbows tucked. A brutal isometric for the chest and triceps. Hold for time.' },
+  { id: 'copenhagen_hold', name: 'Copenhagen Hold', pattern: 'core', regions: ['core', 'legs'], requires: ['flat_bench'], compound: false, addLoad: true, load: false, hold: true, unit: 'sec', holdSec: [10, 30], tags: ['running'], cues: 'Side plank with the top leg on a bench and the bottom leg hanging — hold, squeezing the inner thigh. The go-to groin/adductor strengthener; start with the knee on the bench. Hold for time, per side.' },
   { id: 'iso_mid_thigh_pull', name: 'Isometric Mid-Thigh Pull', pattern: 'hinge', regions: ['legs', 'back'], requires: ['barbell', 'rack'], compound: true, load: true, hold: true, unit: 'sec', holdSec: [3, 6], tags: [], cues: 'Set a barbell in a rack at mid-thigh (or pull against immovable pins) and pull up as hard as you can into the fixed bar — an “overcoming” isometric. A few maximal 3–6s efforts with long rest, chest tall, driving through the floor.' },
 ]
 
@@ -420,6 +423,32 @@ export const measureUnit = (ex) => exMeasure(ex).unit
 export const isHold = (ex) => exMeasure(ex).type === 'time'
 export const holdUnit = (ex) => exMeasure(ex).unit
 
+// --- Weight handling -------------------------------------------------------
+// An exercise is one of three things:
+//   • always loaded  — `load` truthy or absent (barbell/dumbbell lifts)
+//   • pure bodyweight — `load: false` and nothing else (planks, mobility, cardio)
+//   • bodyweight that ACCEPTS optional added weight — `load: false` plus either
+//       `bwLoad`  (the lifter's own weight IS the load and you can hang more:
+//                  pull-ups, dips — bodyweight counts toward the 1RM), or
+//       `addLoad` (you can hold/wear external weight: reverse lunges with
+//                  dumbbells, weighted push-ups, a plate on a plank — the added
+//                  weight is the only load, bodyweight is NOT added to the 1RM).
+// The last group still reads as "bodyweight" for progression (ladders, no
+// warm-up ramp), but the workout log offers an optional weight box. Both take an
+// entry OR a library object OR an id and resolve the flags from the library.
+const libOf = (ex) => (typeof ex === 'string' ? EXERCISE_BY_ID[ex] : EXERCISE_BY_ID[ex?.id]) || ex || {}
+export function tracksLoad(ex) {
+  if (!ex) return false
+  const lib = libOf(ex)
+  return (typeof ex === 'object' ? ex.load !== false : lib.load !== false) || !!lib.bwLoad || !!lib.addLoad
+}
+export function loadIsOptional(ex) {
+  if (!ex) return false
+  const lib = libOf(ex)
+  const isBw = typeof ex === 'object' ? ex.load === false : lib.load === false
+  return isBw && !!(lib.bwLoad || lib.addLoad)
+}
+
 for (const ladder of LADDERS) {
   ladder.order.forEach((id, i) => {
     const ex = EXERCISE_BY_ID[id]
@@ -527,15 +556,13 @@ const ALIASES = {
   arnold_press: ['arnold press', 'arnold dumbbell press', 'rotating shoulder press'],
   db_shoulder_press: ['dumbbell shoulder press', 'dumbbell overhead press', 'seated dumbbell press', 'db press'],
   pike_pushup: ['pike press'],
-  arnold_press: ['arnold dumbbell press'],
   // Horizontal pull
   barbell_row: ['bent over row', 'bent-over row', 'bor', 'barbell bent over row'],
   db_row: ['one arm row', 'single arm row', 'dumbbell row', 'kroc row'],
-  pendlay_row: ['pendlay row', 'dead-stop row', 'dead stop barbell row'],
+  pendlay_row: ['pendlay row', 'dead-stop row', 'dead stop row', 'dead stop barbell row'],
   meadows_row: ['meadows row', 'landmine meadows row', 'john meadows row'],
   seated_cable_row: ['cable row', 'seated row', 'low row'],
   inverted_row: ['bodyweight row', 'australian pull up', 'horizontal row'],
-  pendlay_row: ['dead stop row'],
   db_shrug: ['dumbbell shrug', 'shrugs', 'traps'],
   barbell_shrug: ['barbell shrugs', 'shrugs', 'traps'],
   // Vertical pull

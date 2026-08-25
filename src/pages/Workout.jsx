@@ -26,7 +26,7 @@ import {
 } from '../lib/equipment.js'
 import { isBarbellLift } from '../lib/plates.js'
 import { ladderInfo } from '../lib/ladder.js'
-import { measureUnit, exMeasure, EXERCISE_BY_ID, isoHoldFor } from '../data/exercises.js'
+import { measureUnit, exMeasure, EXERCISE_BY_ID, isoHoldFor, tracksLoad, loadIsOptional } from '../data/exercises.js'
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
@@ -786,14 +786,19 @@ export default function Workout() {
           ) : null
         })()}
         {exercises.map((ex) => {
-          const tracksLoad = ex.load !== false
+          const loaded = ex.load !== false
+          // Show a weight box whenever the move can take weight — always for
+          // loaded lifts, optionally for bodyweight moves that accept it
+          // (pull-ups/dips with a belt, reverse lunges with dumbbells…).
+          const showWeight = tracksLoad(ex)
+          const optionalLoad = loadIsOptional(ex)
           const doable = isDoable(ex, availableSet)
           const sub = doable ? null : bestSubstitute(ex, availableSet)
-          const plateTarget = showPlates && tracksLoad && isBarbellLift(ex) ? nextSetTarget(ex, sets[ex.id]) : null
+          const plateTarget = showPlates && loaded && isBarbellLift(ex) ? nextSetTarget(ex, sets[ex.id]) : null
           // The set row the plate math is loaded for, so we can highlight it.
           const activePlateIdx = plateTarget ? plateTarget.setNumber - 1 : -1
           // Bodyweight moves progress by variation — show where they sit in the ladder.
-          const lad = !tracksLoad ? ladderInfo(ex.id) : null
+          const lad = !loaded ? ladderInfo(ex.id) : null
           return (
             <div className={'card exercise-card' + (doable ? '' : ' is-unavailable')} key={ex.id}>
               <div className="exercise-top">
@@ -879,10 +884,15 @@ export default function Workout() {
                 />
               )}
 
-              <div className={'set-table' + (tracksLoad ? '' : ' no-load')}>
+              {optionalLoad && (
+                <p className="muted small optional-load-hint">
+                  Bodyweight — leave the {units} blank, or add weight (a belt, dumbbells, or a vest) to load it.
+                </p>
+              )}
+              <div className={'set-table' + (showWeight ? '' : ' no-load')}>
                 <div className="set-head">
                   <span>Set</span>
-                  {tracksLoad && <span>{units}</span>}
+                  {showWeight && <span title={optionalLoad ? 'Optional added weight' : undefined}>{optionalLoad ? `+${units}` : units}</span>}
                   <span>{measureUnit(ex)}</span>
                   <span>done</span>
                 </div>
@@ -894,13 +904,13 @@ export default function Workout() {
                       <span className="set-num" title={row.warmup ? 'Warm-up set' : isAmrapSet ? 'AMRAP — as many reps as possible' : undefined}>
                         {row.warmup ? 'W' : workingN}{isAmrapSet ? '+' : ''}
                       </span>
-                      {tracksLoad && (
+                      {showWeight && (
                         <input
                           className="set-input"
                           type="number"
                           inputMode="decimal"
                           value={row.weight}
-                          placeholder="–"
+                          placeholder={optionalLoad ? 'bw' : '–'}
                           onChange={(e) => updateSet(ex.id, idx, 'weight', e.target.value)}
                         />
                       )}
