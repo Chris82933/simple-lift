@@ -166,6 +166,46 @@ export const RECOVERY_AREAS = [
       { label: 'Neurodynamic techniques for mild-moderate CTS — SR & meta-analysis (NIH/PMC)', url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10419623/' },
     ],
   },
+
+  {
+    id: 'tennis_elbow',
+    label: 'Tennis elbow',
+    emoji: '🎾',
+    blurb: 'Progressive wrist-extensor loading — isometrics to calm it, then slow eccentrics to rebuild the tendon.',
+    why: 'For lateral epicondylalgia (tennis elbow) the strongest evidence is for loading the wrist extensors: pain-relieving isometric holds early, then slow eccentric wrist extension (the “Tyler Twist”), progressing to concentric strengthening, finished with a gentle extensor stretch — all kept to a mild, tolerable ache.',
+    exercises: [
+      { id: 'iso_wrist_extension', sets: 3, low: 30, high: 45 },
+      { id: 'eccentric_wrist_extension', sets: 3, low: 10, high: 15 },
+      { id: 'reverse_wrist_curl', sets: 3, low: 12, high: 15 },
+      { id: 'wrist_extensor_stretch', sets: 2, low: 20, high: 30 },
+    ],
+    sources: [
+      { label: 'Tyler et al. — eccentric wrist-extensor exercise for chronic lateral epicondylosis (RCT, J Shoulder Elbow Surg 2010)', url: 'https://pubmed.ncbi.nlm.nih.gov/20579907/' },
+      { label: 'Eccentric exercise for lateral elbow tendinopathy — systematic review & meta-analysis (NIH/PMC, 2021)', url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8432114/' },
+      { label: 'Physiopedia — Tennis Elbow Management', url: 'https://www.physio-pedia.com/Tennis_Elbow_Management' },
+    ],
+  },
+
+  {
+    id: 'office_neck_shoulder',
+    label: 'Neck & shoulders (desk)',
+    shortLabel: 'Desk neck',
+    emoji: '💻',
+    blurb: 'Deep-neck-flexor activation and scapular strengthening, plus releases for the tight traps and chest of desk work.',
+    why: 'For office-worker neck/shoulder pain, neck- and scapular-specific strengthening reduces pain more reliably than posture advice alone. Pairing chin tucks and scapular work (pull-aparts, wall slides) with a targeted upper-trap and chest stretch trains the weak side and releases the tight side of desk posture.',
+    exercises: [
+      { id: 'chin_tuck', sets: 3, low: 8, high: 10 },
+      { id: 'band_pull_apart', sets: 3, low: 12, high: 20 },
+      { id: 'scap_wall_slide', sets: 3, low: 8, high: 12 },
+      { id: 'upper_trap_stretch', sets: 2, low: 20, high: 30 },
+      { id: 'doorway_pec_stretch', sets: 2, low: 20, high: 30 },
+    ],
+    sources: [
+      { label: 'Andersen et al. — small daily progressive resistance training for frequent neck/shoulder pain (RCT, Pain 2011)', url: 'https://pubmed.ncbi.nlm.nih.gov/21177034/' },
+      { label: 'Workplace-based interventions for neck pain in office workers — systematic review & meta-analysis (Physical Therapy, 2018)', url: 'https://academic.oup.com/ptj/article/98/1/40/4562646' },
+      { label: 'Scapular stabilization exercise for nonspecific chronic neck pain — systematic review (PubMed, 2019)', url: 'https://pubmed.ncbi.nlm.nih.gov/31668049/' },
+    ],
+  },
 ]
 
 export const RECOVERY_BY_ID = Object.fromEntries(RECOVERY_AREAS.map((a) => [a.id, a]))

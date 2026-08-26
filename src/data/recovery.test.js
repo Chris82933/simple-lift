@@ -32,7 +32,9 @@ describe('every recovery area', () => {
 
   it('covers the newly requested issues', () => {
     const ids = RECOVERY_AREAS.map((a) => a.id)
-    for (const id of ['shin_splints', 'neck', 'carpal_tunnel']) expect(ids).toContain(id)
+    for (const id of ['shin_splints', 'neck', 'carpal_tunnel', 'tennis_elbow', 'office_neck_shoulder']) {
+      expect(ids).toContain(id)
+    }
   })
 })
 
