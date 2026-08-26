@@ -1617,6 +1617,45 @@ select.text-input { appearance: none; }
 .metric-seg { margin-bottom: 10px; }
 .legend-item.static { cursor: default; }
 
+/* Progress dashboard: stat tiles, weekly-activity sparkline, PR timeline */
+.stat-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.stat-tile {
+  background: var(--surface); border: 1px solid var(--surface-2);
+  border-radius: 12px; padding: 10px 4px; text-align: center;
+}
+.stat-num { display: block; font-size: 22px; font-weight: 800; color: var(--accent); line-height: 1.1; }
+.stat-label {
+  display: block; font-size: 10.5px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.04em; margin-top: 3px;
+}
+.weekly-activity-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.week-bars { display: flex; align-items: flex-end; gap: 6px; height: 46px; }
+.week-bar {
+  flex: 1; display: flex; align-items: flex-end; height: 100%;
+  background: var(--surface-2); border-radius: 6px; overflow: hidden;
+}
+.week-bar.is-empty { background: transparent; border: 1px dashed var(--surface-2); }
+.week-bar-fill { display: block; width: 100%; background: var(--accent); border-radius: 6px; }
+.week-bar.is-current .week-bar-fill { box-shadow: 0 0 0 2px var(--ring); }
+.pr-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pr-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline;
+  padding: 8px 2px; border-bottom: 1px solid var(--surface-2);
+}
+.pr-row:last-child { border-bottom: none; }
+.pr-row-name { font-weight: 600; }
+.pr-row-detail { color: var(--accent); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.pr-row-date { white-space: nowrap; }
+
+/* Today: compact training-consistency card that links to Progress */
+.consistency-card {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  text-decoration: none; color: var(--text);
+}
+.consistency-stat { font-size: 14px; }
+.consistency-stat strong { color: var(--accent); font-size: 18px; font-weight: 800; margin-right: 3px; }
+.consistency-link { margin-left: auto; color: var(--muted); font-size: 13px; font-weight: 600; }
+
 /* ============ Vibrant accent layer ============ */
 /* Gradient eyebrow labels */
 .eyebrow {

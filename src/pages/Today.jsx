@@ -8,6 +8,7 @@ import { repsLabel } from '../data/schemes.js'
 import { measureUnit } from '../data/exercises.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
+import { sessionsThisWeek, trainingStreakWeeks } from '../lib/consistency.js'
 import ExerciseFigure from '../components/ExerciseFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import FocusTiles from '../components/FocusTiles.jsx'
@@ -121,6 +122,20 @@ export default function Today() {
       )}
 
       <FocusTiles current="program" onPickProgram={pickProgram} />
+
+      {(() => {
+        const hist = loadHistory()
+        if (!hist.length) return null
+        const thisWeek = sessionsThisWeek(hist)
+        const streak = trainingStreakWeeks(hist)
+        return (
+          <Link className="card consistency-card" to="/progress">
+            <span className="consistency-stat"><strong>{thisWeek}</strong> workout{thisWeek === 1 ? '' : 's'} this week</span>
+            {streak > 1 && <span className="consistency-stat"><strong>{streak}</strong>-week streak</span>}
+            <span className="consistency-link">Progress →</span>
+          </Link>
+        )
+      })()}
 
       {program.days.length > 1 && (
         <div className="day-picker" role="group" aria-label="Choose a day">

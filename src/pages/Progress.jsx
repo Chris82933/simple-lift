@@ -4,6 +4,8 @@ import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, del
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { exMeasure } from '../data/exercises.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
+import { prShort } from '../lib/records.js'
+import { sessionsThisWeek, trainingStreakWeeks, weeklyCounts, volumeThisWeek, prTimeline } from '../lib/consistency.js'
 import ProgressChart from '../components/ProgressChart.jsx'
 import ExerciseDetail from '../components/ExerciseDetail.jsx'
 import { useToast } from '../components/Toast.jsx'
@@ -266,6 +268,19 @@ export default function Progress() {
     saveSettings({ ...loadSettings(), progressCards: next })
   }
 
+  // Consistency + records summary for the dashboard at the top of the page.
+  const summary = useMemo(() => {
+    const now = Date.now()
+    return {
+      total: history.length,
+      thisWeek: sessionsThisWeek(history, now),
+      streak: trainingStreakWeeks(history, now),
+      weekly: weeklyCounts(history, now, 8),
+      volume: volumeThisWeek(history, now),
+    }
+  }, [history])
+  const prs = useMemo(() => prTimeline(history), [history])
+
   // Keep the log short by default; load more on demand.
   const PAGE = 8
   const [shownSessions, setShownSessions] = useState(PAGE)
@@ -291,6 +306,78 @@ export default function Progress() {
         <h1>Progress</h1>
         <p className="muted">{history.length} session{history.length === 1 ? '' : 's'} · {cardio.length} cardio logged.</p>
       </header>
+
+      {history.length > 0 && (
+        <>
+          <div className="stat-tiles">
+            <div className="stat-tile">
+              <span className="stat-num">{summary.total}</span>
+              <span className="stat-label">session{summary.total === 1 ? '' : 's'}</span>
+            </div>
+            <div className="stat-tile">
+              <span className="stat-num">{summary.thisWeek}</span>
+              <span className="stat-label">this week</span>
+            </div>
+            <div className="stat-tile">
+              <span className="stat-num">{summary.streak}</span>
+              <span className="stat-label">week streak</span>
+            </div>
+            <div className="stat-tile">
+              <span className="stat-num">{prs.length}</span>
+              <span className="stat-label">PR{prs.length === 1 ? '' : 's'}</span>
+            </div>
+          </div>
+
+          <div className="card weekly-activity">
+            <div className="weekly-activity-head">
+              <span className="group-label">Weekly activity</span>
+              <span className="muted small">
+                {summary.volume > 0 ? `${summary.volume.toLocaleString()} ${units} volume this week` : 'last 8 weeks'}
+              </span>
+            </div>
+            {(() => {
+              const max = Math.max(1, ...summary.weekly.map((w) => w.count))
+              return (
+                <div className="week-bars">
+                  {summary.weekly.map((w, i) => {
+                    const isThis = i === summary.weekly.length - 1
+                    const pct = w.count ? Math.max(Math.round((w.count / max) * 100), 14) : 0
+                    return (
+                      <span
+                        key={w.weekStart}
+                        className={'week-bar' + (isThis ? ' is-current' : '') + (w.count ? '' : ' is-empty')}
+                        title={`${w.count} workout${w.count === 1 ? '' : 's'}`}
+                      >
+                        <span className="week-bar-fill" style={{ height: `${pct}%` }} />
+                      </span>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </div>
+        </>
+      )}
+
+      {prs.length > 0 && (
+        <CollapsibleCard
+          title="Personal records"
+          subtitle={`${prs.length} total`}
+          open={cardOpen('prs')}
+          onToggle={() => toggleCard('prs')}
+        >
+          <ul className="pr-timeline">
+            {prs.slice(0, 30).map((pr, i) => (
+              <li className="pr-row" key={`${pr.date}-${pr.exId || pr.name}-${i}`}>
+                <span className="pr-row-name">{pr.name}</span>
+                <span className="pr-row-detail">{prShort(pr, units)}</span>
+                <span className="muted small pr-row-date">{shortDate(pr.date)}</span>
+              </li>
+            ))}
+          </ul>
+          {prs.length > 30 && <p className="muted small">Showing your 30 most recent records.</p>}
+        </CollapsibleCard>
+      )}
 
       <CollapsibleCard
         title={`${weightMetric === 'e1rm' ? 'Estimated 1RM' : 'Top set'} over time (${units})`}
