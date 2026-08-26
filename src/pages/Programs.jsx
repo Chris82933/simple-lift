@@ -74,7 +74,8 @@ export default function Programs() {
 
       {programs.length === 0 && !skillTreeAdded && (
         <div className="card placeholder-card">
-          <p className="muted">No programs yet. Create one above.</p>
+          <p className="placeholder-title">No programs yet</p>
+          <p className="muted">Pick one of the options above to create your first — a ready-made template is the quickest start.</p>
         </div>
       )}
 

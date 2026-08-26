@@ -1656,6 +1656,18 @@ select.text-input { appearance: none; }
 .consistency-stat strong { color: var(--accent); font-size: 18px; font-weight: 800; margin-right: 3px; }
 .consistency-link { margin-left: auto; color: var(--muted); font-size: 13px; font-weight: 600; }
 
+/* First-run welcome: hero + guided choice cards */
+.welcome-hero { display: flex; align-items: center; gap: 14px; }
+.welcome-hero .exercise-figure { flex: none; }
+.welcome-choices { display: flex; flex-direction: column; gap: 10px; }
+.choice-card {
+  display: flex; flex-direction: column; gap: 4px; width: 100%;
+  text-align: left; text-decoration: none; color: var(--text);
+  cursor: pointer; border: 1px solid var(--surface-2);
+}
+.choice-card:hover, .choice-card:focus-visible { border-color: var(--accent); }
+.choice-title { font-weight: 700; font-size: 15px; }
+
 /* ============ Vibrant accent layer ============ */
 /* Gradient eyebrow labels */
 .eyebrow {

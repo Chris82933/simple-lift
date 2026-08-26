@@ -51,19 +51,33 @@ export default function Today() {
 
   if (!program) {
     return (
-      <section className="page">
-        <header className="page-header"><h1>Today&apos;s session</h1></header>
-        <div className="card placeholder-card">
-          <p className="placeholder-title">No program yet</p>
+      <section className="page full-flow">
+        <header className="page-header">
+          <p className="eyebrow">Welcome</p>
+          <h1>Set up your training</h1>
+        </header>
+        <div className="card welcome-hero">
+          <ExerciseFigure pattern="squat" size={64} />
           <p className="muted">
-            Build a program — pick a ready-made template, generate one from a few
-            questions, or design your own.
+            Simple Lift builds you a plan, tracks every set, and shows a clear demo for each
+            move. Choose how you&apos;d like to start:
           </p>
-          <button className="btn btn-primary" onClick={() => navigate('/templates')}>Browse templates</button>
-          <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
-          <p className="muted small">Into bodyweight skills? The calisthenics skill tree is in Browse templates.</p>
-          <ThemeToggle label="Prefer light or dark?" />
         </div>
+        <div className="welcome-choices">
+          <button type="button" className="card choice-card" onClick={() => navigate('/templates')}>
+            <span className="choice-title">Browse templates</span>
+            <span className="muted small">Proven programs — GZCLP, bodyweight, and more. Best if you&apos;re not sure where to start.</span>
+          </button>
+          <Link className="card choice-card" to="/onboarding">
+            <span className="choice-title">Answer a few questions</span>
+            <span className="muted small">We&apos;ll tailor a program to your goals, equipment, and schedule.</span>
+          </Link>
+          <button type="button" className="card choice-card" onClick={() => navigate('/builder')}>
+            <span className="choice-title">Build your own</span>
+            <span className="muted small">Design a custom program, exercise by exercise.</span>
+          </button>
+        </div>
+        <ThemeToggle label="Prefer light or dark?" />
       </section>
     )
   }
