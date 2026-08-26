@@ -55,21 +55,21 @@ export default function Programs() {
 
       <div className="card">
         <button type="button" className="btn btn-primary" onClick={() => navigate('/templates')}>
-          📋 Browse templates (GZCLP, bodyweight…)
+          Browse templates (GZCLP, bodyweight…)
         </button>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/builder')}>
-          ＋ Build custom program
+          Build custom program
         </button>
         <Link className="btn btn-ghost" to="/onboarding">Generate one from a few questions</Link>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/recovery')}>
-          🩹 Recovery &amp; Strength (rehab a joint)
+          Recovery &amp; Strength
         </button>
         {!skillTreeAdded && (
           <button type="button" className="btn btn-ghost" onClick={addSkillTree}>
-            🤸 Add the Calisthenics Skill Tree
+            Add the Calisthenics Skill Tree
           </button>
         )}
-        <Link className="btn btn-ghost" to="/one-rep-max">🏋️ Find your starting weights (1RM)</Link>
+        <Link className="btn btn-ghost" to="/one-rep-max">Find your starting weights (1RM)</Link>
       </div>
 
       {programs.length === 0 && !skillTreeAdded && (
@@ -82,7 +82,7 @@ export default function Programs() {
         <div className="card program-card skill-tree-program">
           <div className="program-card-head">
             <div>
-              <p className="day-title">🤸 Calisthenics Skill Tree</p>
+              <p className="day-title">Calisthenics Skill Tree</p>
               <p className="muted small">
                 Special program · skill progressions + radar chart · {skillSummary()}
               </p>

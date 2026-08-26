@@ -83,7 +83,7 @@ export default function Skills() {
     <section className="page full-flow">
       <header className="page-header">
         <div className="workout-head-row">
-          <p className="eyebrow">🤸 Calisthenics</p>
+          <p className="eyebrow">Calisthenics</p>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/today')}>Done</button>
         </div>
         <h1>Skill tree</h1>
@@ -94,12 +94,12 @@ export default function Skills() {
 
         {!added && (
           <div className="card notice">
-            <p className="placeholder-title">🤸 Add this to your programs</p>
+            <p className="placeholder-title">Add this to your programs</p>
             <p className="muted small">
               The skill tree is a fun extra, not a full workout program. Add it and it&apos;ll appear
               alongside your programs; you can remove it anytime and your progress is kept.
             </p>
-            <button type="button" className="btn btn-primary" onClick={addTree}>➕ Add skill tree</button>
+            <button type="button" className="btn btn-primary" onClick={addTree}>Add skill tree</button>
           </div>
         )}
 
@@ -114,13 +114,13 @@ export default function Skills() {
           {started && (
             <p className="radar-legend">
               <span className="swatch now" /> now
-              <span className="swatch start" /> start{grown ? ' · look how far you’ve come 💪' : ''}
+              <span className="swatch start" /> start{grown ? ' · look how far you’ve come' : ''}
             </p>
           )}
         </div>
 
         <button type="button" className="btn btn-primary" onClick={() => { setAnswers({}); setCalOpen(true) }}>
-          🎯 {started ? 'Re-check my levels' : 'Find my levels'}
+          {started ? 'Re-check my levels' : 'Find my levels'}
         </button>
         {!started && (
           <p className="muted small">Answer a few quick questions and we&apos;ll set each skill to the right starting level.</p>
@@ -153,14 +153,14 @@ export default function Skills() {
                 {sk.levels.map((_, i) => <span key={i} className={'level-dot' + (i <= idx ? ' on' : '')} />)}
               </div>
 
-              <p className="cue">💡 {level.cues}</p>
-              <p className="plan-line">📋 Do <strong>{planLabel(sk, level)}</strong></p>
+              <p className="cue">{level.cues}</p>
+              <p className="plan-line">Do <strong>{planLabel(sk, level)}</strong></p>
               {mastered ? (
                 <p className="suggestion">🏆 Skill mastered — you own the hardest level.</p>
               ) : atTop ? (
-                <p className="suggestion">🎯 Top level. Hit <strong>{advanceLabel(sk, level)}</strong> to master it.</p>
+                <p className="suggestion">Top level. Hit <strong>{advanceLabel(sk, level)}</strong> to master it.</p>
               ) : (
-                <p className="suggestion">🎯 Advance when you hit <strong>{advanceLabel(sk, level)}</strong> → {sk.levels[idx + 1].name}</p>
+                <p className="suggestion">Advance when you hit <strong>{advanceLabel(sk, level)}</strong> → {sk.levels[idx + 1].name}</p>
               )}
 
               <div className="skill-log">
@@ -178,7 +178,7 @@ export default function Skills() {
                   <button type="button" onClick={() => bump(sk, 1)} aria-label={`more ${sk.unit}`}>+</button>
                 </div>
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => logSkill(sk)}>Save</button>
-                {fl && <span className="save-flash">{flash.best ? 'New best! 🎉' : 'Saved ✓'}</span>}
+                {fl && <span className="save-flash">{flash.best ? 'New best!' : 'Saved ✓'}</span>}
               </div>
 
               <div className="skill-progress">
@@ -190,7 +190,7 @@ export default function Skills() {
 
               {ready && (
                 <button type="button" className="btn btn-primary btn-sm advance-btn" onClick={() => advance(sk)}>
-                  🎉 You hit the goal — advance to {sk.levels[idx + 1].name} →
+                  You hit the goal — advance to {sk.levels[idx + 1].name} →
                 </button>
               )}
               {idx > 0 && (
@@ -216,7 +216,7 @@ export default function Skills() {
         <div className="picker-overlay" role="dialog" aria-label="Find my levels">
           <div className="picker-sheet">
             <div className="picker-head">
-              <p className="ex-name big" style={{ flex: 1 }}>🎯 Find my levels</p>
+              <p className="ex-name big" style={{ flex: 1 }}>Find my levels</p>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCalOpen(false)}>Cancel</button>
             </div>
             <div className="picker-list">

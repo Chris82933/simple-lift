@@ -70,9 +70,8 @@ function topSet(entry) {
 }
 
 const DIFF_LABELS = {
-  easy: '😎 Easy', moderate: '🙂 Just right', hard: '😤 Hard', maxed: '🥵 Maxed out',
+  easy: 'Easy', moderate: 'Moderate', hard: 'Hard', maxed: 'Maxed out',
 }
-const DIFF_EMOJI = { easy: '😎', moderate: '🙂', hard: '😤', maxed: '🥵' }
 const shortDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
 // A card whose body can be collapsed. The open/closed state is owned by the
@@ -117,7 +116,7 @@ function SessionEntry({ workout, units, onDelete }) {
         </span>
         <span className="log-summary-side">
           {prIds.size > 0 && <span className="pr-badge">🏆 {prIds.size}</span>}
-          {workout.difficulty && <span title={DIFF_LABELS[workout.difficulty]}>{DIFF_EMOJI[workout.difficulty]}</span>}
+          {workout.difficulty && <span className="muted small">{DIFF_LABELS[workout.difficulty]}</span>}
           <span className="muted small">{shortDate(workout.date)}</span>
           <span className={'collapse-chevron' + (open ? ' is-open' : '')} aria-hidden="true">▾</span>
         </span>
@@ -160,7 +159,7 @@ function SessionEntry({ workout, units, onDelete }) {
               )
             })}
           </div>
-          {workout.notes && <p className="muted small log-note">📝 {workout.notes}</p>}
+          {workout.notes && <p className="muted small log-note">{workout.notes}</p>}
           <div className="log-detail-actions">
             <button type="button" className="log-toggle" onClick={() => setShowSets((s) => !s)}>
               {showSets ? '▴ Hide every set' : '▾ Show every set'}

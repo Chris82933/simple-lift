@@ -55,8 +55,8 @@ function TemplateCard({ t, open, onToggle, onUse }) {
         </div>
         <div className="template-facts">
           {t.level && <span className="level-chip">{t.level}</span>}
-          <span className="fact">🕒 {sessionLengthLabel(t)}</span>
-          <span className="fact">📅 {daysPerWeek(t)}×/wk</span>
+          <span className="fact">{sessionLengthLabel(t)}</span>
+          <span className="fact">{daysPerWeek(t)}×/wk</span>
         </div>
         <p className="muted small template-gist">
           <strong>{t.bestFor}</strong> · {targetSummary(t)}
@@ -75,7 +75,7 @@ function TemplateCard({ t, open, onToggle, onUse }) {
           </p>
           {t.progressionInfo && (
             <p className="muted small progression-info">
-              📈 <strong>How you progress:</strong> {t.progressionInfo}
+              <strong>How you progress:</strong> {t.progressionInfo}
             </p>
           )}
 

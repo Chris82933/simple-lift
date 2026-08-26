@@ -272,7 +272,7 @@ export default function Builder() {
             ))}
           </div>
           <p className="muted small">
-            💡 Sets, reps &amp; rest auto-fill with sensible defaults for each move — heavy compounds get low reps and long rest, isolation and core get higher reps. Each exercise uses a rep <em>range</em> (like most programs): aim for the top of the range on every set, then add weight. Tweak anything you like. Starting weights fill from your saved 1RMs.{' '}
+            Sets, reps &amp; rest auto-fill with sensible defaults for each move — heavy compounds get low reps and long rest, isolation and core get higher reps. Each exercise uses a rep <em>range</em> (like most programs): aim for the top of the range on every set, then add weight. Tweak anything you like. Starting weights fill from your saved 1RMs.{' '}
             <button type="button" className="link-btn" onClick={() => navigate('/one-rep-max')}>Find your maxes</button>
           </p>
         </div>
@@ -312,7 +312,7 @@ export default function Builder() {
             )
           })()}
           <p className="muted small deload-tip">
-            🌙 <strong>Deload tip:</strong> every 4–6 weeks, take one lighter week — cut your working weight ~10% (or drop a set or two) and keep reps well short of failure. It clears fatigue so you come back stronger. No need to schedule it; just take one when you feel run down.
+            <strong>Deload tip:</strong> every 4–6 weeks, take one lighter week — cut your working weight ~10% (or drop a set or two) and keep reps well short of failure. It clears fatigue so you come back stronger. No need to schedule it; just take one when you feel run down.
           </p>
         </div>
 
@@ -433,7 +433,7 @@ export default function Builder() {
                   </>
                 )}
                 <button type="button" className="btn btn-ghost btn-sm recommend-btn" onClick={() => applyRecommended(di, ei)}>
-                  ✨ Use recommended{ex.load ? ' (sets, reps, rest & weight from your 1RM)' : ' sets, reps & rest'}
+                  Use recommended{ex.load ? ' (sets, reps, rest & weight from your 1RM)' : ' sets, reps & rest'}
                 </button>
               </div>
             ))}
@@ -468,7 +468,7 @@ export default function Builder() {
                 + Add exercise
               </button>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => addCardioToDay(di)}>
-                ❤️ Add cardio
+                Add cardio
               </button>
             </div>
           </div>

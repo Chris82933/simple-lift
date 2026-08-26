@@ -485,7 +485,7 @@ export default function Profile() {
           The code is compressed, so it stays short even after years of training. Codes you saved
           before still work.
         </p>
-        <button type="button" className="btn btn-primary" onClick={copyCode}>📋 Copy my backup code</button>
+        <button type="button" className="btn btn-primary" onClick={copyCode}>Copy my backup code</button>
         <button type="button" className="btn btn-ghost btn-sm" onClick={generateCode}>Show code</button>
         {myCode && (
           <textarea className="text-input code-box" rows={4} readOnly value={myCode} onFocus={(e) => e.target.select()} />
@@ -500,7 +500,7 @@ export default function Profile() {
           onChange={(e) => setImportText(e.target.value)}
         />
         <button type="button" className="btn btn-ghost" onClick={runImport} disabled={!importText.trim()}>
-          ⬇️ Import &amp; replace my data
+          Import &amp; replace my data
         </button>
         {codeStatus && (
           <p className={'muted small code-status ' + (codeStatus.ok ? 'ok' : 'err')}>

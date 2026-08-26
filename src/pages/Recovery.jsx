@@ -30,7 +30,7 @@ export default function Recovery() {
           <p className="eyebrow">Recovery &amp; Strength</p>
           <button type="button" className="skip-link" onClick={() => navigate('/programs')}>Cancel →</button>
         </div>
-        <h1>Strengthen a cranky joint</h1>
+        <h1>Strengthen a joint or area</h1>
         <p className="muted">
           Pick the areas that bother you and we&apos;ll build a short, low-load strengthening routine —
           one session per area, drawn from physiotherapy and sports-science guidance.
@@ -39,7 +39,7 @@ export default function Recovery() {
 
       <div className="step-body">
         <div className="card notice recovery-disclaimer">
-          <p className="muted small">⚕️ {RECOVERY_DISCLAIMER}</p>
+          <p className="muted small">{RECOVERY_DISCLAIMER}</p>
         </div>
 
         <div className="card">

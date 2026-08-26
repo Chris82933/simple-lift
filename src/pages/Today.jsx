@@ -102,7 +102,7 @@ export default function Today() {
 
       {showIosWarning && (
         <div className="card notice ios-warning">
-          <p className="placeholder-title">📲 Back up your data</p>
+          <p className="placeholder-title">Back up your data</p>
           <p className="muted small">
             On iPhone &amp; iPad, Safari can erase this app&apos;s saved data after about a week of not opening it — and it isn&apos;t backed up anywhere yet. Save a backup code (or sign in, once that&apos;s enabled) so your programs are one paste away from restored.
           </p>
@@ -205,7 +205,7 @@ export default function Today() {
             🏠 {needSwap} move{needSwap === 1 ? '' : 's'} need a swap in {profileMeta(activeProfile).name} mode — you can swap them one-tap during the workout.
           </p>
         )}
-        <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>❤️ Log cardio</button>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
       </div>
 
       <div className="card">
@@ -227,7 +227,7 @@ export default function Today() {
             </div>
           ))}
         </div>
-        {warning && <p className="muted small rest-note">💤 {warning}</p>}
+        {warning && <p className="muted small rest-note">{warning}</p>}
         {lastWorkout && (
           <p className="muted small">
             Last workout: {lastWorkout.sessionTitle} · {new Date(lastWorkout.date).toLocaleDateString()}

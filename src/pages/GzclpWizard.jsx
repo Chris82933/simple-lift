@@ -91,7 +91,7 @@ export default function GzclpWizard() {
       <div className="step-body">
         {key === 'start' && (
           <>
-            <h1>Where are you starting from?</h1>
+            <h1>Starting point</h1>
             <p className="muted">
               GZCLP begins deliberately light — around 75% of your max for the T1 lift — so the
               automatic stage drops have room to work. Tell us what you know and we&apos;ll do the maths.
@@ -167,7 +167,7 @@ export default function GzclpWizard() {
 
         {key === 'accessories' && (
           <>
-            <h1>Pick your T3 work</h1>
+            <h1>Choose your T3 accessories</h1>
             <p className="muted">
               T3 is the high-rep tier: 3×15 with an AMRAP last set. Hit 25+ reps on that set and the
               weight goes up. We&apos;ve pre-picked what your equipment supports.
@@ -214,7 +214,7 @@ export default function GzclpWizard() {
 
         {key === 'review' && (
           <>
-            <h1>Your GZCLP</h1>
+            <h1>Your GZCLP program</h1>
             <p className="muted">
               {draft.dayFormat} days a week, four rotating workouts. Everything below is editable
               afterwards in the program builder.
@@ -247,7 +247,7 @@ export default function GzclpWizard() {
             )}
             <div className="card notice">
               <p className="muted small">
-                📈 <strong>How it progresses:</strong> finish every set and the weight goes up next
+                <strong>How it progresses:</strong> finish every set and the weight goes up next
                 time (+{units === 'kg' ? '5' : '10'} {units} squat &amp; deadlift, +{units === 'kg' ? '2.5' : '5'} {units} bench &amp; press).
                 Miss reps and the app drops you to a harder-to-fail stage at the same weight —
                 5×3 → 6×2 → 10×1 for T1, 3×10 → 3×8 → 3×6 for T2 — before it ever resets you.

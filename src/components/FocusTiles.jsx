@@ -38,7 +38,7 @@ export default function FocusTiles({ current, onPickProgram }) {
           className={'focus-tab' + (current === 'skills' ? ' is-selected' : '')}
           onClick={pickSkills}
         >
-          <span className="focus-tab-name">🤸 Calisthenics</span>
+          <span className="focus-tab-name">Calisthenics</span>
           <span className="muted small">Skill tree</span>
         </button>
       )}

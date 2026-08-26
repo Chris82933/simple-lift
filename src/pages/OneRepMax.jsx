@@ -177,7 +177,7 @@ export default function OneRepMax() {
               ))}
             </div>
 
-            <p className="screenshot-hint">📸 Screenshot this to keep your numbers handy.</p>
+            <p className="screenshot-hint">Screenshot this to keep your numbers handy.</p>
             <button type="button" className="btn btn-primary" onClick={save} disabled={!canSave}>
               Save {liftName} 1RM
             </button>

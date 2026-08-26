@@ -96,7 +96,7 @@ export default function RestTimer({ seconds, onDone, mode = 'rest' }) {
     return (
       <div className="rest-timer is-go" role="status">
         <div className="rest-timer-inner">
-          <span className="rest-go">{isHold ? 'Done! ✓' : 'Go! 💪'}</span>
+          <span className="rest-go">{isHold ? 'Done!' : 'Go!'}</span>
         </div>
       </div>
     )

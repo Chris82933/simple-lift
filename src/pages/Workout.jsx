@@ -48,10 +48,10 @@ function nextSetTarget(ex, rows) {
 
 // Post-session difficulty ratings (saved to history).
 const DIFFICULTIES = [
-  { id: 'easy', label: '😎 Easy' },
-  { id: 'moderate', label: '🙂 Just right' },
-  { id: 'hard', label: '😤 Hard' },
-  { id: 'maxed', label: '🥵 Maxed out' },
+  { id: 'easy', label: 'Easy' },
+  { id: 'moderate', label: 'Moderate' },
+  { id: 'hard', label: 'Hard' },
+  { id: 'maxed', label: 'Maxed out' },
 ]
 
 // Did the user change the workout's structure (added/removed/reordered
@@ -371,7 +371,7 @@ export default function Workout() {
   if (!program || !session) {
     return (
       <section className="page full-flow">
-        <header className="page-header"><h1>No workout</h1></header>
+        <header className="page-header"><h1>No active workout</h1></header>
         <div className="card"><p className="muted">No program found. Build one first.</p></div>
         <div className="flow-actions">
           <button className="btn btn-ghost" onClick={() => navigate('/today')}>Back</button>
@@ -563,7 +563,7 @@ export default function Workout() {
     return (
       <section className="page full-flow">
         <header className="page-header">
-          <p className="eyebrow">Nice work 🎉</p>
+          <p className="eyebrow">Nice work</p>
           <h1>Session complete</h1>
         </header>
 
@@ -666,7 +666,7 @@ export default function Workout() {
               const rec = recommendChoice(method, sug, difficulty)
               return (
                 <div className="review-row" key={sug.exId}>
-                  <span className="review-name">{sug.type === 'levelUp' ? '🚀' : sug.type === 'levelDown' ? '🔽' : '✅'} {sug.name}</span>
+                  <span className="review-name">{sug.type === 'levelUp' ? '↑' : sug.type === 'levelDown' ? '↓' : '✓'} {sug.name}</span>
                   <div className="choice-chips">
                     {optionsFor(sug, units).map((opt) => {
                       const isRec = rec ? opt.key === rec : opt.recommended
@@ -704,7 +704,7 @@ export default function Workout() {
         {review.autoNotes.length > 0 && (
           <div className="card notice">
             <p className="group-label">Adjusted automatically</p>
-            {review.autoNotes.map((n, i) => <p className="muted small progress-note" key={i}>🔧 {n}</p>)}
+            {review.autoNotes.map((n, i) => <p className="muted small progress-note" key={i}>{n}</p>)}
           </div>
         )}
 
@@ -714,10 +714,10 @@ export default function Workout() {
           <p className="muted small">Copy a text recap to paste into a Strava activity, your notes, or socials.</p>
           <div className="share-actions">
             <button type="button" className="btn btn-ghost" onClick={shareSummary}>
-              {canShare ? 'Share…' : '📋 Copy summary'}
+              {canShare ? 'Share…' : 'Copy summary'}
             </button>
             {canShare && (
-              <button type="button" className="btn btn-ghost" onClick={copySummary}>📋 Copy</button>
+              <button type="button" className="btn btn-ghost" onClick={copySummary}>Copy</button>
             )}
           </div>
           {shareStatus === 'copied' && <p className="muted small share-note">✓ Copied to clipboard — paste it into Strava.</p>}
@@ -768,7 +768,7 @@ export default function Workout() {
       <div className="step-body">
         {showResumed && (
           <div className="card notice resumed-banner">
-            <p className="muted small">↩️ Resumed your in-progress session — your logged sets are back.</p>
+            <p className="muted small">Resumed your in-progress session — your logged sets are back.</p>
             <button type="button" className="btn btn-ghost btn-sm" onClick={startOver}>Start over</button>
           </div>
         )}
@@ -846,7 +846,7 @@ export default function Workout() {
                 </div>
               )}
 
-              <p className="cue">💡 {ex.cues}</p>
+              <p className="cue">{ex.cues}</p>
               {ex.progression && <p className="suggestion">{weekNote(ex, units) || stageNote(ex, units) || extraNote(ex, units)}</p>}
               {lad && lad.length > 1 && (
                 <div className="ladder-hint">

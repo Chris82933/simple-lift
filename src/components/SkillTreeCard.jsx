@@ -16,7 +16,7 @@ export default function SkillTreeCard() {
   return (
     <div className="card template-card skill-tree-card">
       <div className="template-head">
-        <p className="day-title">🤸 Calisthenics Skill Tree</p>
+        <p className="day-title">Calisthenics Skill Tree</p>
         {added && <span className="level-chip">Added</span>}
       </div>
       <p className="muted small">
@@ -26,7 +26,7 @@ export default function SkillTreeCard() {
         stronger. Cool, but not for everyone.
       </p>
       <button type="button" className="btn btn-primary" onClick={open}>
-        {added ? 'Open skill tree' : '➕ Add skill tree'}
+        {added ? 'Open skill tree' : 'Add skill tree'}
       </button>
     </div>
   )

@@ -143,7 +143,7 @@ export default function Schedule() {
 
         {warning && (
           <div className="card notice">
-            <p className="muted small rest-note">💤 {warning}</p>
+            <p className="muted small rest-note">{warning}</p>
           </div>
         )}
       </div>

@@ -37,7 +37,7 @@ export const RECOVERY_AREAS = [
     id: 'hips_glutes',
     label: 'Hips & Glutes',
     shortLabel: 'Glutes',
-    emoji: '🍑',
+    emoji: '🦵',
     blurb: 'Wake up and strengthen the glute medius and max — the engine for the hips, knees and ankles.',
     why: 'Progressive glute-medius and glute-max loading (bridges → single-leg → hinges) is the backbone of hip rehab and protects the joints below it.',
     exercises: [
@@ -112,7 +112,7 @@ export const RECOVERY_AREAS = [
   {
     id: 'shin_splints',
     label: 'Shin splints',
-    emoji: '🦵',
+    emoji: '🦴',
     blurb: 'Calf and foot strength plus balance to settle medial tibial stress — and a strictly pain-free return to impact.',
     why: 'Shin-splint (MTSS) rehab centres on calf strength and endurance, foot-intrinsic strength to cut pronation stress, and balance — kept strictly pain-free, easing back to impact gradually.',
     exercises: [

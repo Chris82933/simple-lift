@@ -172,7 +172,7 @@ export default function Onboarding() {
               ))}
             </div>
             <button type="button" className="link-btn full-body-link" onClick={selectAllFocus}>
-              ⚡ Full body — select everything
+              Full body — select everything
             </button>
           </>
         )}

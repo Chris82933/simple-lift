@@ -48,8 +48,8 @@ export default function Program() {
         <Link className="btn btn-ghost btn-sm" to="/programs">
           Switch / manage{programCount > 1 ? ` (${programCount})` : ''}
         </Link>
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/schedule')}>📅 Schedule</button>
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/import-program')}>📥 Import</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/schedule')}>Schedule</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/import-program')}>Import</button>
       </div>
 
       {program.days.map((day, i) => (
@@ -67,7 +67,7 @@ export default function Program() {
               Start
             </button>
           </div>
-          {day.note && <p className="muted small balance-note">⚖️ {day.note}</p>}
+          {day.note && <p className="muted small balance-note">{day.note}</p>}
           <ul className="exercise-preview">
             {day.exercises.map((ex, j) => (
               <li key={j}>
@@ -92,7 +92,7 @@ export default function Program() {
             className="btn btn-ghost"
             onClick={() => navigate('/gzclp', { state: { programId: program.id } })}
           >
-            ⚙️ Adjust GZCLP setup
+            Adjust GZCLP setup
           </button>
         </div>
       )}

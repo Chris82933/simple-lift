@@ -35,7 +35,7 @@ export default function ShareProgram({ program }) {
         weights or start from their own — your saved maxes are never shared.
       </p>
       <button type="button" className="btn btn-ghost" onClick={generate} disabled={busy}>
-        {busy ? 'Building…' : '🔗 Copy share code'}
+        {busy ? 'Building…' : 'Copy share code'}
       </button>
       {code && (
         <textarea
