@@ -28,6 +28,7 @@ import { isBarbellLift } from '../lib/plates.js'
 import { ladderInfo } from '../lib/ladder.js'
 import { measureUnit, exMeasure, EXERCISE_BY_ID, isoHoldFor, tracksLoad, loadIsOptional } from '../data/exercises.js'
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
+import { lastWeightFromHistory, fillDownRows } from '../lib/logging.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
 // i.e. the first one not yet marked done (or the last, once all are done). This
@@ -133,13 +134,16 @@ const optionsFor = (sug, units) => {
 
 // Fresh set-tracking state for a session: warm-up ramp (rep-measured loaded
 // compounds) + working sets prefilled with the stored working weight.
-function buildInitialSets(session, units) {
+function buildInitialSets(session, units, lastWeight = {}) {
   const initial = {}
   const inc = incrementForUnits(units)
   if (session) {
     for (const ex of session.exercises) {
       const stored = ex.progression?.weight != null ? ex.progression.weight : ex.startWeight
-      const weight = ex.load !== false && stored !== '' && stored != null ? String(stored) : ''
+      let weight = ex.load !== false && stored !== '' && stored != null ? String(stored) : ''
+      // Nothing prescribed? Fall back to what you lifted last time (covers
+      // accessories and optional-load bodyweight moves that carry no 1RM).
+      if (weight === '' && Number(lastWeight[ex.id]) > 0) weight = String(lastWeight[ex.id])
       const warms = ex.warmups && weight && exMeasure(ex).type === 'reps'
         ? warmupSets(Number(weight), inc).map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: false, warmup: true }))
         : []
@@ -173,6 +177,7 @@ function buildLastTimeMap() {
   }
   return map
 }
+
 
 export default function Workout() {
   const navigate = useNavigate()
@@ -215,7 +220,7 @@ export default function Workout() {
   const [lastTime] = useState(() => buildLastTimeMap())
 
   // Set-tracking state: resumed from a saved session, else prefilled fresh.
-  const [sets, setSets] = useState(() => (resumed ? resumed.sets : buildInitialSets(session, units)))
+  const [sets, setSets] = useState(() => (resumed ? resumed.sets : buildInitialSets(session, units, lastWeightFromHistory(loadHistory()))))
 
   // Live, editable exercise list (lets users add/remove/adjust mid-workout).
   const [exercises, setExercises] = useState(() => (resumed ? resumed.exercises : (session ? session.exercises : [])))
@@ -385,6 +390,11 @@ export default function Workout() {
       ...s,
       [exId]: s[exId].map((row, i) => (i === idx ? { ...row, [field]: value } : row)),
     }))
+
+  // Copy the first working set's weight & reps into every later working set
+  // that isn't done yet — one tap for straight sets instead of retyping.
+  const fillDown = (exId) =>
+    setSets((s) => ({ ...s, [exId]: fillDownRows(s[exId]) }))
 
   const toggleDone = (exId, idx, restSec) =>
     setSets((s) => {
@@ -935,6 +945,21 @@ export default function Workout() {
                   )
                 }) })()}
               </div>
+
+              {exMeasure(ex).type !== 'time' && (() => {
+                const working = sets[ex.id].filter((r) => !r.warmup)
+                if (working.length < 2) return null
+                const first = working[0]
+                const repsOk = String(first?.reps ?? '').trim() !== ''
+                const weightOk = !showWeight || String(first?.weight ?? '').trim() !== ''
+                const anyToFill = working.slice(1).some((r) => !r.done)
+                if (!repsOk || !weightOk || !anyToFill) return null
+                return (
+                  <button type="button" className="btn btn-ghost btn-sm fill-down" onClick={() => fillDown(ex.id)}>
+                    ↓ Copy set 1 to the rest
+                  </button>
+                )
+              })()}
 
               {exMeasure(ex).type === 'time' && (() => {
                 const nextIdx = sets[ex.id].findIndex((r) => !r.done && !r.warmup)

@@ -731,6 +731,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 /* Isometric hold uses a distinct accent so it doesn't read as a rest. */
 .rest-timer.is-hold .rest-timer-inner { background: var(--accent-2, #e0a800); }
 .hold-start { width: 100%; margin-top: 6px; }
+.fill-down { margin-top: 6px; }
 .rest-timer-inner {
   display: flex;
   align-items: center;
