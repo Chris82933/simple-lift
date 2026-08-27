@@ -1,7 +1,7 @@
 // Custom stick-figure poses for the calisthenics skills — one recognizable
 // pose per skill (hang, front lever, planche, L-sit, hollow, pistol, handstand,
-// push-up). Matches the ExerciseFigure house style: 100×100, accent stroke,
-// a friendly face, muted bars/floor.
+// push-up). House style: 100×100, accent stroke, a friendly face, muted
+// bars/floor. (Exercise icons use the MuscleMap component instead.)
 
 const stroke = { stroke: 'var(--accent)', strokeWidth: 5, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' }
 const bar = { stroke: 'var(--muted)', strokeWidth: 4, strokeLinecap: 'round' }

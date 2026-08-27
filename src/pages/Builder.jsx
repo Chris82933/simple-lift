@@ -10,7 +10,7 @@ import {
 } from '../lib/storage.js'
 import { weightForReps, incrementForUnits, interpolate1RM } from '../lib/oneRepMax.js'
 import { ladderInfo } from '../lib/ladder.js'
-import ExerciseFigure from '../components/ExerciseFigure.jsx'
+import MuscleMap from '../components/MuscleMap.jsx'
 import CustomExerciseForm from '../components/CustomExerciseForm.jsx'
 import { CARDIO_MACHINES, CARDIO_BY_ID } from '../data/cardio.js'
 
@@ -342,7 +342,7 @@ export default function Builder() {
             {day.exercises.map((ex, ei) => (
               <div className="builder-exercise" key={ei}>
                 <div className="builder-ex-top">
-                  <ExerciseFigure pattern={ex.pattern} exId={ex.id} size={36} />
+                  <MuscleMap pattern={ex.pattern} exId={ex.id} size={32} />
                   <span className="ex-name">{ex.name}</span>
                   <div className="ex-reorder">
                     <button type="button" className="icon-btn" disabled={ei === 0} onClick={() => moveExercise(di, ei, -1)} aria-label={`Move ${ex.name} up`}>▲</button>
@@ -509,7 +509,7 @@ export default function Builder() {
                     disabled={added}
                     onClick={() => addExerciseToDay(picker, ex)}
                   >
-                    <ExerciseFigure pattern={ex.pattern} exId={ex.id} size={34} />
+                    <MuscleMap pattern={ex.pattern} exId={ex.id} size={32} />
                     <span className="ex-name">{ex.name}</span>
                     <span className="muted small">{ex.compound ? 'compound' : 'accessory'}{ex.requires.length === 0 ? ' · bodyweight' : ''}</span>
                     <span className="add-plus">{added ? '✓' : '+'}</span>

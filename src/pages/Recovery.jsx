@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { addProgram } from '../lib/storage.js'
 import { RECOVERY_AREAS, RECOVERY_DISCLAIMER, buildRecoveryProgram } from '../data/recovery.js'
 import { EXERCISE_BY_ID, measureUnit } from '../data/exercises.js'
-import ExerciseFigure from '../components/ExerciseFigure.jsx'
+import MuscleMap from '../components/MuscleMap.jsx'
 
 const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
 const range = (e) => (e.low === e.high ? `${e.low}` : `${e.low}–${e.high}`)
@@ -68,7 +68,7 @@ export default function Recovery() {
                 const ex = EXERCISE_BY_ID[e.id]
                 return (
                   <li key={i}>
-                    <ExerciseFigure pattern={ex.pattern} exId={ex.id} size={36} />
+                    <MuscleMap pattern={ex.pattern} exId={ex.id} size={32} />
                     <span className="ex-name">{ex.name}</span>
                     <span className="muted small">{e.sets} × {range(e)} {measureUnit(ex)}</span>
                   </li>

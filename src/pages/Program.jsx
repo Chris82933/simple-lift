@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { loadActiveProgram, loadPrograms } from '../lib/storage.js'
 import { repsLabel } from '../data/schemes.js'
 import { measureUnit } from '../data/exercises.js'
-import ExerciseFigure from '../components/ExerciseFigure.jsx'
+import MuscleMap from '../components/MuscleMap.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import ShareProgram from '../components/ShareProgram.jsx'
 
@@ -71,7 +71,7 @@ export default function Program() {
           <ul className="exercise-preview">
             {day.exercises.map((ex, j) => (
               <li key={j}>
-                <ExerciseFigure pattern={ex.pattern} exId={ex.id} size={40} />
+                <MuscleMap pattern={ex.pattern} exId={ex.id} size={34} />
                 <span className="ex-name">{ex.name}</span>
                 <FormCheckButton name={ex.name} compact />
                 <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)}</span>

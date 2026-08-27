@@ -9,7 +9,7 @@ import { measureUnit } from '../data/exercises.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
 import { sessionsThisWeek, trainingStreakWeeks } from '../lib/consistency.js'
-import ExerciseFigure from '../components/ExerciseFigure.jsx'
+import MuscleMap from '../components/MuscleMap.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import FocusTiles from '../components/FocusTiles.jsx'
 import ThemeToggle from '../components/ThemeToggle.jsx'
@@ -57,7 +57,7 @@ export default function Today() {
           <h1>Set up your training</h1>
         </header>
         <div className="card welcome-hero">
-          <ExerciseFigure pattern="squat" size={64} />
+          <MuscleMap pattern="squat" size={58} />
           <p className="muted">
             Simple Lift builds you a plan, tracks every set, and shows a clear demo for each
             move. Choose how you&apos;d like to start:
@@ -187,7 +187,7 @@ export default function Today() {
         <ul className="exercise-preview">
           {previewExercises.map((ex, j) => (
             <li key={j}>
-              <ExerciseFigure pattern={ex.pattern} exId={ex.id} size={40} />
+              <MuscleMap pattern={ex.pattern} exId={ex.id} size={34} />
               <span className="ex-name">
                 {ex.name}
                 {ex.swappedFrom && <span className="muted small swapped-note"> · swapped for your gear</span>}

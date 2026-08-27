@@ -456,6 +456,71 @@ export function loadIsOptional(ex) {
   return isBw && !!(lib.bwLoad || lib.addLoad)
 }
 
+// --- Targeted muscles (drives the MuscleMap icon) --------------------------
+// Each exercise resolves to { primary, secondary } muscle ids. Most come from
+// the movement `pattern` (so any two exercises of the same pattern share an
+// icon — the reuse we want); MUSCLE_OVERRIDES fixes the ones a pattern default
+// gets wrong (shrugs aren't lats, wrist curls aren't biceps, etc.). Muscle ids:
+// chest shoulders triceps biceps forearms lats traps lower_back abs obliques
+// core glutes quads hamstrings calves tibialis neck.
+const M_ = (primary, secondary = []) => ({ primary, secondary })
+export const PATTERN_MUSCLES = {
+  squat: M_(['quads', 'glutes'], ['hamstrings', 'core', 'lower_back']),
+  hinge: M_(['hamstrings', 'glutes', 'lower_back'], ['quads', 'traps', 'forearms']),
+  lunge: M_(['quads', 'glutes'], ['hamstrings', 'core']),
+  calf: M_(['calves']),
+  horiz_push: M_(['chest'], ['shoulders', 'triceps']),
+  vert_push: M_(['shoulders'], ['triceps', 'core']),
+  shoulder_iso: M_(['shoulders']),
+  horiz_pull: M_(['lats'], ['biceps', 'forearms', 'traps']),
+  vert_pull: M_(['lats'], ['biceps', 'forearms']),
+  biceps: M_(['biceps'], ['forearms']),
+  triceps: M_(['triceps']),
+  core: M_(['abs'], ['obliques']),
+  conditioning: M_([], ['quads', 'calves', 'core']),
+}
+const MUSCLE_OVERRIDES = {
+  // traps, not lats
+  db_shrug: M_(['traps'], ['forearms']), barbell_shrug: M_(['traps'], ['forearms']),
+  // rear delts / scapular
+  face_pull: M_(['shoulders', 'traps'], ['lats']), band_pull_apart: M_(['shoulders', 'traps']),
+  band_external_rotation: M_(['shoulders']),
+  // forearms, not biceps
+  wrist_curl: M_(['forearms']), reverse_wrist_curl: M_(['forearms']), cable_wrist_curl: M_(['forearms']),
+  eccentric_wrist_extension: M_(['forearms']), iso_wrist_extension: M_(['forearms']),
+  wrist_extensor_stretch: M_(['forearms']), wrist_flexor_stretch: M_(['forearms']),
+  median_nerve_glide: M_(['forearms']), tendon_glide: M_(['forearms']), finger_ext_band: M_(['forearms']),
+  // leg isolation
+  leg_extension: M_(['quads']), leg_curl: M_(['hamstrings']),
+  // glute-dominant
+  glute_bridge: M_(['glutes'], ['hamstrings']), glute_bridge_hold: M_(['glutes'], ['hamstrings']),
+  single_leg_glute_bridge: M_(['glutes'], ['hamstrings']),
+  hip_thrust: M_(['glutes'], ['hamstrings', 'quads']), hip_thrust_hold: M_(['glutes'], ['hamstrings']),
+  clamshell: M_(['glutes']), lateral_band_walk: M_(['glutes'], ['quads']),
+  // neck / posture
+  chin_tuck: M_(['neck']), neck_isometric: M_(['neck']), upper_trap_stretch: M_(['neck', 'traps']),
+  scap_wall_slide: M_(['shoulders', 'traps']),
+  // core specifics
+  russian_twist: M_(['obliques'], ['abs']), hanging_leg_raise: M_(['abs']),
+  hanging_knee_raise: M_(['abs']), toes_to_bar: M_(['abs']),
+  bird_dog: M_(['lower_back'], ['glutes']), superman: M_(['lower_back'], ['glutes']),
+  // shins
+  tibialis_raise: M_(['tibialis']),
+  // chest-flye style
+  pec_deck: M_(['chest']), cable_fly: M_(['chest']),
+  // doorway/pec stretch
+  doorway_pec_stretch: M_(['chest'], ['shoulders']),
+}
+// Resolve an exercise (object, entry, or id) to { primary, secondary } muscle ids.
+export function musclesFor(ex) {
+  const lib = libOf(ex)
+  const id = typeof ex === 'string' ? ex : ex?.id
+  const override = MUSCLE_OVERRIDES[id] || lib.muscles
+  if (override) return { primary: override.primary || [], secondary: override.secondary || [] }
+  const d = PATTERN_MUSCLES[lib.pattern || ex?.pattern]
+  return d ? { primary: [...d.primary], secondary: [...(d.secondary || [])] } : { primary: [], secondary: [] }
+}
+
 for (const ladder of LADDERS) {
   ladder.order.forEach((id, i) => {
     const ex = EXERCISE_BY_ID[id]

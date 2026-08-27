@@ -12,7 +12,7 @@ import { is531, applyWeek, weekNote } from '../lib/fiveThreeOne.js'
 import { extraNote } from '../lib/progression.js'
 import { reviewSession, applyChoices, INCREMENTS } from '../lib/sessionReview.js'
 import { methodFor, recommendChoice, recommendReason, methodName } from '../lib/progressionMethods.js'
-import ExerciseFigure from '../components/ExerciseFigure.jsx'
+import MuscleMap from '../components/MuscleMap.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import RestTimer from '../components/RestTimer.jsx'
 import ExercisePicker from '../components/ExercisePicker.jsx'
@@ -812,7 +812,7 @@ export default function Workout() {
           return (
             <div className={'card exercise-card' + (doable ? '' : ' is-unavailable')} key={ex.id}>
               <div className="exercise-top">
-                <ExerciseFigure pattern={ex.pattern} exId={ex.id} size={52} />
+                <MuscleMap pattern={ex.pattern} exId={ex.id} size={46} />
                 <div className="exercise-headings">
                   <div className="ex-title-row">
                     <p className="ex-name big">{ex.name}{ex.adhoc ? ' ＋' : ''}</p>

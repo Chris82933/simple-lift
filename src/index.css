@@ -15,6 +15,7 @@
   --bg: #101012;
   --surface: #1a1a1d;
   --surface-2: #26262b;
+  --mm-body: #3a414c;        /* muscle-map body silhouette */
   --border: #36363c;
   --text: #f4f4f5;
   --muted: #898989;          /* palette gray */
@@ -40,6 +41,7 @@
   --bg: #f4f4f5;
   --surface: #ffffff;
   --surface-2: #ececee;
+  --mm-body: #c4ccd4;        /* muscle-map body silhouette */
   --border: #d9d9d9;         /* palette light gray */
   --text: #18181b;
   --muted: #6b6b6b;
@@ -395,6 +397,15 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   border-radius: 12px;
   padding: 2px;
 }
+
+/* Muscle-map exercise icon: slate body, mint = primary, dim mint = secondary. */
+.muscle-map { display: block; }
+.mm-fill { fill: var(--mm-body); }
+.mm-stroke { fill: none; stroke: var(--mm-body); stroke-linecap: round; }
+.mm-line { fill: none; stroke: var(--muted); stroke-linecap: round; opacity: 0.4; }
+.mm-line-fill { fill: var(--muted); opacity: 0.4; }
+.mm-primary { fill: var(--accent); }
+.mm-secondary { fill: color-mix(in srgb, var(--accent) 45%, var(--mm-body)); }
 
 /* ---- Program day cards ---- */
 .day-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }

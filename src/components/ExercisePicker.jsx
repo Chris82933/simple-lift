@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { EXERCISES, matchesQuery } from '../data/exercises.js'
-import ExerciseFigure from './ExerciseFigure.jsx'
+import MuscleMap from './MuscleMap.jsx'
 import CustomExerciseForm from './CustomExerciseForm.jsx'
 import { getEquipment, activeEquipmentIds, isDoable, profileMeta } from '../lib/equipment.js'
 
@@ -43,7 +43,7 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
         <div className="picker-list">
           {filtered.map((ex) => (
             <button key={ex.id} type="button" className="picker-item" onClick={() => onPick(ex)}>
-              <ExerciseFigure pattern={ex.pattern} exId={ex.id} size={34} />
+              <MuscleMap pattern={ex.pattern} exId={ex.id} size={30} />
               <span className="ex-name">{ex.name}{ex.custom ? ' ·' : ''}</span>
               <span className="muted small">
                 {ex.custom ? 'custom · ' : ''}{ex.compound ? 'compound' : 'accessory'}{ex.requires.length === 0 ? ' · bodyweight' : ''}
