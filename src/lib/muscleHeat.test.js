@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sessionMuscleHeat } from './muscleHeat.js'
+import { sessionMuscleHeat, plannedMuscleHeat } from './muscleHeat.js'
 
 const doneSet = (reps = 5) => ({ done: true, reps, weight: 100 })
 
@@ -53,5 +53,33 @@ describe('sessionMuscleHeat', () => {
       expect(v).toBeGreaterThan(0)
       expect(v).toBeLessThanOrEqual(1)
     }
+  })
+})
+
+describe('plannedMuscleHeat (builder / program view)', () => {
+  it('scores by prescribed set count, before anything is logged', () => {
+    const heat = plannedMuscleHeat([
+      { id: 'bench_press', pattern: 'horiz_push', sets: 4 },
+      { id: 'db_curl', pattern: 'biceps', sets: 2 },
+    ])
+    expect(heat.chest).toBe(1)               // 4 sets primary = max
+    expect(heat.biceps).toBeCloseTo(0.5)     // 2 sets of 4
+    expect(heat.shoulders).toBeCloseTo(0.5)  // bench secondary 4×0.5 = 2 of 4
+  })
+
+  it('updates as exercises are added (pure function of the day)', () => {
+    const before = plannedMuscleHeat([{ id: 'back_squat', pattern: 'squat', sets: 3 }])
+    expect(before.quads).toBe(1)
+    const after = plannedMuscleHeat([
+      { id: 'back_squat', pattern: 'squat', sets: 3 },
+      { id: 'bench_press', pattern: 'horiz_push', sets: 3 },
+    ])
+    expect(after.chest).toBe(1)
+    expect(after.quads).toBe(1)
+  })
+
+  it('is empty for a day with no exercises or no sets', () => {
+    expect(plannedMuscleHeat([])).toEqual({})
+    expect(plannedMuscleHeat([{ id: 'plank', pattern: 'core', sets: 0 }])).toEqual({})
   })
 })

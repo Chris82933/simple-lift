@@ -11,6 +11,7 @@ import {
 import { weightForReps, incrementForUnits, interpolate1RM } from '../lib/oneRepMax.js'
 import { ladderInfo } from '../lib/ladder.js'
 import MuscleMap from '../components/MuscleMap.jsx'
+import { plannedMuscleHeat } from '../lib/muscleHeat.js'
 import CustomExerciseForm from '../components/CustomExerciseForm.jsx'
 import { CARDIO_MACHINES, CARDIO_BY_ID } from '../data/cardio.js'
 
@@ -338,6 +339,13 @@ export default function Builder() {
               value={day.title}
               onChange={(e) => updateDay(di, { title: e.target.value })}
             />
+
+            {day.exercises.length > 0 && (
+              <div className="day-muscles">
+                <MuscleMap heat={plannedMuscleHeat(day.exercises)} size={52} />
+                <span className="muted small">Muscles this session · darker = more sets</span>
+              </div>
+            )}
 
             {day.exercises.map((ex, ei) => (
               <div className="builder-exercise" key={ei}>

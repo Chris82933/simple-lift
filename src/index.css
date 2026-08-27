@@ -16,6 +16,8 @@
   --surface: #1a1a1d;
   --surface-2: #26262b;
   --mm-body: #3a414c;        /* muscle-map body silhouette */
+  --mm-heat-lo: #b9f5e0;     /* heatmap: least worked (light mint) */
+  --mm-heat-hi: #17a074;     /* heatmap: most worked (deep mint) */
   --border: #36363c;
   --text: #f4f4f5;
   --muted: #898989;          /* palette gray */
@@ -42,6 +44,8 @@
   --surface: #ffffff;
   --surface-2: #ececee;
   --mm-body: #c4ccd4;        /* muscle-map body silhouette */
+  --mm-heat-lo: #8fdcc0;     /* heatmap: least worked (light mint) */
+  --mm-heat-hi: #0a6b4e;     /* heatmap: most worked (deep mint) */
   --border: #d9d9d9;         /* palette light gray */
   --text: #18181b;
   --muted: #6b6b6b;
@@ -413,8 +417,16 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .heat-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .heat-legend-bar {
   width: 96px; height: 8px; border-radius: 5px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: linear-gradient(90deg, var(--mm-heat-lo), var(--mm-heat-hi));
 }
+
+/* Per-day muscle map in the builder / program view */
+.day-muscles {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px; margin: 6px 0 10px;
+  background: var(--surface-2); border-radius: 12px;
+}
+.day-muscles .muscle-map { flex: none; width: 104px; height: auto; background: none; padding: 0; }
 
 /* ---- Program day cards ---- */
 .day-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }

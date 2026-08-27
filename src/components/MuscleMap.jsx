@@ -100,9 +100,9 @@ function heatRegions(heat) {
   return { front, back }
 }
 
-// Intensity → inline fill/opacity on the least-used-mint → most-used-coral ramp.
+// Intensity → inline fill/opacity: shades of mint, darker = more worked.
 function heatStyle(v) {
-  return { fill: `color-mix(in srgb, var(--accent-2) ${Math.round(v * 100)}%, var(--accent))`, opacity: 0.45 + 0.55 * v }
+  return { fill: `color-mix(in srgb, var(--mm-heat-hi) ${Math.round(v * 100)}%, var(--mm-heat-lo))`, opacity: 0.55 + 0.45 * v }
 }
 
 const Shape = ({ s, cls, style }) => {

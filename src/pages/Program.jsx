@@ -3,6 +3,7 @@ import { loadActiveProgram, loadPrograms } from '../lib/storage.js'
 import { repsLabel } from '../data/schemes.js'
 import { measureUnit } from '../data/exercises.js'
 import MuscleMap from '../components/MuscleMap.jsx'
+import { plannedMuscleHeat } from '../lib/muscleHeat.js'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import ShareProgram from '../components/ShareProgram.jsx'
 
@@ -68,6 +69,12 @@ export default function Program() {
             </button>
           </div>
           {day.note && <p className="muted small balance-note">{day.note}</p>}
+          {day.exercises.length > 0 && (
+            <div className="day-muscles">
+              <MuscleMap heat={plannedMuscleHeat(day.exercises)} size={50} />
+              <span className="muted small">Muscles this session · darker = more sets</span>
+            </div>
+          )}
           <ul className="exercise-preview">
             {day.exercises.map((ex, j) => (
               <li key={j}>
