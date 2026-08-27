@@ -88,18 +88,35 @@ function highlightRegions({ primary = [], secondary = [] }) {
   return { front, back }
 }
 
-const Shape = ({ s, cls }) => {
-  if (s.t === 'e') return <ellipse cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry} className={cls} transform={s.rot ? `rotate(${s.rot} ${s.cx} ${s.cy})` : undefined} />
-  if (s.t === 'p') return <path d={s.d} className={cls} />
-  if (s.t === 'r') return <rect x={s.x} y={s.y} width={s.w} height={s.h} rx={s.rx} ry={s.rx} className={cls} />
+// heat: { muscleId: 0–1 } → per-region intensity (max over muscles hitting it).
+function heatRegions(heat) {
+  const front = new Map(), back = new Map()
+  for (const [m, v] of Object.entries(heat || {})) {
+    for (const [side, key] of MUSCLE_MAP[m] || []) {
+      const map = side === 'front' ? front : back
+      map.set(key, Math.max(map.get(key) || 0, v))
+    }
+  }
+  return { front, back }
+}
+
+// Intensity → inline fill/opacity on the least-used-mint → most-used-coral ramp.
+function heatStyle(v) {
+  return { fill: `color-mix(in srgb, var(--accent-2) ${Math.round(v * 100)}%, var(--accent))`, opacity: 0.45 + 0.55 * v }
+}
+
+const Shape = ({ s, cls, style }) => {
+  if (s.t === 'e') return <ellipse cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry} className={cls} style={style} transform={s.rot ? `rotate(${s.rot} ${s.cx} ${s.cy})` : undefined} />
+  if (s.t === 'p') return <path d={s.d} className={cls} style={style} />
+  if (s.t === 'r') return <rect x={s.x} y={s.y} width={s.w} height={s.h} rx={s.rx} ry={s.rx} className={cls} style={style} />
   if (s.t === 'l') return <line x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} strokeWidth={s.w} className="mm-stroke" />
-  if (s.t === 'c') return <circle cx={s.cx} cy={s.cy} r={s.cr} className={cls} />
+  if (s.t === 'c') return <circle cx={s.cx} cy={s.cy} r={s.cr} className={cls} style={style} />
   if (s.t === 's') return <path d={s.d} className="mm-line" />
   if (s.t === 'cf') return <circle cx={s.cx} cy={s.cy} r={s.cr} className="mm-line-fill" />
   return null
 }
 
-function BodyView({ side, regions }) {
+function BodyView({ side, regions, heat }) {
   const R = side === 'front' ? FRONT : BACK
   const lines = side === 'front' ? LINES_FRONT : LINES_BACK
   return (
@@ -107,26 +124,30 @@ function BodyView({ side, regions }) {
       {BASE_FILL.map((s, i) => <Shape key={`bf${i}`} s={s} cls="mm-fill" />)}
       {BASE_ARMS.map((s, i) => <Shape key={`ba${i}`} s={s} cls="mm-stroke" />)}
       {lines.map((s, i) => <Shape key={`ln${i}`} s={s} cls="mm-line" />)}
-      {[...regions].flatMap(([key, level]) =>
-        (R[key] || []).map((s, i) => <Shape key={`${key}${i}`} s={s} cls={level === 'primary' ? 'mm-primary' : 'mm-secondary'} />))}
+      {[...regions].flatMap(([key, level]) => (R[key] || []).map((s, i) =>
+        heat
+          ? <Shape key={`${key}${i}`} s={s} cls="mm-heat" style={heatStyle(level)} />
+          : <Shape key={`${key}${i}`} s={s} cls={level === 'primary' ? 'mm-primary' : 'mm-secondary'} />))}
     </g>
   )
 }
 
-export default function MuscleMap({ exId, pattern, muscles, size = 48 }) {
-  const resolved = muscles || musclesFor(EXERCISE_BY_ID[exId] || { id: exId, pattern })
-  const { front, back } = highlightRegions(resolved)
+export default function MuscleMap({ exId, pattern, muscles, heat, size = 48 }) {
+  const isHeat = !!heat
+  const { front, back } = isHeat
+    ? heatRegions(heat)
+    : highlightRegions(muscles || musclesFor(EXERCISE_BY_ID[exId] || { id: exId, pattern }))
   return (
     <svg
       width={size * 2} height={size} viewBox="0 0 200 100"
       preserveAspectRatio="xMidYMid meet"
       role="img" aria-hidden="true" className="exercise-figure muscle-map"
     >
-      <g transform="translate(0,1)"><BodyView side="front" regions={front} /></g>
-      <g transform="translate(100,1)"><BodyView side="back" regions={back} /></g>
+      <g transform="translate(0,1)"><BodyView side="front" regions={front} heat={isHeat} /></g>
+      <g transform="translate(100,1)"><BodyView side="back" regions={back} heat={isHeat} /></g>
     </svg>
   )
 }
 
 // Exported for tests.
-export { MUSCLE_MAP, highlightRegions }
+export { MUSCLE_MAP, highlightRegions, heatRegions }

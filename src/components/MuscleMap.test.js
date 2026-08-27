@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createElement } from 'react'
-import MuscleMap, { highlightRegions, MUSCLE_MAP } from './MuscleMap.jsx'
+import MuscleMap, { highlightRegions, heatRegions, MUSCLE_MAP } from './MuscleMap.jsx'
 
 describe('highlightRegions', () => {
   it('maps primary and secondary muscles to front/back regions', () => {
@@ -55,5 +55,27 @@ describe('MuscleMap render', () => {
 
   it('does not crash on an unknown exercise id', () => {
     expect(() => svg({ exId: 'nope_not_real' })).not.toThrow()
+  })
+
+  it('renders a heat gradient when given a heat map', () => {
+    const out = svg({ heat: { chest: 1, shoulders: 0.4 } })
+    expect(out).toContain('mm-heat')
+    expect(out).toContain('color-mix') // ramp fill via inline style
+    expect(out).not.toContain('mm-primary')
+  })
+})
+
+describe('heatRegions', () => {
+  it('maps muscle intensities onto body regions, taking the max per region', () => {
+    const { front, back } = heatRegions({ chest: 1, shoulders: 0.4 })
+    expect(front.get('chest')).toBe(1)
+    expect(front.get('delts')).toBe(0.4) // shoulders → front + back delts
+    expect(back.get('delts')).toBe(0.4)
+  })
+
+  it('keeps the strongest signal when two muscles share a region', () => {
+    // core and abs both light the front abs region.
+    const { front } = heatRegions({ abs: 0.3, core: 0.9 })
+    expect(front.get('abs')).toBe(0.9)
   })
 })

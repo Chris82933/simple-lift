@@ -407,6 +407,15 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .mm-primary { fill: var(--accent); }
 .mm-secondary { fill: color-mix(in srgb, var(--accent) 45%, var(--mm-body)); }
 
+/* End-of-session "muscles worked" heatmap card */
+.muscles-worked { align-items: center; text-align: center; }
+.muscles-worked .muscle-map { width: 100%; height: auto; max-width: 260px; margin: 2px auto 0; background: none; padding: 0; }
+.heat-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.heat-legend-bar {
+  width: 96px; height: 8px; border-radius: 5px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
 /* ---- Program day cards ---- */
 .day-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .day-title { font-size: 18px; font-weight: 700; margin: 2px 0 0; }

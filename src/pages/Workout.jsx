@@ -29,6 +29,7 @@ import { ladderInfo } from '../lib/ladder.js'
 import { measureUnit, exMeasure, EXERCISE_BY_ID, isoHoldFor, tracksLoad, loadIsOptional } from '../data/exercises.js'
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
 import { lastWeightFromHistory, fillDownRows } from '../lib/logging.js'
+import { sessionMuscleHeat } from '../lib/muscleHeat.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
 // i.e. the first one not yet marked done (or the last, once all are done). This
@@ -244,6 +245,7 @@ export default function Workout() {
   const [hold, setHold] = useState(null) // in-set isometric hold timer
   const [finished, setFinished] = useState(false)
   const [finishedAt, setFinishedAt] = useState(null)
+  const [muscleHeat, setMuscleHeat] = useState({})
   const [review, setReview] = useState({ autoNotes: [], suggestions: [] })
   const [choices, setChoices] = useState({})
 
@@ -491,6 +493,7 @@ export default function Workout() {
     setRmUpdates(oneRMUpdates)
     setRmDone({})
     setFinishedAt(date)
+    setMuscleHeat(sessionMuscleHeat(entries))
 
     // Carry values forward + auto-apply deloads; collect optional increase suggestions.
     // Ad-hoc adds aren't in the program, so they can't persist/progress — exclude them.
@@ -581,6 +584,19 @@ export default function Workout() {
           <p className="placeholder-title">{session.title}</p>
           <p className="muted">{doneSets} of {totalSets} sets logged. Your weights are saved for next time.</p>
         </div>
+
+        {/* ---- Muscles worked (session heatmap) ---- */}
+        {Object.keys(muscleHeat).length > 0 && (
+          <div className="card muscles-worked">
+            <p className="group-label">Muscles worked</p>
+            <MuscleMap heat={muscleHeat} size={120} />
+            <div className="heat-legend">
+              <span className="muted small">Less</span>
+              <span className="heat-legend-bar" aria-hidden="true" />
+              <span className="muted small">More</span>
+            </div>
+          </div>
+        )}
 
         {/* ---- Personal records ---- */}
         {prs.length > 0 && (
