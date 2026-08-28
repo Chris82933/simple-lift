@@ -589,7 +589,7 @@ export default function Workout() {
         {Object.keys(muscleHeat).length > 0 && (
           <div className="card muscles-worked">
             <p className="group-label">Muscles worked</p>
-            <MuscleMap heat={muscleHeat} size={120} />
+            <MuscleMap heat={muscleHeat} size={300} labels />
             <div className="heat-legend">
               <span className="muted small">Less</span>
               <span className="heat-legend-bar" aria-hidden="true" />
@@ -828,7 +828,7 @@ export default function Workout() {
           return (
             <div className={'card exercise-card' + (doable ? '' : ' is-unavailable')} key={ex.id}>
               <div className="exercise-top">
-                <MuscleMap pattern={ex.pattern} exId={ex.id} size={46} />
+                <MuscleMap pattern={ex.pattern} exId={ex.id} size={104} />
                 <div className="exercise-headings">
                   <div className="ex-title-row">
                     <p className="ex-name big">{ex.name}{ex.adhoc ? ' ＋' : ''}</p>

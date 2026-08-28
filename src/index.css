@@ -410,10 +410,12 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .mm-line-fill { fill: var(--muted); opacity: 0.4; }
 .mm-primary { fill: var(--accent); }
 .mm-secondary { fill: color-mix(in srgb, var(--accent) 45%, var(--mm-body)); }
+.muscle-map text { font-family: system-ui, sans-serif; }
+.mm-label { fill: var(--muted); opacity: 0.6; font-weight: 700; }
 
 /* End-of-session "muscles worked" heatmap card */
 .muscles-worked { align-items: center; text-align: center; }
-.muscles-worked .muscle-map { width: 100%; height: auto; max-width: 260px; margin: 2px auto 0; background: none; padding: 0; }
+.muscles-worked .muscle-map { width: 100%; height: auto; max-width: 320px; margin: 4px auto 0; background: none; padding: 0; }
 .heat-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .heat-legend-bar {
   width: 96px; height: 8px; border-radius: 5px;
@@ -422,11 +424,12 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 
 /* Per-day muscle map in the builder / program view */
 .day-muscles {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 10px; margin: 6px 0 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px; margin: 8px 0 12px;
   background: var(--surface-2); border-radius: 12px;
 }
-.day-muscles .muscle-map { flex: none; width: 104px; height: auto; background: none; padding: 0; }
+.day-muscles .muscle-map { width: 100%; max-width: 210px; height: auto; background: none; padding: 0; }
+.day-muscles .muted { text-align: center; }
 
 /* ---- Program day cards ---- */
 .day-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }

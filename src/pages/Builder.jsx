@@ -342,7 +342,7 @@ export default function Builder() {
 
             {day.exercises.length > 0 && (
               <div className="day-muscles">
-                <MuscleMap heat={plannedMuscleHeat(day.exercises)} size={52} />
+                <MuscleMap heat={plannedMuscleHeat(day.exercises)} size={200} labels />
                 <span className="muted small">Muscles this session · darker = more sets</span>
               </div>
             )}
@@ -350,7 +350,7 @@ export default function Builder() {
             {day.exercises.map((ex, ei) => (
               <div className="builder-exercise" key={ei}>
                 <div className="builder-ex-top">
-                  <MuscleMap pattern={ex.pattern} exId={ex.id} size={32} />
+                  <MuscleMap pattern={ex.pattern} exId={ex.id} size={72} />
                   <span className="ex-name">{ex.name}</span>
                   <div className="ex-reorder">
                     <button type="button" className="icon-btn" disabled={ei === 0} onClick={() => moveExercise(di, ei, -1)} aria-label={`Move ${ex.name} up`}>▲</button>
@@ -517,7 +517,7 @@ export default function Builder() {
                     disabled={added}
                     onClick={() => addExerciseToDay(picker, ex)}
                   >
-                    <MuscleMap pattern={ex.pattern} exId={ex.id} size={32} />
+                    <MuscleMap pattern={ex.pattern} exId={ex.id} size={72} />
                     <span className="ex-name">{ex.name}</span>
                     <span className="muted small">{ex.compound ? 'compound' : 'accessory'}{ex.requires.length === 0 ? ' · bodyweight' : ''}</span>
                     <span className="add-plus">{added ? '✓' : '+'}</span>

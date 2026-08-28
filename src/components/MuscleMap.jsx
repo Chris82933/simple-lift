@@ -132,19 +132,29 @@ function BodyView({ side, regions, heat }) {
   )
 }
 
-export default function MuscleMap({ exId, pattern, muscles, heat, size = 48 }) {
+// viewBox cropped to the two bodies (+ a little room for the labels), so they
+// fill the box rather than floating in whitespace. `size` is the rendered WIDTH.
+const VB = { x: 8, w: 180, h: 108 }
+
+export default function MuscleMap({ exId, pattern, muscles, heat, size = 96, labels = false }) {
   const isHeat = !!heat
   const { front, back } = isHeat
     ? heatRegions(heat)
     : highlightRegions(muscles || musclesFor(EXERCISE_BY_ID[exId] || { id: exId, pattern }))
   return (
     <svg
-      width={size * 2} height={size} viewBox="0 0 200 100"
+      width={size} height={Math.round((size * VB.h) / VB.w)} viewBox={`${VB.x} 0 ${VB.w} ${VB.h}`}
       preserveAspectRatio="xMidYMid meet"
       role="img" aria-hidden="true" className="exercise-figure muscle-map"
     >
       <g transform="translate(0,1)"><BodyView side="front" regions={front} heat={isHeat} /></g>
-      <g transform="translate(100,1)"><BodyView side="back" regions={back} heat={isHeat} /></g>
+      <g transform="translate(96,1)"><BodyView side="back" regions={back} heat={isHeat} /></g>
+      {labels && (
+        <g className="mm-label">
+          <text x="50" y="105" textAnchor="middle" fontSize="5.5" letterSpacing="0.6">FRONT</text>
+          <text x="146" y="105" textAnchor="middle" fontSize="5.5" letterSpacing="0.6">BACK</text>
+        </g>
+      )}
     </svg>
   )
 }

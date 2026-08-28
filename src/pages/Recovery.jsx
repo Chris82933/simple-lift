@@ -68,7 +68,7 @@ export default function Recovery() {
                 const ex = EXERCISE_BY_ID[e.id]
                 return (
                   <li key={i}>
-                    <MuscleMap pattern={ex.pattern} exId={ex.id} size={32} />
+                    <MuscleMap pattern={ex.pattern} exId={ex.id} size={78} />
                     <span className="ex-name">{ex.name}</span>
                     <span className="muted small">{e.sets} × {range(e)} {measureUnit(ex)}</span>
                   </li>

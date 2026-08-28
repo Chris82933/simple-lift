@@ -71,14 +71,14 @@ export default function Program() {
           {day.note && <p className="muted small balance-note">{day.note}</p>}
           {day.exercises.length > 0 && (
             <div className="day-muscles">
-              <MuscleMap heat={plannedMuscleHeat(day.exercises)} size={50} />
+              <MuscleMap heat={plannedMuscleHeat(day.exercises)} size={180} labels />
               <span className="muted small">Muscles this session · darker = more sets</span>
             </div>
           )}
           <ul className="exercise-preview">
             {day.exercises.map((ex, j) => (
               <li key={j}>
-                <MuscleMap pattern={ex.pattern} exId={ex.id} size={34} />
+                <MuscleMap pattern={ex.pattern} exId={ex.id} size={78} />
                 <span className="ex-name">{ex.name}</span>
                 <FormCheckButton name={ex.name} compact />
                 <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)}</span>

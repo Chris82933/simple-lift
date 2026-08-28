@@ -57,7 +57,7 @@ export default function Today() {
           <h1>Set up your training</h1>
         </header>
         <div className="card welcome-hero">
-          <MuscleMap pattern="squat" size={58} />
+          <MuscleMap pattern="squat" size={128} />
           <p className="muted">
             Simple Lift builds you a plan, tracks every set, and shows a clear demo for each
             move. Choose how you&apos;d like to start:
@@ -187,7 +187,7 @@ export default function Today() {
         <ul className="exercise-preview">
           {previewExercises.map((ex, j) => (
             <li key={j}>
-              <MuscleMap pattern={ex.pattern} exId={ex.id} size={34} />
+              <MuscleMap pattern={ex.pattern} exId={ex.id} size={78} />
               <span className="ex-name">
                 {ex.name}
                 {ex.swappedFrom && <span className="muted small swapped-note"> · swapped for your gear</span>}
