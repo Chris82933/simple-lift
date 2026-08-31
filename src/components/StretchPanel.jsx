@@ -8,16 +8,17 @@ export default function StretchPanel({ muscles = [], phase = 'static', title, su
   const [open, setOpen] = useState(false)
   const routine = buildStretchRoutine(muscles, phase)
   if (routine.length === 0) return null
+  const count = `${routine.length} move${routine.length === 1 ? '' : 's'}`
   return (
     <div className="card collapsible stretch-panel">
       <button type="button" className="collapse-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="collapse-title">{title}</span>
-        <span className="muted small collapse-sub">{open ? subtitle : `${routine.length} move${routine.length === 1 ? '' : 's'}`}</span>
+        <span className="muted small collapse-sub">{count}</span>
         <span className={'collapse-chevron' + (open ? ' is-open' : '')} aria-hidden="true">▾</span>
       </button>
       {open && (
         <div className="collapse-body">
-          {subtitle && <p className="muted small">{subtitle}</p>}
+          {subtitle && <p className="muted small stretch-intro">{subtitle}</p>}
           <ul className="stretch-list">
             {routine.map((s) => (
               <li className="stretch-row" key={s.muscle}>

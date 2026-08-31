@@ -432,7 +432,9 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .day-muscles .muted { text-align: center; }
 
 /* Stretch routine panel (warm-up / cool-down) */
-.stretch-list { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.stretch-panel .collapse-title { color: var(--accent); }
+.stretch-intro { margin: 0 0 12px; }
+.stretch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
 .stretch-row { display: flex; flex-direction: column; gap: 3px; }
 .stretch-row-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .stretch-muscle {
@@ -1818,8 +1820,11 @@ select.text-input { appearance: none; }
   color: var(--muted);
   flex: 1;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.collapse-sub { flex: none; }
+.collapse-sub { flex: none; white-space: nowrap; }
 .collapse-chevron {
   flex: none;
   color: var(--muted);
