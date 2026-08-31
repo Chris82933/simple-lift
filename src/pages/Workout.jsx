@@ -31,6 +31,7 @@ import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
 import { lastWeightFromHistory, fillDownRows } from '../lib/logging.js'
 import { sessionMuscleHeat, plannedMuscleHeat } from '../lib/muscleHeat.js'
 import StretchPanel from '../components/StretchPanel.jsx'
+import Icon from '../components/Icon.jsx'
 
 // Which set the plate breakdown should load for: the set you're about to do —
 // i.e. the first one not yet marked done (or the last, once all are done). This
@@ -612,7 +613,7 @@ export default function Workout() {
         {/* ---- Personal records ---- */}
         {prs.length > 0 && (
           <div className="card pr-card">
-            <p className="pr-title">🏆 New personal record{prs.length === 1 ? '' : 's'}!</p>
+            <p className="pr-title"><Icon name="trophy" size={18} /> New personal record{prs.length === 1 ? '' : 's'}!</p>
             <ul className="pr-list">
               {prs.map((pr) => (
                 <li key={pr.exId}>
@@ -777,7 +778,7 @@ export default function Workout() {
         <div className="workout-head-row">
           <p className="eyebrow">{session.dayLabel} · Workout</p>
           <button type="button" className={'edit-toggle' + (editMode ? ' is-on' : '')} onClick={() => (editMode ? saveEdits() : enterEdit())}>
-            {editMode ? 'Done editing' : '✎ Edit'}
+            {editMode ? 'Done editing' : <><Icon name="edit" size={14} /> Edit</>}
           </button>
         </div>
         <h1>{session.title}</h1>
@@ -1004,7 +1005,7 @@ export default function Workout() {
                 return (
                   <>
                     <button type="button" className="btn btn-ghost btn-sm hold-start" onClick={() => startHold(ex)}>
-                      ▶ Time a {target}s hold
+                      <Icon name="play" size={13} /> Time a {target}s hold
                     </button>
                     {where && <p className="muted small hold-where"><strong>Where to hold:</strong> {where}</p>}
                   </>

@@ -9,9 +9,14 @@ import { sessionsThisWeek, trainingStreakWeeks, weeklyCounts, volumeThisWeek, pr
 import ProgressChart from '../components/ProgressChart.jsx'
 import ExerciseDetail from '../components/ExerciseDetail.jsx'
 import { useToast } from '../components/Toast.jsx'
+import Icon from '../components/Icon.jsx'
 
-// Chart palette — mid-tone hues that stay legible on both light and dark cards.
-const PALETTE = ['#10b981', '#ff4d4d', '#3b9fd6', '#e0a800', '#e84393', '#8b5cf6', '#14b8a6', '#f97316']
+// Chart palette — the app's own accent tokens, so series stay on-brand and
+// theme-aware (correct in both light and dark) instead of fixed hexes.
+const PALETTE = [
+  'var(--accent)', 'var(--accent-6)', 'var(--accent-5)',
+  'var(--accent-3)', 'var(--accent-2)', 'var(--accent-4)',
+]
 
 // Build per-exercise weight series from history. metric 'top' plots the heaviest
 // set each session; 'e1rm' plots the best estimated 1RM (weight × reps), which
@@ -117,7 +122,7 @@ function SessionEntry({ workout, units, onDelete }) {
           </span>
         </span>
         <span className="log-summary-side">
-          {prIds.size > 0 && <span className="pr-badge">🏆 {prIds.size}</span>}
+          {prIds.size > 0 && <span className="pr-badge"><Icon name="trophy" size={13} /> {prIds.size}</span>}
           {workout.difficulty && <span className="muted small">{DIFF_LABELS[workout.difficulty]}</span>}
           <span className="muted small">{shortDate(workout.date)}</span>
           <span className={'collapse-chevron' + (open ? ' is-open' : '')} aria-hidden="true">▾</span>
@@ -130,7 +135,7 @@ function SessionEntry({ workout, units, onDelete }) {
             {workout.difficulty && <span className="diff-badge">{DIFF_LABELS[workout.difficulty]}</span>}
             <span className="muted small">{new Date(workout.date).toLocaleDateString()}</span>
           </div>
-          {prs.length > 0 && <p className="muted small">🏆 New records: {prs.map((p) => p.name).join(', ')}</p>}
+          {prs.length > 0 && <p className="muted small"><Icon name="trophy" size={13} /> New records: {prs.map((p) => p.name).join(', ')}</p>}
           <div className="log-exercises">
             {entries.map((e, j) => {
               const rows = working(e)
@@ -141,7 +146,7 @@ function SessionEntry({ workout, units, onDelete }) {
                   <div className="log-row">
                     <span className="log-ex-name">
                       <span className={'log-status' + (skipped ? '' : ' is-done')} aria-hidden="true">{skipped ? '○' : '✓'}</span>
-                      {e.name}{e.adhoc ? ' ＋' : ''}{prIds.has(e.exerciseId) ? ' 🏆' : ''}
+                      {e.name}{e.adhoc ? ' ＋' : ''}{prIds.has(e.exerciseId) ? <> <Icon name="trophy" size={12} /></> : null}
                     </span>
                     <span className="muted small">
                       {skipped ? 'not done' : `${done}/${rows.length} sets · ${topSet(e)} ${units}`}
@@ -342,14 +347,14 @@ export default function Progress() {
                   {summary.weekly.map((w, i) => {
                     const isThis = i === summary.weekly.length - 1
                     const pct = w.count ? Math.max(Math.round((w.count / max) * 100), 14) : 0
+                    const label = isThis ? 'now' : (i === 0 ? shortDate(w.weekStart) : '')
                     return (
-                      <span
-                        key={w.weekStart}
-                        className={'week-bar' + (isThis ? ' is-current' : '') + (w.count ? '' : ' is-empty')}
-                        title={`${w.count} workout${w.count === 1 ? '' : 's'}`}
-                      >
-                        <span className="week-bar-fill" style={{ height: `${pct}%` }} />
-                      </span>
+                      <div className="week-col" key={w.weekStart} title={`${w.count} workout${w.count === 1 ? '' : 's'}`}>
+                        <span className={'week-bar' + (isThis ? ' is-current' : '') + (w.count ? '' : ' is-empty')}>
+                          <span className="week-bar-fill" style={{ height: `${pct}%` }} />
+                        </span>
+                        <span className="week-label">{label}</span>
+                      </div>
                     )
                   })}
                 </div>

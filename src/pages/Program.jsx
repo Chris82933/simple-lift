@@ -78,7 +78,7 @@ export default function Program() {
           <ul className="exercise-preview">
             {day.exercises.map((ex, j) => (
               <li key={j}>
-                <MuscleMap pattern={ex.pattern} exId={ex.id} size={78} />
+                <MuscleMap pattern={ex.pattern} exId={ex.id} size={46} compact />
                 <span className="ex-name">{ex.name}</span>
                 <FormCheckButton name={ex.name} compact />
                 <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)}</span>

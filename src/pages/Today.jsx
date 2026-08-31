@@ -13,6 +13,7 @@ import MuscleMap from '../components/MuscleMap.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import FocusTiles from '../components/FocusTiles.jsx'
 import ThemeToggle from '../components/ThemeToggle.jsx'
+import Icon from '../components/Icon.jsx'
 
 // Short "how long ago" label for an in-progress session's last save.
 function timeAgo(ts) {
@@ -187,7 +188,7 @@ export default function Today() {
         <ul className="exercise-preview">
           {previewExercises.map((ex, j) => (
             <li key={j}>
-              <MuscleMap pattern={ex.pattern} exId={ex.id} size={78} />
+              <MuscleMap pattern={ex.pattern} exId={ex.id} size={46} compact />
               <span className="ex-name">
                 {ex.name}
                 {ex.swappedFrom && <span className="muted small swapped-note"> · swapped for your gear</span>}
@@ -218,7 +219,7 @@ export default function Today() {
           {resumingThisDay ? 'Continue workout' : isScheduledToday ? 'Start workout' : `Start ${session.title} now`}
         </button>
         {resumingThisDay && (
-          <p className="muted small">▶ Picking up where you left off · {timeAgo(inProgress.savedAt)}</p>
+          <p className="muted small"><Icon name="play" size={12} /> Picking up where you left off · {timeAgo(inProgress.savedAt)}</p>
         )}
         {inProgress && !resumingThisDay && (
           <button
@@ -226,7 +227,7 @@ export default function Today() {
             className="btn btn-ghost btn-sm"
             onClick={() => navigate('/workout', { state: { dayIndex: inProgress.dayIndex } })}
           >
-            ▶ Continue {inProgress.sessionTitle} (in progress · {timeAgo(inProgress.savedAt)})
+            <Icon name="play" size={13} /> Continue {inProgress.sessionTitle} (in progress · {timeAgo(inProgress.savedAt)})
           </button>
         )}
         {needSwap > 0 && (

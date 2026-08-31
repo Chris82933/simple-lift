@@ -43,7 +43,7 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
         <div className="picker-list">
           {filtered.map((ex) => (
             <button key={ex.id} type="button" className="picker-item" onClick={() => onPick(ex)}>
-              <MuscleMap pattern={ex.pattern} exId={ex.id} size={66} />
+              <MuscleMap pattern={ex.pattern} exId={ex.id} size={44} compact />
               <span className="ex-name">{ex.name}{ex.custom ? ' ·' : ''}</span>
               <span className="muted small">
                 {ex.custom ? 'custom · ' : ''}{ex.compound ? 'compound' : 'accessory'}{ex.requires.length === 0 ? ' · bodyweight' : ''}

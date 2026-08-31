@@ -9,6 +9,7 @@ import SkillRadar from '../components/SkillRadar.jsx'
 import SkillFigure from '../components/SkillFigure.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import FocusTiles from '../components/FocusTiles.jsx'
+import Icon from '../components/Icon.jsx'
 
 export default function Skills() {
   const navigate = useNavigate()
@@ -156,7 +157,7 @@ export default function Skills() {
               <p className="cue">{level.cues}</p>
               <p className="plan-line">Do <strong>{planLabel(sk, level)}</strong></p>
               {mastered ? (
-                <p className="suggestion">🏆 Skill mastered — you own the hardest level.</p>
+                <p className="suggestion"><Icon name="trophy" size={14} /> Skill mastered — you own the hardest level.</p>
               ) : atTop ? (
                 <p className="suggestion">Top level. Hit <strong>{advanceLabel(sk, level)}</strong> to master it.</p>
               ) : (

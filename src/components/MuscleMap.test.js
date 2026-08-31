@@ -57,6 +57,14 @@ describe('MuscleMap render', () => {
     expect(() => svg({ exId: 'nope_not_real' })).not.toThrow()
   })
 
+  it('compact mode renders a single dominant body, still highlighted', () => {
+    const out = svg({ exId: 'bench_press', compact: true })
+    expect(out).toContain('muscle-map-compact')
+    // One body group, not the front+back pair (no second translate(96,...))
+    expect(out).not.toContain('translate(96')
+    expect(out).toContain('mm-primary')
+  })
+
   it('renders a heat gradient when given a heat map', () => {
     const out = svg({ heat: { chest: 1, shoulders: 0.4 } })
     expect(out).toContain('mm-heat')

@@ -136,11 +136,33 @@ function BodyView({ side, regions, heat }) {
 // fill the box rather than floating in whitespace. `size` is the rendered WIDTH.
 const VB = { x: 8, w: 180, h: 108 }
 
-export default function MuscleMap({ exId, pattern, muscles, heat, size = 96, labels = false }) {
+// Which single view carries the most signal (primary=2, secondary=1) — used by
+// compact mode so a list icon shows one legible body instead of two tiny ones.
+function dominantSide(front, back) {
+  const score = (m) => [...m.values()].reduce((a, lv) => a + (lv === 'primary' ? 2 : 1), 0)
+  return score(back) > score(front) ? 'back' : 'front'
+}
+
+export default function MuscleMap({ exId, pattern, muscles, heat, size = 96, labels = false, compact = false }) {
   const isHeat = !!heat
   const { front, back } = isHeat
     ? heatRegions(heat)
     : highlightRegions(muscles || musclesFor(EXERCISE_BY_ID[exId] || { id: exId, pattern }))
+
+  // Compact: one dominant body, cropped so it fills the box (list/picker icons).
+  if (compact && !isHeat) {
+    const side = dominantSide(front, back)
+    const VBW = 78
+    return (
+      <svg
+        width={size} height={Math.round((size * 100) / VBW)} viewBox={`11 0 ${VBW} 100`}
+        preserveAspectRatio="xMidYMid meet"
+        role="img" aria-hidden="true" className="exercise-figure muscle-map muscle-map-compact"
+      >
+        <g transform="translate(0,1)"><BodyView side={side} regions={side === 'front' ? front : back} /></g>
+      </svg>
+    )
+  }
   return (
     <svg
       width={size} height={Math.round((size * VB.h) / VB.w)} viewBox={`${VB.x} 0 ${VB.w} ${VB.h}`}
