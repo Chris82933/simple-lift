@@ -83,6 +83,19 @@ const ORDER = [
   'abs', 'obliques', 'lower_back', 'glutes', 'quads', 'hamstrings', 'calves', 'tibialis',
 ]
 
+// Readable label for the muscle a stretch targets (shown on each routine row).
+export const MUSCLE_LABEL = {
+  chest: 'Chest', shoulders: 'Shoulders', triceps: 'Triceps', biceps: 'Biceps',
+  forearms: 'Forearms', lats: 'Lats', traps: 'Traps', lower_back: 'Lower back',
+  abs: 'Core', obliques: 'Obliques', glutes: 'Glutes', quads: 'Quads',
+  hamstrings: 'Hamstrings', calves: 'Calves', tibialis: 'Shins', neck: 'Neck',
+}
+
+// An image-search link for a stretch, so users can see example photos on demand
+// (bundling stretch photos would be a licensing minefield — this stays clean).
+export const stretchPhotoUrl = (name) =>
+  `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(name + ' exercise')}`
+
 // muscleIds + phase ('dynamic' | 'static') → ordered, de-duplicated stretch list.
 export function buildStretchRoutine(muscleIds = [], phase = 'static') {
   const wanted = new Set()
@@ -92,7 +105,9 @@ export function buildStretchRoutine(muscleIds = [], phase = 'static') {
   }
   return ORDER.filter((k) => wanted.has(k)).map((k) => ({
     muscle: k,
+    label: MUSCLE_LABEL[k] || k,
     name: STRETCHES[k][phase].name,
     cue: STRETCHES[k][phase].cue,
+    photo: stretchPhotoUrl(STRETCHES[k][phase].name),
   }))
 }

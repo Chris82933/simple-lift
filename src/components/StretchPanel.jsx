@@ -21,7 +21,19 @@ export default function StretchPanel({ muscles = [], phase = 'static', title, su
           <ul className="stretch-list">
             {routine.map((s) => (
               <li className="stretch-row" key={s.muscle}>
-                <span className="stretch-name">{s.name}</span>
+                <div className="stretch-row-head">
+                  <span className="stretch-muscle">{s.label}</span>
+                  <span className="stretch-name">{s.name}</span>
+                  <a
+                    className="stretch-photo"
+                    href={s.photo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Photos ↗
+                  </a>
+                </div>
                 <span className="muted small">{s.cue}</span>
               </li>
             ))}

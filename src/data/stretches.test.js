@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { STRETCHES, buildStretchRoutine } from './stretches.js'
+import { STRETCHES, buildStretchRoutine, MUSCLE_LABEL, stretchPhotoUrl } from './stretches.js'
 
 describe('stretch library', () => {
   it('every muscle has a dynamic and a static variant with a name + cue', () => {
@@ -41,5 +41,26 @@ describe('buildStretchRoutine', () => {
     // bench/press-ish session → chest, shoulders, triceps, core
     const r = buildStretchRoutine(['chest', 'shoulders', 'triceps', 'core'], 'static')
     expect(r.map((s) => s.muscle)).toEqual(['shoulders', 'chest', 'triceps', 'abs'])
+  })
+
+  it('each row carries a target-muscle label and a photo link', () => {
+    const [row] = buildStretchRoutine(['quads'], 'static')
+    expect(row.label).toBe('Quads')
+    expect(row.photo).toContain('http')
+    expect(row.photo).toContain(encodeURIComponent('Standing Quad Stretch'))
+  })
+})
+
+describe('labels + photo links', () => {
+  it('every stretchable muscle has a readable label', () => {
+    for (const id of Object.keys(STRETCHES)) {
+      expect(MUSCLE_LABEL[id], id).toBeTruthy()
+    }
+  })
+  it('photo links point at an image search for the stretch', () => {
+    const url = stretchPhotoUrl('Doorway Pec Stretch')
+    expect(url).toMatch(/^https:\/\//)
+    expect(url).toContain('tbm=isch')
+    expect(url).toContain(encodeURIComponent('Doorway Pec Stretch'))
   })
 })
