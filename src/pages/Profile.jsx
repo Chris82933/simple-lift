@@ -98,6 +98,11 @@ export default function Profile() {
     setSettings(next)
     saveSettings(next)
   }
+  const setStretching = (on) => {
+    const next = { ...settings, stretching: on }
+    setSettings(next)
+    saveSettings(next)
+  }
   const [notifyBusy, setNotifyBusy] = useState(false)
   const setRestNotify = async (on) => {
     if (!on) {
@@ -398,6 +403,19 @@ export default function Profile() {
               type="button"
               className={'seg-item' + ((settings.restTimer === false ? 'off' : 'on') === o.id ? ' is-selected' : '')}
               onClick={() => setRestTimer(o.id === 'on')}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <p className="muted small" style={{ marginTop: 14 }}>Stretching routine — suggest a dynamic warm-up before and static stretches after, based on the muscles the session works. Shows as a collapsed panel.</p>
+        <div className="seg">
+          {[{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }].map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={'seg-item' + ((settings.stretching === true ? 'on' : 'off') === o.id ? ' is-selected' : '')}
+              onClick={() => setStretching(o.id === 'on')}
             >
               {o.label}
             </button>

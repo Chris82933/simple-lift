@@ -431,6 +431,11 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .day-muscles .muscle-map { width: 100%; max-width: 210px; height: auto; background: none; padding: 0; }
 .day-muscles .muted { text-align: center; }
 
+/* Stretch routine panel (warm-up / cool-down) */
+.stretch-list { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.stretch-row { display: flex; flex-direction: column; gap: 2px; }
+.stretch-name { font-weight: 600; font-size: 14px; }
+
 /* ---- Program day cards ---- */
 .day-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .day-title { font-size: 18px; font-weight: 700; margin: 2px 0 0; }

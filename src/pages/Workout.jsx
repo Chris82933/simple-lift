@@ -29,7 +29,8 @@ import { ladderInfo } from '../lib/ladder.js'
 import { measureUnit, exMeasure, EXERCISE_BY_ID, isoHoldFor, tracksLoad, loadIsOptional } from '../data/exercises.js'
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
 import { lastWeightFromHistory, fillDownRows } from '../lib/logging.js'
-import { sessionMuscleHeat } from '../lib/muscleHeat.js'
+import { sessionMuscleHeat, plannedMuscleHeat } from '../lib/muscleHeat.js'
+import StretchPanel from '../components/StretchPanel.jsx'
 
 // Which set the plate breakdown should load for: the set you're about to do —
 // i.e. the first one not yet marked done (or the last, once all are done). This
@@ -187,6 +188,7 @@ export default function Workout() {
   const units = settings.units || 'lbs'
   const showPlates = settings.hidePlateCalc !== true
   const restEnabled = settings.restTimer !== false // rest timer on unless turned off
+  const stretching = settings.stretching === true // opt-in warm-up/cool-down panels
 
   // Snapshot the program & session once at mount so mid-session edits don't reload the live workout.
   const stateDayIndex = location.state?.dayIndex
@@ -598,6 +600,15 @@ export default function Workout() {
           </div>
         )}
 
+        {stretching && (
+          <StretchPanel
+            muscles={Object.keys(muscleHeat)}
+            phase="static"
+            title="Cool-down stretches"
+            subtitle="Hold each for range of motion while you're still warm."
+          />
+        )}
+
         {/* ---- Personal records ---- */}
         {prs.length > 0 && (
           <div className="card pr-card">
@@ -811,6 +822,14 @@ export default function Workout() {
             </div>
           ) : null
         })()}
+        {stretching && (
+          <StretchPanel
+            muscles={Object.keys(plannedMuscleHeat(exercises))}
+            phase="dynamic"
+            title="Warm-up"
+            subtitle="Dynamic moves to prime the muscles you're about to train."
+          />
+        )}
         {exercises.map((ex) => {
           const loaded = ex.load !== false
           // Show a weight box whenever the move can take weight — always for
