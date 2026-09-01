@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt, loadBodyweight } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
-import { exMeasure } from '../data/exercises.js'
+import { exMeasure, musclesFor, matchesQuery, EXERCISE_BY_ID } from '../data/exercises.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
 import { prShort } from '../lib/records.js'
 import { sessionsThisWeek, trainingStreakWeeks, weeklyCounts, volumeThisWeek, prTimeline } from '../lib/consistency.js'
@@ -80,6 +80,7 @@ const DIFF_LABELS = {
   easy: 'Easy', moderate: 'Moderate', hard: 'Hard', maxed: 'Maxed out',
 }
 const shortDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+const muscleLabel = (m) => m.replace(/_/g, ' ')
 
 // A card whose body can be collapsed. The open/closed state is owned by the
 // page (and persisted to settings), so the layout is remembered.
@@ -238,14 +239,40 @@ export default function Progress() {
       .filter((p) => p.weight > 0 && !Number.isNaN(p.t))
       .sort((a, b) => a.t - b.t),
   }], [bodyweightLog])
-  // Every exercise that appears in history, for the tappable per-exercise list.
+  // Every exercise that appears in history, newest-first, for the tappable
+  // per-exercise list. Each entry carries its last-performed date and a count.
   const exercisesTracked = useMemo(() => {
     const seen = new Map()
     for (const w of history) for (const e of w.entries || []) {
-      if (!seen.has(e.exerciseId)) seen.set(e.exerciseId, e.name)
+      const cur = seen.get(e.exerciseId)
+      if (!cur) seen.set(e.exerciseId, { id: e.exerciseId, name: e.name, lastDate: w.date, count: 1 })
+      else cur.count++
     }
-    return [...seen].map(([id, name]) => ({ id, name }))
+    return [...seen.values()]
   }, [history])
+
+  // Exercise-history controls: good defaults (recency-sorted, capped) with
+  // search + muscle-group filter revealed only when the list is long. No
+  // persisted state — the list is short enough to re-derive on each visit.
+  const EX_PAGE = 6
+  const [exQuery, setExQuery] = useState('')
+  const [exMuscle, setExMuscle] = useState('all')
+  const [exShown, setExShown] = useState(EX_PAGE)
+
+  const exMuscleOptions = useMemo(() => {
+    const s = new Set()
+    for (const ex of exercisesTracked) for (const m of musclesFor(ex.id).primary) s.add(m)
+    return [...s]
+  }, [exercisesTracked])
+
+  const exFiltered = useMemo(() => exercisesTracked.filter((ex) => {
+    if (exMuscle !== 'all' && !musclesFor(ex.id).primary.includes(exMuscle)) return false
+    return matchesQuery(EXERCISE_BY_ID[ex.id] || { name: ex.name }, exQuery)
+  }), [exercisesTracked, exQuery, exMuscle])
+
+  const exActive = exQuery.trim() !== '' || exMuscle !== 'all'
+  const exVisible = exActive ? exFiltered : exFiltered.slice(0, exShown)
+
   const [bwHidden, setBwHidden] = useState(() => new Set())
   const toggleBw = (id) => setBwHidden((h) => {
     const n = new Set(h)
@@ -264,6 +291,8 @@ export default function Progress() {
     return n
   })
   const visible = allSeries.filter((s) => !hidden.has(s.id))
+  // Cap the legend so a big library doesn't flood the card; expand on demand.
+  const [legendAll, setLegendAll] = useState(false)
 
   // Which cards are expanded — remembered between visits (saving fires the
   // global "✓ Saved" flash).
@@ -410,7 +439,7 @@ export default function Progress() {
         <ProgressChart series={visible} units={units} ariaLabel={`${weightMetric === 'e1rm' ? 'Estimated 1RM' : 'Top set'} over time (${units})`} />
         {allSeries.length > 0 && (
           <div className="legend">
-            {allSeries.map((s) => (
+            {(legendAll ? allSeries : allSeries.slice(0, 8)).map((s) => (
               <button
                 key={s.id}
                 type="button"
@@ -421,6 +450,11 @@ export default function Progress() {
                 {s.name}
               </button>
             ))}
+            {allSeries.length > 8 && (
+              <button type="button" className="link-sm" aria-expanded={legendAll} onClick={() => setLegendAll((v) => !v)}>
+                {legendAll ? 'Show fewer' : `+${allSeries.length - 8} more`}
+              </button>
+            )}
           </div>
         )}
         {allSeries.length === 0 && (
@@ -474,14 +508,39 @@ export default function Progress() {
           onToggle={() => toggleCard('exlist')}
         >
           <p className="muted small">Tap a lift to see its own trend, best marks, and recent sessions.</p>
+          {exercisesTracked.length > EX_PAGE && (
+            <>
+              <input className="text-input ex-history-search" type="search"
+                aria-label="Search tracked exercises" placeholder="Search exercises…"
+                value={exQuery} onChange={(e) => setExQuery(e.target.value)} />
+              {exMuscleOptions.length > 1 && (
+                <div className="filter-chips" role="group" aria-label="Filter exercises by muscle">
+                  <button type="button" className={'chip' + (exMuscle === 'all' ? ' is-selected' : '')}
+                    aria-pressed={exMuscle === 'all'} onClick={() => setExMuscle('all')}>All</button>
+                  {exMuscleOptions.map((m) => (
+                    <button key={m} type="button" className={'chip cap' + (exMuscle === m ? ' is-selected' : '')}
+                      aria-pressed={exMuscle === m} onClick={() => setExMuscle(m)}>{muscleLabel(m)}</button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
           <div className="exercise-history-list">
-            {exercisesTracked.map((ex) => (
+            {exVisible.map((ex) => (
               <button key={ex.id} type="button" className="ex-history-row" onClick={() => setDetailEx(ex)}>
-                <span>{ex.name}</span>
+                <span className="ex-history-name">{ex.name}</span>
+                <span className="muted small ex-history-date">{shortDate(ex.lastDate)}</span>
                 <span className="ex-history-chevron" aria-hidden="true">›</span>
               </button>
             ))}
           </div>
+          {exVisible.length === 0 && <p className="muted small">No exercises match.</p>}
+          {!exActive && exFiltered.length > exShown && (
+            <button type="button" className="btn btn-ghost btn-sm show-more" onClick={() => setExShown((n) => n + EX_PAGE)}>Show all {exFiltered.length}</button>
+          )}
+          {!exActive && exShown >= exFiltered.length && exFiltered.length > EX_PAGE && (
+            <button type="button" className="btn btn-ghost btn-sm show-more" onClick={() => setExShown(EX_PAGE)}>Show fewer</button>
+          )}
         </CollapsibleCard>
       )}
 

@@ -736,6 +736,10 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 }
 .ex-history-row:last-child { border-bottom: none; }
 .ex-history-chevron { color: var(--muted); font-size: 20px; }
+.ex-history-search { width: 100%; margin: 8px 0 4px; }
+.ex-history-name { flex: 1; min-width: 0; }
+.ex-history-date { flex: none; }
+.chip.cap { text-transform: capitalize; }
 
 .detail-sheet {
   margin: auto;
