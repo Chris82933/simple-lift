@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { EXERCISES, matchesQuery } from '../data/exercises.js'
 import MuscleMap from './MuscleMap.jsx'
 import CustomExerciseForm from './CustomExerciseForm.jsx'
 import { getEquipment, activeEquipmentIds, isDoable, profileMeta } from '../lib/equipment.js'
+import useModalA11y from '../lib/useModalA11y.js'
 
 // Bottom-sheet exercise picker. Calls onPick(exercise) for each tap; stays open
 // so several can be added in a row. onClose dismisses it. Defaults to showing
@@ -11,6 +12,9 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
   const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState(false)
   const [creating, setCreating] = useState(false)
+  const dialogRef = useRef(null)
+  // Suspend the trap while the nested custom-exercise form is open — it runs its own.
+  useModalA11y(dialogRef, onClose, !creating)
   const q = search.trim().toLowerCase()
   const active = getEquipment().active
   const availableSet = new Set(activeEquipmentIds())
@@ -23,11 +27,12 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
   )
 
   return (
-    <div className="picker-overlay" role="dialog" aria-label={title}>
+    <div className="picker-overlay" role="dialog" aria-modal="true" aria-label={title} ref={dialogRef} tabIndex={-1}>
       <div className="picker-sheet">
         <div className="picker-head">
           <input
             className="text-input"
+            aria-label="Search exercises"
             placeholder="Search exercises…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -37,8 +42,8 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
         </div>
         <div className="picker-filter">
           <span className="muted small">{profileMeta(active).icon} {profileMeta(active).name} gear</span>
-          <button type="button" className={'chip' + (showAll ? '' : ' is-selected')} onClick={() => setShowAll(false)}>What I can do</button>
-          <button type="button" className={'chip' + (showAll ? ' is-selected' : '')} onClick={() => setShowAll(true)}>Show all</button>
+          <button type="button" className={'chip' + (showAll ? '' : ' is-selected')} aria-pressed={!showAll} onClick={() => setShowAll(false)}>What I can do</button>
+          <button type="button" className={'chip' + (showAll ? ' is-selected' : '')} aria-pressed={showAll} onClick={() => setShowAll(true)}>Show all</button>
         </div>
         <div className="picker-list">
           {filtered.map((ex) => (

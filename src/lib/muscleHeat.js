@@ -27,6 +27,26 @@ function normalize(score) {
   return heat
 }
 
+// Human-readable muscle names for the screen-reader summary of a heatmap (the
+// SVG itself is decorative/aria-hidden, so this is the only accessible source).
+const MUSCLE_LABELS = {
+  quads: 'quads', glutes: 'glutes', hamstrings: 'hamstrings', calves: 'calves',
+  chest: 'chest', shoulders: 'shoulders', triceps: 'triceps', biceps: 'biceps',
+  lats: 'lats', traps: 'traps', forearms: 'forearms', abs: 'abs', obliques: 'obliques',
+  core: 'core', lower_back: 'lower back', neck: 'neck', tibialis: 'shins',
+}
+
+// Turn a heat map ({muscleId: 0–1}) into a spoken sentence, most-worked first.
+// Returns '' when nothing scored.
+export function describeHeat(heat = {}) {
+  const ranked = Object.entries(heat)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([m]) => MUSCLE_LABELS[m] || m.replace(/_/g, ' '))
+  if (ranked.length === 0) return ''
+  return `Muscles worked, most to least: ${ranked.join(', ')}.`
+}
+
 // A FINISHED session: weight each exercise by its completed working sets.
 export function sessionMuscleHeat(entries = []) {
   const score = {}

@@ -50,6 +50,7 @@ export default function Recovery() {
                 key={a.id}
                 type="button"
                 className={'chip' + (selected.includes(a.id) ? ' is-selected' : '')}
+                aria-pressed={selected.includes(a.id)}
                 onClick={() => setSelected((s) => toggle(s, a.id))}
               >
                 {a.emoji} {a.label}

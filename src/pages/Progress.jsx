@@ -86,11 +86,13 @@ const shortDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'sho
 function CollapsibleCard({ title, subtitle, open, onToggle, children }) {
   return (
     <div className="card collapsible">
-      <button type="button" className="collapse-head" onClick={onToggle} aria-expanded={open}>
-        <span className="collapse-title">{title}</span>
-        {subtitle && <span className="muted small collapse-sub">{subtitle}</span>}
-        <span className={'collapse-chevron' + (open ? ' is-open' : '')} aria-hidden="true">▾</span>
-      </button>
+      <h2 className="collapse-heading">
+        <button type="button" className="collapse-head" onClick={onToggle} aria-expanded={open}>
+          <span className="collapse-title">{title}</span>
+          {subtitle && <span className="muted small collapse-sub">{subtitle}</span>}
+          <span className={'collapse-chevron' + (open ? ' is-open' : '')} aria-hidden="true">▾</span>
+        </button>
+      </h2>
       {open && <div className="collapse-body">{children}</div>}
     </div>
   )
@@ -352,11 +354,17 @@ export default function Progress() {
                     const pct = w.count ? Math.max(Math.round((w.count / max) * 100), 14) : 0
                     const label = isThis ? 'now' : (i === 0 ? shortDate(w.weekStart) : '')
                     return (
-                      <div className="week-col" key={w.weekStart} title={`${w.count} workout${w.count === 1 ? '' : 's'}`}>
-                        <span className={'week-bar' + (isThis ? ' is-current' : '') + (w.count ? '' : ' is-empty')}>
+                      <div
+                        className="week-col"
+                        key={w.weekStart}
+                        title={`${w.count} workout${w.count === 1 ? '' : 's'}`}
+                        role="img"
+                        aria-label={`Week of ${shortDate(w.weekStart)}${isThis ? ' (this week)' : ''}: ${w.count} workout${w.count === 1 ? '' : 's'}`}
+                      >
+                        <span className={'week-bar' + (isThis ? ' is-current' : '') + (w.count ? '' : ' is-empty')} aria-hidden="true">
                           <span className="week-bar-fill" style={{ height: `${pct}%` }} />
                         </span>
-                        <span className="week-label">{label}</span>
+                        <span className="week-label" aria-hidden="true">{label}</span>
                       </div>
                     )
                   })}
@@ -394,12 +402,12 @@ export default function Progress() {
       >
         <div className="seg metric-seg">
           {[{ id: 'top', label: 'Top set' }, { id: 'e1rm', label: 'Est. 1RM' }].map((m) => (
-            <button key={m.id} type="button" className={'seg-item' + (weightMetric === m.id ? ' is-selected' : '')} onClick={() => setWeightMetric(m.id)}>
+            <button key={m.id} type="button" className={'seg-item' + (weightMetric === m.id ? ' is-selected' : '')} aria-pressed={weightMetric === m.id} onClick={() => setWeightMetric(m.id)}>
               {m.label}
             </button>
           ))}
         </div>
-        <ProgressChart series={visible} units={units} />
+        <ProgressChart series={visible} units={units} ariaLabel={`${weightMetric === 'e1rm' ? 'Estimated 1RM' : 'Top set'} over time (${units})`} />
         {allSeries.length > 0 && (
           <div className="legend">
             {allSeries.map((s) => (
@@ -428,7 +436,7 @@ export default function Progress() {
           open={cardOpen('bodyweight')}
           onToggle={() => toggleCard('bodyweight')}
         >
-          <ProgressChart series={bodyweightSeries} units={units} />
+          <ProgressChart series={bodyweightSeries} units={units} ariaLabel={`Bodyweight over time (${units})`} />
           <p className="muted small">
             From your weigh-ins in Settings. Also used to score weighted pull-ups and dips as
             bodyweight + added load.
@@ -439,7 +447,7 @@ export default function Progress() {
       {/* ---- Bodyweight reps ---- */}
       {bwSeries.length > 0 && (
         <CollapsibleCard title="Bodyweight reps over time" open={cardOpen('bw')} onToggle={() => toggleCard('bw')}>
-          <ProgressChart series={bwVisible} />
+          <ProgressChart series={bwVisible} ariaLabel="Bodyweight reps over time" />
           <div className="legend">
             {bwSeries.map((s) => (
               <button
@@ -487,14 +495,14 @@ export default function Progress() {
         <button className="link-sm" onClick={() => navigate('/cardio')}>＋ Log cardio</button>
         <div className="seg metric-seg">
           {CARDIO_METRICS.map((m) => (
-            <button key={m.id} type="button" className={'seg-item' + (cardioMetric === m.id ? ' is-selected' : '')} onClick={() => setCardioMetric(m.id)}>
+            <button key={m.id} type="button" className={'seg-item' + (cardioMetric === m.id ? ' is-selected' : '')} aria-pressed={cardioMetric === m.id} onClick={() => setCardioMetric(m.id)}>
               {m.label}
             </button>
           ))}
         </div>
         {cardioSeries.length > 0 ? (
           <>
-            <ProgressChart series={cardioSeries} />
+            <ProgressChart series={cardioSeries} ariaLabel="Cardio over time" />
             <div className="legend">
               {cardioSeries.map((s) => (
                 <span key={s.id} className="legend-item static">

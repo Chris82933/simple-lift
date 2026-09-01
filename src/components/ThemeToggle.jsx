@@ -23,6 +23,7 @@ export default function ThemeToggle({ label = 'Appearance' }) {
             key={t.id}
             type="button"
             className={'seg-item' + (theme === t.id ? ' is-selected' : '')}
+            aria-pressed={theme === t.id}
             onClick={() => choose(t.id)}
           >
             {t.label}

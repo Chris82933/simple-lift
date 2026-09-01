@@ -46,6 +46,7 @@ export default function ImportProgram() {
           key={o.id}
           type="button"
           className={'seg-item' + (value === o.id ? ' is-selected' : '')}
+          aria-pressed={value === o.id}
           onClick={() => onChange(o.id)}
         >
           {o.label}
@@ -74,6 +75,7 @@ export default function ImportProgram() {
             <textarea
               className="text-input code-box"
               rows={4}
+              aria-label="Program code"
               placeholder="Paste a program code here…"
               value={text}
               onChange={(e) => setText(e.target.value)}

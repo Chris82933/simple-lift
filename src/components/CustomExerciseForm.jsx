@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { MOVEMENT_TYPES, makeCustomExercise } from '../data/exercises.js'
 import { saveCustomExercise } from '../lib/storage.js'
 import { registerCustomExercises } from '../data/exercises.js'
 import { EQUIPMENT_GROUPS, REGIONS } from '../data/options.js'
+import useModalA11y from '../lib/useModalA11y.js'
 
 const ALL_EQUIP = EQUIPMENT_GROUPS.flatMap((g) => g.items)
 
@@ -22,6 +23,8 @@ export default function CustomExerciseForm({ onCreate, onClose }) {
   const [compound, setCompound] = useState(true)
   const [cues, setCues] = useState('')
   const [advanced, setAdvanced] = useState(false)
+  const dialogRef = useRef(null)
+  useModalA11y(dialogRef, onClose)
 
   const type = MOVEMENT_TYPES.find((t) => t.pattern === pattern) || MOVEMENT_TYPES[0]
 
@@ -53,7 +56,7 @@ export default function CustomExerciseForm({ onCreate, onClose }) {
   }
 
   return (
-    <div className="picker-overlay" role="dialog" aria-label="Create a custom exercise">
+    <div className="picker-overlay" role="dialog" aria-modal="true" aria-label="Create a custom exercise" ref={dialogRef} tabIndex={-1}>
       <div className="picker-sheet">
         <div className="picker-head">
           <p className="ex-name big" style={{ flex: 1 }}>Create an exercise</p>
@@ -80,6 +83,7 @@ export default function CustomExerciseForm({ onCreate, onClose }) {
                   key={t.pattern}
                   type="button"
                   className={'chip' + (pattern === t.pattern ? ' is-selected' : '')}
+                  aria-pressed={pattern === t.pattern}
                   onClick={() => chooseType(t.pattern)}
                 >
                   {t.label}
@@ -97,6 +101,7 @@ export default function CustomExerciseForm({ onCreate, onClose }) {
                   key={m.id}
                   type="button"
                   className={'seg-item' + (measure === m.id ? ' is-selected' : '')}
+                  aria-pressed={measure === m.id}
                   onClick={() => setMeasure(m.id)}
                 >
                   {m.label}
@@ -113,6 +118,7 @@ export default function CustomExerciseForm({ onCreate, onClose }) {
                   key={item.id}
                   type="button"
                   className={'chip' + (requires.includes(item.id) ? ' is-selected' : '')}
+                  aria-pressed={requires.includes(item.id)}
                   onClick={() => setRequires((r) => toggle(r, item.id))}
                 >
                   {item.label}
@@ -136,6 +142,7 @@ export default function CustomExerciseForm({ onCreate, onClose }) {
                       key={r.id}
                       type="button"
                       className={'chip' + (regions.includes(r.id) ? ' is-selected' : '')}
+                      aria-pressed={regions.includes(r.id)}
                       onClick={() => setRegions((rs) => toggle(rs, r.id))}
                     >
                       {r.label}

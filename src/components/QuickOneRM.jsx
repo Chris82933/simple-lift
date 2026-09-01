@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { EXERCISES, EXERCISE_BY_ID } from '../data/exercises.js'
 import { estimate1RM, roundTo, weightForReps, incrementForUnits } from '../lib/oneRepMax.js'
 import { saveMax } from '../lib/storage.js'
+import useModalA11y from '../lib/useModalA11y.js'
 
 // Compact 1RM estimator for use mid-workout (in a modal). Does NOT touch the
 // live session — it only reads inputs and can optionally save the estimate so
@@ -19,6 +20,8 @@ export default function QuickOneRM({ units = 'lbs', onClose }) {
   const [weight, setWeight] = useState('')
   const [reps, setReps] = useState('5')
   const [saved, setSaved] = useState(false)
+  const dialogRef = useRef(null)
+  useModalA11y(dialogRef, onClose)
 
   const repsNum = Number(reps)
   const oneRMraw = estimate1RM(weight, repsNum, 'average')
@@ -43,7 +46,7 @@ export default function QuickOneRM({ units = 'lbs', onClose }) {
     : []
 
   return (
-    <div className="picker-overlay" role="dialog" aria-label="Quick 1RM">
+    <div className="picker-overlay" role="dialog" aria-modal="true" aria-label="Quick 1RM" ref={dialogRef} tabIndex={-1}>
       <div className="picker-sheet quick-1rm">
         <div className="picker-head">
           <p className="ex-name big" style={{ flex: 1 }}>Quick 1RM</p>
@@ -61,7 +64,7 @@ export default function QuickOneRM({ units = 'lbs', onClose }) {
             <option value="other">Other / custom…</option>
           </select>
           {liftId === 'other' && (
-            <input className="text-input" placeholder="Name this lift" value={customName} onChange={(e) => { setCustomName(e.target.value); setSaved(false) }} />
+            <input className="text-input" aria-label="Name this lift" placeholder="Name this lift" value={customName} onChange={(e) => { setCustomName(e.target.value); setSaved(false) }} />
           )}
 
           <div className="quick-1rm-row">

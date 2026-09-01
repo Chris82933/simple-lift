@@ -304,6 +304,7 @@ export default function Profile() {
               key={id}
               type="button"
               className={'seg-item' + (activeProfile === id ? ' is-selected' : '')}
+              aria-pressed={activeProfile === id}
               onClick={() => chooseProfile(id)}
             >
               {profileMeta(id).name}
@@ -321,6 +322,7 @@ export default function Profile() {
                     key={item.id}
                     type="button"
                     className={'check-pill' + (equip.profiles[activeProfile].includes(item.id) ? ' is-selected' : '')}
+                    aria-pressed={equip.profiles[activeProfile].includes(item.id)}
                     onClick={() => toggleEquip(item.id)}
                   >
                     {item.label}
@@ -371,6 +373,7 @@ export default function Profile() {
               key={t.id}
               type="button"
               className={'seg-item' + (theme === t.id ? ' is-selected' : '')}
+              aria-pressed={theme === t.id}
               onClick={() => setTheme(t.id)}
             >
               {t.label}
@@ -389,6 +392,7 @@ export default function Profile() {
               key={o.id}
               type="button"
               className={'seg-item' + ((settings.hidePlateCalc === true ? 'hide' : 'show') === o.id ? ' is-selected' : '')}
+              aria-pressed={(settings.hidePlateCalc === true ? 'hide' : 'show') === o.id}
               onClick={() => setHidePlateCalc(o.id === 'hide')}
             >
               {o.label}
@@ -402,6 +406,7 @@ export default function Profile() {
               key={o.id}
               type="button"
               className={'seg-item' + ((settings.restTimer === false ? 'off' : 'on') === o.id ? ' is-selected' : '')}
+              aria-pressed={(settings.restTimer === false ? 'off' : 'on') === o.id}
               onClick={() => setRestTimer(o.id === 'on')}
             >
               {o.label}
@@ -415,6 +420,7 @@ export default function Profile() {
               key={o.id}
               type="button"
               className={'seg-item' + ((settings.stretching === true ? 'on' : 'off') === o.id ? ' is-selected' : '')}
+              aria-pressed={(settings.stretching === true ? 'on' : 'off') === o.id}
               onClick={() => setStretching(o.id === 'on')}
             >
               {o.label}
@@ -435,6 +441,7 @@ export default function Profile() {
                   type="button"
                   disabled={notifyBusy}
                   className={'seg-item' + ((settings.restNotify === true && notificationPermission() === 'granted' ? 'on' : 'off') === o.id ? ' is-selected' : '')}
+                  aria-pressed={(settings.restNotify === true && notificationPermission() === 'granted' ? 'on' : 'off') === o.id}
                   onClick={() => setRestNotify(o.id === 'on')}
                 >
                   {o.label}
@@ -460,6 +467,7 @@ export default function Profile() {
               key={u}
               type="button"
               className={'seg-item' + (settings.units === u ? ' is-selected' : '')}
+              aria-pressed={settings.units === u}
               onClick={() => setUnits(u)}
             >
               {u}
@@ -513,6 +521,7 @@ export default function Profile() {
         <textarea
           className="text-input code-box"
           rows={4}
+          aria-label="Backup code to import"
           placeholder="Paste a backup code here…"
           value={importText}
           onChange={(e) => setImportText(e.target.value)}

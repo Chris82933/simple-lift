@@ -39,6 +39,7 @@
   --text: #f4f4f5;
   --muted: #898989;          /* palette gray */
   --accent: #4dffbc;         /* mint */
+  --accent-text: var(--accent); /* accent as small text — bright mint reads fine on dark */
   --accent-ink: #04140f;     /* near-black — text on bright accent fills */
   --accent-2: #ff4d4d;       /* coral */
   --accent-3: #ff5c9d;       /* pink */
@@ -69,6 +70,7 @@
   --text: #18181b;
   --muted: #6b6b6b;
   --accent: #0fb88a;         /* deeper mint — readable on white */
+  --accent-text: #0a7357;    /* darker mint for small accent TEXT — AA on white/surface */
   --accent-ink: #04231a;
   --accent-2: #ef3e3e;       /* coral */
   --accent-3: #e84393;       /* pink */
@@ -87,6 +89,28 @@
 }
 
 * { box-sizing: border-box; }
+
+/* Visually hidden but available to screen readers (labels, summaries). */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Respect the OS "reduce motion" setting: near-instant animations/transitions,
+   no smooth scrolling. Keeps state changes visible without movement. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 html, body, #root { height: 100%; margin: 0; }
 
@@ -173,7 +197,8 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 
 /* ---- Pages ---- */
 .page {
-  padding: 24px 20px 28px;
+  /* Top inset keeps page titles clear of a notch / status bar on installed PWAs. */
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px 28px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -287,7 +312,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   cursor: pointer;
   white-space: nowrap;
 }
-.skip-link:hover { border-color: var(--accent); color: var(--accent); }
+.skip-link:hover { border-color: var(--accent); color: var(--accent-text); }
 .onb-alt {
   display: flex;
   align-items: center;
@@ -454,7 +479,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .day-muscles .muted { text-align: center; }
 
 /* Stretch routine panel (warm-up / cool-down) */
-.stretch-panel .collapse-title { color: var(--accent); }
+.stretch-panel .collapse-title { color: var(--accent-text); }
 .stretch-intro { margin: 0 0 12px; }
 .stretch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
 .stretch-row { display: flex; flex-direction: column; gap: 3px; }
@@ -466,7 +491,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 }
 .stretch-name { font-weight: 600; font-size: var(--fs-md); }
 .stretch-photo { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); text-decoration: none; white-space: nowrap; }
-.stretch-photo:hover { color: var(--accent); }
+.stretch-photo:hover { color: var(--accent-text); }
 
 /* ---- Program day cards ---- */
 .day-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -584,7 +609,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 }
 .set-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 .set-line.done .set-input { opacity: 0.6; }
-.set-line.is-warmup .set-num { color: var(--accent); font-size: var(--fs-xs); font-weight: 700; }
+.set-line.is-warmup .set-num { color: var(--accent-text); font-size: var(--fs-xs); font-weight: 700; }
 .set-line.is-warmup .set-input { opacity: 0.75; }
 /* The set the plate calculator is loaded for — make it obvious. */
 .set-line.is-plate-target {
@@ -592,7 +617,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   box-shadow: inset 3px 0 0 var(--accent);
   border-radius: var(--radius-xs);
 }
-.set-line.is-plate-target .set-num { color: var(--accent); font-weight: 800; }
+.set-line.is-plate-target .set-num { color: var(--accent-text); font-weight: 800; }
 
 /* ---- Personal records ---- */
 .pr-card {
@@ -623,7 +648,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 
 /* ---- 1RM update rows ---- */
 .rm-row { align-items: center; }
-.rm-done { flex: none; font-size: var(--fs-sm); font-weight: 700; color: var(--accent); }
+.rm-done { flex: none; font-size: var(--fs-sm); font-weight: 700; color: var(--accent-text); }
 
 /* ---- Share session ---- */
 .share-actions { display: flex; gap: 10px; }
@@ -690,7 +715,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 /* ---- Workout: resume banner + last-time ---- */
 .resumed-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .resumed-banner .btn { flex: none; }
-.last-time { margin: 2px 0 0; color: var(--accent); opacity: 0.9; }
+.last-time { margin: 2px 0 0; color: var(--accent-text); opacity: 0.9; }
 .swapped-note { margin: 2px 0 0; font-style: italic; }
 
 /* ---- Per-exercise history ---- */
@@ -765,8 +790,8 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 }
 .day-chip-btn.is-selected .day-dot { background: var(--accent-ink); }
 .set-check {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface-2);
@@ -864,6 +889,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .text-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 select.text-input { appearance: none; }
 .icon-btn {
+  position: relative;
   border: none;
   background: var(--surface-2);
   color: var(--muted);
@@ -874,6 +900,8 @@ select.text-input { appearance: none; }
   font-size: var(--fs-md);
   flex: none;
 }
+/* Extend the tap target to ~44px without growing the visual button (A11y 2.5.5). */
+.icon-btn::after { content: ''; position: absolute; inset: -6px; }
 
 /* ---- Program builder ---- */
 .builder-day-head { display: flex; gap: 10px; align-items: center; }
@@ -918,7 +946,11 @@ select.text-input { appearance: none; }
 .cardio-preview-icon { font-size: 22px; width: 40px; text-align: center; flex: none; }
 .ex-reorder { display: flex; gap: 2px; }
 .ex-reorder .icon-btn { width: 26px; height: 26px; font-size: var(--fs-2xs); }
+/* Widen the hit area (to 44px) but keep it from overlapping the sibling arrow
+   vertically — the two stack with only a 2px gap. */
+.ex-reorder .icon-btn::after { inset: -2px -9px; }
 .ex-reorder .icon-btn:disabled { opacity: 0.3; cursor: default; }
+.ex-reorder .icon-btn:disabled::after { content: none; }
 .recommend-btn { align-self: flex-start; margin-top: 2px; }
 .builder-fields { display: flex; flex-wrap: wrap; gap: 8px; }
 .builder-fields label {
@@ -984,12 +1016,12 @@ select.text-input { appearance: none; }
   text-align: left;
 }
 .picker-item .ex-name { flex: 1; }
-.add-plus { font-size: 20px; color: var(--accent); font-weight: 700; }
+.add-plus { font-size: 20px; color: var(--accent-text); font-weight: 700; }
 .picker-item.is-added { opacity: 0.5; cursor: default; }
 .picker-item.is-added .add-plus { color: var(--accent-4, #82ab7d); }
 /* "Create a custom exercise" row sits at the end of the list, visually distinct. */
 .picker-item.create-custom { border-style: dashed; background: none; }
-.picker-item.create-custom .ex-name { font-weight: 600; color: var(--accent); }
+.picker-item.create-custom .ex-name { font-weight: 600; color: var(--accent-text); }
 
 /* ---- Custom exercise form ---- */
 .custom-ex-form { gap: 14px; }
@@ -1032,7 +1064,7 @@ select.text-input { appearance: none; }
 .log-meta { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; }
 .log-sets { padding: 2px 0 6px 12px; border-left: 2px solid var(--border); margin: 2px 0 6px; }
 .log-entry .log-toggle {
-  background: none; border: none; color: var(--accent);
+  background: none; border: none; color: var(--accent-text);
   cursor: pointer; padding: 0; font-size: 0.8rem; margin-top: 6px;
 }
 .log-set-row {
@@ -1083,7 +1115,7 @@ select.text-input { appearance: none; }
 .power-label { margin: 2px 0 6px; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .rank-badge {
   display: inline-block; margin: 0; padding: 4px 14px; border-radius: 999px;
-  background: var(--surface-2); border: 1px solid var(--accent); color: var(--accent);
+  background: var(--surface-2); border: 1px solid var(--accent); color: var(--accent-text);
   font-weight: 800; font-size: var(--fs-md);
 }
 
@@ -1386,7 +1418,7 @@ select.text-input { appearance: none; }
 
 /* ---- Week header + rest note ---- */
 .week-head { display: flex; align-items: center; justify-content: space-between; }
-.link-sm { color: var(--accent); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
+.link-sm { color: var(--accent-text); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
 .rest-note {
   background: var(--surface-2);
   border-radius: 10px;
@@ -1441,7 +1473,7 @@ select.text-input { appearance: none; }
 .result-card { border-color: var(--accent); align-items: stretch; }
 .result-lift { font-weight: 600; margin: 0; color: var(--muted); }
 .result-1rm { margin: 0; font-size: var(--fs-lg); color: var(--muted); }
-.result-1rm span { font-size: 44px; font-weight: 800; color: var(--accent); }
+.result-1rm span { font-size: 44px; font-weight: 800; color: var(--accent-text); }
 
 .weight-table { display: flex; flex-direction: column; }
 .weight-row {
@@ -1689,7 +1721,7 @@ select.text-input { appearance: none; }
 .dist-row { display: flex; gap: 6px; }
 .dist-row input { flex: 1; min-width: 0; }
 .unit-toggle {
-  border: 1px solid var(--border); background: var(--surface); color: var(--accent);
+  border: 1px solid var(--border); background: var(--surface); color: var(--accent-text);
   font-weight: 700; border-radius: 10px; padding: 0 12px; cursor: pointer; font-size: var(--fs-md);
 }
 
@@ -1733,7 +1765,7 @@ select.text-input { appearance: none; }
 }
 .pr-row:last-child { border-bottom: none; }
 .pr-row-name { font-weight: 600; }
-.pr-row-detail { color: var(--accent); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
+.pr-row-detail { color: var(--accent-text); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
 .pr-row-date { white-space: nowrap; }
 
 /* Today: compact training-consistency card that links to Progress */
@@ -1742,7 +1774,7 @@ select.text-input { appearance: none; }
   text-decoration: none; color: var(--text);
 }
 .consistency-stat { font-size: var(--fs-md); }
-.consistency-stat strong { color: var(--accent); font-size: var(--fs-lg); font-weight: 800; margin-right: 3px; }
+.consistency-stat strong { color: var(--accent-text); font-size: var(--fs-lg); font-weight: 800; margin-right: 3px; }
 .consistency-link { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); font-weight: 600; }
 
 /* First-run welcome: hero + guided choice cards */
@@ -1796,7 +1828,7 @@ select.text-input { appearance: none; }
 .log-del { width: 26px; height: 26px; font-size: var(--fs-sm); flex: none; }
 .log-ex-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .log-status { flex: none; font-size: var(--fs-xs); color: var(--muted); }
-.log-status.is-done { color: var(--accent); }
+.log-status.is-done { color: var(--accent-text); }
 .log-ex.is-skipped .log-ex-name { color: var(--muted); }
 .log-ex.is-skipped { opacity: 0.6; }
 
@@ -1831,6 +1863,9 @@ select.text-input { appearance: none; }
 
 /* ---- Collapsible cards ---- */
 .collapsible { padding-top: 4px; padding-bottom: 4px; }
+/* Heading wrapper exists only for screen-reader navigation — it must not add any
+   of a heading's default box/typography (the button + spans carry the styling). */
+.collapse-heading { margin: 0; font: inherit; }
 .collapse-head {
   width: 100%;
   display: flex;
@@ -1873,6 +1908,18 @@ select.text-input { appearance: none; }
   padding-top: 8px;
 }
 .flow-actions .btn { flex: 1; }
+
+/* A11y: keep the primary action in the thumb zone on long full-screen flows.
+   Scoped to :last-child so screens that place content AFTER the actions (e.g.
+   the session-complete Share card) keep the actions in normal flow. */
+.full-flow > .flow-actions:last-child {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  /* Fade page content out behind the bar instead of a hard edge. */
+  background: linear-gradient(to top, var(--bg) 62%, transparent);
+}
 
 /* ---- Program week strip ---- */
 .week-strip { display: flex; gap: 8px; }

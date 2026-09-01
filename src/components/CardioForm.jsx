@@ -40,6 +40,7 @@ export default function CardioForm({ onSaved, units = 'lbs', initialMachine = 't
             key={m.id}
             type="button"
             className={'machine-chip' + (machine === m.id ? ' is-selected' : '')}
+            aria-pressed={machine === m.id}
             style={machine === m.id ? { borderColor: m.color, background: `color-mix(in srgb, ${m.color} 20%, var(--surface))` } : undefined}
             onClick={() => setMachine(m.id)}
           >
@@ -68,7 +69,7 @@ export default function CardioForm({ onSaved, units = 'lbs', initialMachine = 't
         </label>
       </div>
 
-      <input className="text-input" placeholder="Notes (level, incline, how it felt…)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <input className="text-input" aria-label="Cardio notes" placeholder="Notes (level, incline, how it felt…)" value={notes} onChange={(e) => setNotes(e.target.value)} />
 
       <button type="button" className="btn btn-primary" onClick={save} disabled={!canSave}>Save cardio</button>
     </div>

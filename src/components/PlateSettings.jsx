@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { PLATE_WEIGHTS, BAR_PRESETS, getPlateConfig, savePlateConfig } from '../lib/plates.js'
+import useModalA11y from '../lib/useModalA11y.js'
 
 // Configure which plates are on hand (not every gym stocks 5s or fractional
 // plates) and the bar weight, per unit — lbs and kg gyms often differ.
 export default function PlateSettings({ initialUnits = 'lbs', onClose }) {
   const [unit, setUnit] = useState(initialUnits)
   const [config, setConfig] = useState(() => getPlateConfig())
+  const dialogRef = useRef(null)
+  useModalA11y(dialogRef, onClose)
 
   const togglePlate = (w) => {
     const next = {
@@ -40,7 +43,7 @@ export default function PlateSettings({ initialUnits = 'lbs', onClose }) {
   const isPreset = BAR_PRESETS[unit].some((p) => p.value === config.barWeight[unit])
 
   return (
-    <div className="picker-overlay" role="dialog" aria-label="Plate settings">
+    <div className="picker-overlay" role="dialog" aria-modal="true" aria-label="Plate settings" ref={dialogRef} tabIndex={-1}>
       <div className="picker-sheet">
         <div className="picker-head">
           <p className="ex-name big" style={{ flex: 1 }}>Plate settings</p>
@@ -53,7 +56,7 @@ export default function PlateSettings({ initialUnits = 'lbs', onClose }) {
 
           <div className="seg" style={{ margin: '4px 0 12px' }}>
             {['lbs', 'kg'].map((u) => (
-              <button key={u} type="button" className={'seg-item' + (unit === u ? ' is-selected' : '')} onClick={() => setUnit(u)}>
+              <button key={u} type="button" className={'seg-item' + (unit === u ? ' is-selected' : '')} aria-pressed={unit === u} onClick={() => setUnit(u)}>
                 {u}
               </button>
             ))}
@@ -66,6 +69,7 @@ export default function PlateSettings({ initialUnits = 'lbs', onClose }) {
                 key={p.value}
                 type="button"
                 className={'check-pill' + (config.barWeight[unit] === p.value ? ' is-selected' : '')}
+                aria-pressed={config.barWeight[unit] === p.value}
                 onClick={() => setBarWeight(p.value)}
               >
                 {p.label} · {p.value}{unit}
@@ -96,6 +100,7 @@ export default function PlateSettings({ initialUnits = 'lbs', onClose }) {
                 key={w}
                 type="button"
                 className={'check-pill' + (config.available[unit][w] ? ' is-selected' : '')}
+                aria-pressed={!!config.available[unit][w]}
                 onClick={() => togglePlate(w)}
               >
                 {w} {unit}

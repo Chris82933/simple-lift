@@ -1,6 +1,8 @@
+import { useRef } from 'react'
 import { estimate1RM } from '../lib/oneRepMax.js'
 import { exMeasure } from '../data/exercises.js'
 import ProgressChart from './ProgressChart.jsx'
+import useModalA11y from '../lib/useModalA11y.js'
 
 const ACCENT = '#10b981'
 
@@ -16,6 +18,8 @@ function fmtTop(done, units) {
 
 // A focused view of one exercise: its trend, best marks, and recent sessions.
 export default function ExerciseDetail({ exId, name, history, units, onClose }) {
+  const dialogRef = useRef(null)
+  useModalA11y(dialogRef, onClose)
   const measure = exMeasure({ id: exId })
   const weightedByDefault = measure.type === 'reps'
 
@@ -52,7 +56,7 @@ export default function ExerciseDetail({ exId, name, history, units, onClose }) 
   const metricLabel = weighted ? (weightedByDefault ? `Estimated 1RM (${units})` : `Top set (${units})`) : 'Best set (reps)'
 
   return (
-    <div className="picker-overlay" role="dialog" aria-label={name} onClick={onClose}>
+    <div className="picker-overlay" role="dialog" aria-modal="true" aria-label={name} onClick={onClose} ref={dialogRef} tabIndex={-1}>
       <div className="detail-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="detail-head">
           <p className="info-title">{name}</p>
@@ -67,7 +71,7 @@ export default function ExerciseDetail({ exId, name, history, units, onClose }) 
         </div>
 
         <p className="group-label">{metricLabel} over time</p>
-        {series.length ? <ProgressChart series={series} units={units} /> : <p className="muted small">No logged sets yet.</p>}
+        {series.length ? <ProgressChart series={series} units={units} ariaLabel={`${name}: ${metricLabel} over time`} /> : <p className="muted small">No logged sets yet.</p>}
 
         <p className="group-label">Recent sessions</p>
         <div className="detail-sessions">

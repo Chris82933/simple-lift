@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import useModalA11y from '../lib/useModalA11y.js'
 import { EXERCISES, EXERCISE_BY_ID, exMeasure, matchesQuery, isoHoldFor } from '../data/exercises.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 import { GOALS } from '../data/options.js'
@@ -97,6 +98,15 @@ export default function Builder() {
   const [amrapInfo, setAmrapInfo] = useState(false)
   const [warmupInfo, setWarmupInfo] = useState(false)
   const [isoInfo, setIsoInfo] = useState(false)
+  const pickerRef = useRef(null)
+  const amrapRef = useRef(null)
+  const warmupRef = useRef(null)
+  const isoRef = useRef(null)
+  // Suspend the picker's trap while its nested custom-exercise form is open.
+  useModalA11y(pickerRef, () => setPicker(null), picker !== null && !creating)
+  useModalA11y(amrapRef, () => setAmrapInfo(false), amrapInfo)
+  useModalA11y(warmupRef, () => setWarmupInfo(false), warmupInfo)
+  useModalA11y(isoRef, () => setIsoInfo(false), isoInfo)
 
   const scheme = useMemo(() => schemeForGoals(draft.goals), [draft.goals])
   const inc = incrementForUnits(loadSettings().units)
@@ -255,6 +265,7 @@ export default function Builder() {
           <p className="group-label">Program name</p>
           <input
             className="text-input"
+            aria-label="Program name"
             placeholder="e.g. Chris’ Strength Block"
             value={draft.name}
             onChange={(e) => update({ name: e.target.value })}
@@ -335,6 +346,7 @@ export default function Builder() {
             </div>
             <input
               className="text-input"
+              aria-label="Session name"
               placeholder="Session name (e.g. Push, Legs)"
               value={day.title}
               onChange={(e) => updateDay(di, { title: e.target.value })}
@@ -494,11 +506,12 @@ export default function Builder() {
       </div>
 
       {picker !== null && (
-        <div className="picker-overlay" role="dialog" aria-label="Add exercise">
+        <div className="picker-overlay" role="dialog" aria-modal="true" aria-label="Add exercise" ref={pickerRef} tabIndex={-1}>
           <div className="picker-sheet">
             <div className="picker-head">
               <input
                 className="text-input"
+                aria-label="Search exercises"
                 placeholder="Search exercises…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -542,7 +555,7 @@ export default function Builder() {
       )}
 
       {amrapInfo && (
-        <div className="picker-overlay" role="dialog" aria-label="About AMRAP" onClick={() => setAmrapInfo(false)}>
+        <div className="picker-overlay" role="dialog" aria-modal="true" aria-label="About AMRAP" onClick={() => setAmrapInfo(false)} ref={amrapRef} tabIndex={-1}>
           <div className="info-sheet" onClick={(e) => e.stopPropagation()}>
             <p className="info-title">AMRAP last set</p>
             <p className="muted small">
@@ -560,7 +573,7 @@ export default function Builder() {
       )}
 
       {warmupInfo && (
-        <div className="picker-overlay" role="dialog" aria-label="About warm-up ramp" onClick={() => setWarmupInfo(false)}>
+        <div className="picker-overlay" role="dialog" aria-modal="true" aria-label="About warm-up ramp" onClick={() => setWarmupInfo(false)} ref={warmupRef} tabIndex={-1}>
           <div className="info-sheet" onClick={(e) => e.stopPropagation()}>
             <p className="info-title">Warm-up ramp</p>
             <p className="muted small">
@@ -576,7 +589,7 @@ export default function Builder() {
       )}
 
       {isoInfo && (
-        <div className="picker-overlay" role="dialog" aria-label="About isometric holds" onClick={() => setIsoInfo(false)}>
+        <div className="picker-overlay" role="dialog" aria-modal="true" aria-label="About isometric holds" onClick={() => setIsoInfo(false)} ref={isoRef} tabIndex={-1}>
           <div className="info-sheet" onClick={(e) => e.stopPropagation()}>
             <p className="info-title">Isometric hold</p>
             <p className="muted small">

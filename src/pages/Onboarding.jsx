@@ -191,6 +191,7 @@ export default function Onboarding() {
               <button
                 type="button"
                 className={'choice-row' + (draft.trainOthers ? ' is-selected' : '')}
+                aria-pressed={draft.trainOthers}
                 onClick={() => set({ trainOthers: true })}
               >
                 <span className="choice-title">Yes, balance my week</span>
@@ -199,6 +200,7 @@ export default function Onboarding() {
               <button
                 type="button"
                 className={'choice-row' + (!draft.trainOthers ? ' is-selected' : '')}
+                aria-pressed={!draft.trainOthers}
                 onClick={() => set({ trainOthers: false })}
               >
                 <span className="choice-title">No, just my focus areas</span>
@@ -245,6 +247,7 @@ export default function Onboarding() {
                   key={d}
                   type="button"
                   className={'seg-item' + (draft.daysPerWeek === d ? ' is-selected' : '')}
+                  aria-pressed={draft.daysPerWeek === d}
                   onClick={() => set({ daysPerWeek: d })}
                 >
                   {d}
@@ -259,6 +262,7 @@ export default function Onboarding() {
                   key={m}
                   type="button"
                   className={'seg-item' + (draft.sessionLength === m ? ' is-selected' : '')}
+                  aria-pressed={draft.sessionLength === m}
                   onClick={() => set({ sessionLength: m })}
                 >
                   {m}m

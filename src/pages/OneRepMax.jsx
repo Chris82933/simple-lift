@@ -106,13 +106,13 @@ export default function OneRepMax() {
             <option value="other">Other / custom…</option>
           </select>
           {liftId === 'other' && (
-            <input className="text-input" placeholder="Name this lift" value={customName} onChange={(e) => setCustomName(e.target.value)} />
+            <input className="text-input" aria-label="Name this lift" placeholder="Name this lift" value={customName} onChange={(e) => setCustomName(e.target.value)} />
           )}
 
           <p className="group-label">Units</p>
           <div className="seg">
             {['lbs', 'kg'].map((u) => (
-              <button key={u} type="button" className={'seg-item' + (units === u ? ' is-selected' : '')} onClick={() => setUnits(u)}>{u}</button>
+              <button key={u} type="button" className={'seg-item' + (units === u ? ' is-selected' : '')} aria-pressed={units === u} onClick={() => setUnits(u)}>{u}</button>
             ))}
           </div>
 

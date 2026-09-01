@@ -11,11 +11,13 @@ export default function StretchPanel({ muscles = [], phase = 'static', title, su
   const count = `${routine.length} move${routine.length === 1 ? '' : 's'}`
   return (
     <div className="card collapsible stretch-panel">
-      <button type="button" className="collapse-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <span className="collapse-title">{title}</span>
-        <span className="muted small collapse-sub">{count}</span>
-        <span className={'collapse-chevron' + (open ? ' is-open' : '')} aria-hidden="true">▾</span>
-      </button>
+      <h2 className="collapse-heading">
+        <button type="button" className="collapse-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+          <span className="collapse-title">{title}</span>
+          <span className="muted small collapse-sub">{count}</span>
+          <span className={'collapse-chevron' + (open ? ' is-open' : '')} aria-hidden="true">▾</span>
+        </button>
+      </h2>
       {open && (
         <div className="collapse-body">
           {subtitle && <p className="muted small stretch-intro">{subtitle}</p>}

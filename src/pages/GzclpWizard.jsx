@@ -184,6 +184,7 @@ export default function GzclpWizard() {
                         key={id}
                         type="button"
                         className={'chip' + (draft.t3[slot] === id ? ' is-selected' : '')}
+                        aria-pressed={draft.t3[slot] === id}
                         onClick={() => setT3(slot, id)}
                       >
                         {lib.name}{doable ? '' : ' ·  no gear'}
@@ -201,6 +202,7 @@ export default function GzclpWizard() {
                     key={e.id}
                     type="button"
                     className={'chip' + (draft.extra === e.id ? ' is-selected' : '')}
+                    aria-pressed={draft.extra === e.id}
                     onClick={() => set({ extra: e.id })}
                   >
                     {e.label}

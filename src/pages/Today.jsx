@@ -159,6 +159,7 @@ export default function Today() {
               key={i}
               type="button"
               className={'chip day-chip-btn' + (i === dayIndex ? ' is-selected' : '')}
+              aria-pressed={i === dayIndex}
               onClick={() => setSelectedDay(i)}
             >
               {d.title}
@@ -177,6 +178,7 @@ export default function Today() {
                 key={id}
                 type="button"
                 className={'seg-item' + (activeProfile === id ? ' is-selected' : '')}
+                aria-pressed={activeProfile === id}
                 onClick={() => switchProfile(id)}
               >
                 {profileMeta(id).icon} {profileMeta(id).name}

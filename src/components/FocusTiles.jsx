@@ -26,6 +26,7 @@ export default function FocusTiles({ current, onPickProgram }) {
           key={p.id}
           type="button"
           className={'focus-tab' + (current === 'program' && p.id === activeId ? ' is-selected' : '')}
+          aria-pressed={current === 'program' && p.id === activeId}
           onClick={() => pickProgram(p.id)}
         >
           <span className="focus-tab-name">{p.name}</span>
@@ -36,6 +37,7 @@ export default function FocusTiles({ current, onPickProgram }) {
         <button
           type="button"
           className={'focus-tab' + (current === 'skills' ? ' is-selected' : '')}
+          aria-pressed={current === 'skills'}
           onClick={pickSkills}
         >
           <span className="focus-tab-name">Calisthenics</span>

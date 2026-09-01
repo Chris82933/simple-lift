@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import useModalA11y from '../lib/useModalA11y.js'
 import {
   loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation,
   addCardio, addProgram, updateWorkout, loadHistory, loadMaxes, saveMax,
@@ -29,7 +30,7 @@ import { ladderInfo } from '../lib/ladder.js'
 import { measureUnit, exMeasure, EXERCISE_BY_ID, isoHoldFor, tracksLoad, loadIsOptional } from '../data/exercises.js'
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
 import { lastWeightFromHistory, fillDownRows } from '../lib/logging.js'
-import { sessionMuscleHeat, plannedMuscleHeat } from '../lib/muscleHeat.js'
+import { sessionMuscleHeat, plannedMuscleHeat, describeHeat } from '../lib/muscleHeat.js'
 import StretchPanel from '../components/StretchPanel.jsx'
 import Icon from '../components/Icon.jsx'
 
@@ -239,6 +240,8 @@ export default function Workout() {
   const [cardioOpen, setCardioOpen] = useState(false)
   const [cardioMachine, setCardioMachine] = useState('treadmill') // preselect for the form
   const [oneRmOpen, setOneRmOpen] = useState(false)
+  const cardioDialogRef = useRef(null)
+  useModalA11y(cardioDialogRef, () => setCardioOpen(false), cardioOpen)
   // This session's cardio — restored on resume, persisted in the active session,
   // and fed to the share summary. cardioSaved just drives the little "✓ N logged".
   const [loggedCardio, setLoggedCardio] = useState(() => (resumed?.cardio ? resumed.cardio : []))
@@ -592,6 +595,7 @@ export default function Workout() {
         {Object.keys(muscleHeat).length > 0 && (
           <div className="card muscles-worked">
             <p className="group-label">Muscles worked</p>
+            <p className="sr-only">{describeHeat(muscleHeat)}</p>
             <MuscleMap heat={muscleHeat} size={300} labels />
             <div className="heat-legend">
               <span className="muted small">Less</span>
@@ -640,6 +644,7 @@ export default function Workout() {
                   key={opt.key}
                   type="button"
                   className={'chip' + (saveChoice === opt.key ? ' is-selected' : '')}
+                  aria-pressed={saveChoice === opt.key}
                   onClick={() => setSaveChoice(opt.key)}
                 >
                   {opt.label}
@@ -658,6 +663,7 @@ export default function Workout() {
                 key={d.id}
                 type="button"
                 className={'chip' + (difficulty === d.id ? ' is-selected' : '')}
+                aria-pressed={difficulty === d.id}
                 onClick={() => setDifficulty((cur) => (cur === d.id ? null : d.id))}
               >
                 {d.label}
@@ -666,6 +672,7 @@ export default function Workout() {
           </div>
           <textarea
             className="text-input notes-input"
+            aria-label="Session notes"
             placeholder="Notes — how it went, aches, PRs, what to try next time…"
             rows={3}
             value={notes}
@@ -694,6 +701,7 @@ export default function Workout() {
                           key={opt.key}
                           type="button"
                           className={'chip' + (choices[sug.exId] === opt.key ? ' is-selected' : '') + (isRec ? ' is-recommended' : '')}
+                          aria-pressed={choices[sug.exId] === opt.key}
                           onClick={() => setChoices((c) => ({ ...c, [sug.exId]: opt.key }))}
                         >
                           {opt.label}{isRec ? ' ★' : ''}
@@ -794,6 +802,7 @@ export default function Workout() {
                 key={id}
                 type="button"
                 className={'seg-item' + (activeProfile === id ? ' is-selected' : '')}
+                aria-pressed={activeProfile === id}
                 onClick={() => switchProfile(id)}
               >
                 {profileMeta(id).icon} {profileMeta(id).name}
@@ -945,16 +954,19 @@ export default function Workout() {
                 {(() => { let workingN = 0; return sets[ex.id].map((row, idx) => {
                   const isAmrapSet = ex.amrap && idx === sets[ex.id].length - 1
                   if (!row.warmup) workingN += 1
+                  const setLabel = row.warmup ? 'Warm-up set' : `Set ${workingN}${isAmrapSet ? ' (AMRAP — as many reps as possible)' : ''}`
                   return (
                     <div className={'set-line' + (row.done ? ' done' : '') + (row.warmup ? ' is-warmup' : '') + (idx === activePlateIdx ? ' is-plate-target' : '')} key={idx}>
                       <span className="set-num" title={row.warmup ? 'Warm-up set' : isAmrapSet ? 'AMRAP — as many reps as possible' : undefined}>
                         {row.warmup ? 'W' : workingN}{isAmrapSet ? '+' : ''}
+                        <span className="sr-only">{setLabel}</span>
                       </span>
                       {showWeight && (
                         <input
                           className="set-input"
                           type="number"
                           inputMode="decimal"
+                          aria-label={`${setLabel} weight (${units})`}
                           value={row.weight}
                           placeholder={optionalLoad ? 'bw' : '–'}
                           onChange={(e) => updateSet(ex.id, idx, 'weight', e.target.value)}
@@ -964,6 +976,7 @@ export default function Workout() {
                         className="set-input"
                         type="number"
                         inputMode="numeric"
+                        aria-label={`${setLabel} reps`}
                         value={row.reps}
                         placeholder="–"
                         onChange={(e) => updateSet(ex.id, idx, 'reps', e.target.value)}
@@ -1091,7 +1104,7 @@ export default function Workout() {
         <QuickOneRM units={units} onClose={() => setOneRmOpen(false)} />
       )}
       {cardioOpen && (
-        <div className="picker-overlay" role="dialog" aria-label="Log cardio">
+        <div className="picker-overlay" role="dialog" aria-modal="true" aria-label="Log cardio" ref={cardioDialogRef} tabIndex={-1}>
           <div className="picker-sheet">
             <div className="picker-head">
               <p className="ex-name big" style={{ flex: 1 }}>Log cardio</p>

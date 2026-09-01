@@ -83,6 +83,7 @@ export default function Schedule() {
             <button
               type="button"
               className={'choice-row' + (draft.mode === 'fixed' ? ' is-selected' : '')}
+              aria-pressed={draft.mode === 'fixed'}
               onClick={() => set({ mode: 'fixed' })}
             >
               <span className="choice-title">Same workout each weekday</span>
@@ -91,6 +92,7 @@ export default function Schedule() {
             <button
               type="button"
               className={'choice-row' + (draft.mode === 'rotation' ? ' is-selected' : '')}
+              aria-pressed={draft.mode === 'rotation'}
               onClick={() => set({ mode: 'rotation' })}
             >
               <span className="choice-title">Rotate through workouts</span>
@@ -129,6 +131,7 @@ export default function Schedule() {
                   key={wd}
                   type="button"
                   className={'check-pill' + (draft.trainingDays.includes(wd) ? ' is-selected' : '')}
+                  aria-pressed={draft.trainingDays.includes(wd)}
                   onClick={() => set({ trainingDays: toggle(draft.trainingDays, wd) })}
                 >
                   {WEEKDAY_SHORT[wd]}

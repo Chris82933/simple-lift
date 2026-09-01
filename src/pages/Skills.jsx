@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import useModalA11y from '../lib/useModalA11y.js'
 import { loadSkills, updateSkill, isSkillTreeAdded, setSkillTreeAdded } from '../lib/storage.js'
 import {
   SKILLS, computeStats, powerLevel, rankFor, calibrateLevel, readyToAdvance, maxIndex,
@@ -19,6 +20,8 @@ export default function Skills() {
   const flashTimer = useRef()
   const [calOpen, setCalOpen] = useState(false)
   const [answers, setAnswers] = useState({})
+  const calRef = useRef(null)
+  useModalA11y(calRef, () => setCalOpen(false), calOpen)
   // Whether the user has added the skill tree to their programs (it's opt-in).
   const [added, setAdded] = useState(() => isSkillTreeAdded())
 
@@ -211,7 +214,7 @@ export default function Skills() {
 
       {/* ---- Calibration quiz ---- */}
       {calOpen && (
-        <div className="picker-overlay" role="dialog" aria-label="Find my levels">
+        <div className="picker-overlay" role="dialog" aria-modal="true" aria-label="Find my levels" ref={calRef} tabIndex={-1}>
           <div className="picker-sheet">
             <div className="picker-head">
               <p className="ex-name big" style={{ flex: 1 }}>Find my levels</p>
