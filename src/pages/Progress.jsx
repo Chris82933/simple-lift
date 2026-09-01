@@ -266,7 +266,10 @@ export default function Progress() {
   // Which cards are expanded — remembered between visits (saving fires the
   // global "✓ Saved" flash).
   const [cards, setCards] = useState(() => loadSettings().progressCards || {})
-  const cardOpen = (id) => cards[id] !== false
+  // Primary cards (chart, PRs, weigh-ins) open by default; secondary ones start
+  // collapsed so the first visit is scannable. Remembered once toggled.
+  const CARD_DEFAULTS = { bw: false, exlist: false, cardio: false, log: false }
+  const cardOpen = (id) => (cards[id] === undefined ? (CARD_DEFAULTS[id] ?? true) : cards[id])
   const toggleCard = (id) => {
     const next = { ...cards, [id]: !cardOpen(id) }
     setCards(next)

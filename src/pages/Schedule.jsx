@@ -66,7 +66,7 @@ export default function Schedule() {
       }
     }
     updateProgram(next)
-    navigate('/program')
+    navigate('/today')
   }
 
   return (

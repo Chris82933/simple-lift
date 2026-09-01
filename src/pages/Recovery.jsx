@@ -20,7 +20,7 @@ export default function Recovery() {
     const program = buildRecoveryProgram(selected)
     if (!program) return
     addProgram(program) // new program, becomes active — never overwrites
-    navigate('/program')
+    navigate('/today')
   }
 
   return (
@@ -92,12 +92,19 @@ export default function Recovery() {
         {selected.length === 0 && (
           <p className="muted small">Select an area above to preview its routine.</p>
         )}
+
+        {selected.length > 0 && (
+          <p className="muted small">
+            Creating this makes it your active program. Your current program is kept —
+            switch back anytime under Plans.
+          </p>
+        )}
       </div>
 
       <div className="flow-actions">
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/programs')}>Cancel</button>
         <button type="button" className="btn btn-primary" onClick={create} disabled={selected.length === 0}>
-          Create recovery program
+          Create &amp; make active
         </button>
       </div>
     </section>

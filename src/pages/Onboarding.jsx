@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   REGIONS,
   EQUIPMENT_GROUPS,
@@ -30,9 +30,12 @@ const DEFAULT_DRAFT = {
 
 export default function Onboarding() {
   const navigate = useNavigate()
+  const location = useLocation()
   // `started` false = the "how do you want to start?" path picker;
   // true = the guided, assisted wizard for beginner/intermediate lifters.
-  const [started, setStarted] = useState(false)
+  // When the caller already chose "answer a few questions" (Today's empty state,
+  // the Plans hub), jump straight into the wizard so nobody picks a path twice.
+  const [started, setStarted] = useState(() => !!location.state?.guided)
   const [step, setStep] = useState(0)
   // Prefill from an existing profile when re-running setup.
   const [draft, setDraft] = useState(() => {

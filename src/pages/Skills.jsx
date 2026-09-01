@@ -23,7 +23,7 @@ export default function Skills() {
   const [added, setAdded] = useState(() => isSkillTreeAdded())
 
   const addTree = () => { setSkillTreeAdded(true); setAdded(true) }
-  const removeTree = () => { setSkillTreeAdded(false); navigate('/today') }
+  const removeTree = () => { setSkillTreeAdded(false); setAdded(false) }
 
   // Quick +/- on the log input (step by 1 rep, or 5 seconds for holds).
   const bump = (sk, dir) => setDrafts((d) => {
@@ -83,10 +83,7 @@ export default function Skills() {
   return (
     <section className="page full-flow">
       <header className="page-header">
-        <div className="workout-head-row">
-          <p className="eyebrow">Calisthenics</p>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/today')}>Done</button>
-        </div>
+        <p className="eyebrow">Calisthenics</p>
         <h1>Skill tree</h1>
       </header>
 

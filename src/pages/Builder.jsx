@@ -233,7 +233,7 @@ export default function Builder() {
     }
     if (editId) updateProgram({ ...getProgram(editId), ...program })
     else addProgram(program)
-    navigate('/program')
+    navigate('/today')
   }
 
   // Hide only the template-only ladder variants; conditioning/cardio moves ARE

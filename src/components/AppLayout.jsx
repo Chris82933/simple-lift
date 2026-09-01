@@ -32,7 +32,7 @@ const ICONS = {
 
 const tabs = [
   { to: '/today', label: 'Today', icon: 'today' },
-  { to: '/program', label: 'Program', icon: 'program' },
+  { to: '/programs', label: 'Plans', icon: 'program' },
   { to: '/progress', label: 'Progress', icon: 'progress' },
   { to: '/profile', label: 'Settings', icon: 'settings' },
 ]

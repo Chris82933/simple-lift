@@ -34,7 +34,7 @@ export default function ImportProgram() {
     const existingNames = loadPrograms().map((p) => p.name)
     const program = buildImportedProgram(shared, opts, existingNames)
     addProgram(program) // appends + becomes active; never overwrites
-    navigate('/program')
+    navigate('/today')
   }
 
   const set = (patch) => setOpts((o) => ({ ...o, ...patch }))

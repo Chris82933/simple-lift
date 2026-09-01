@@ -40,6 +40,16 @@ function targetSummary(t) {
 
 const daysPerWeek = (t) => t.schedule?.trainingDays?.length || t.days.length
 
+// Equipment filter chips. Each maps to a tag (or set of tags) a template carries;
+// 'all' shows everything. Kept to one clear facet so the row stays scannable.
+const EQUIP_FILTERS = [
+  { id: 'all', label: 'All', match: () => true },
+  { id: 'barbell', label: 'Barbell', match: (t) => t.tags.includes('Barbell') },
+  { id: 'dumbbell', label: 'Dumbbell', match: (t) => t.tags.includes('Dumbbells') },
+  { id: 'kettlebell', label: 'Kettlebell', match: (t) => t.tags.includes('Kettlebell') },
+  { id: 'bodyweight', label: 'Bodyweight', match: (t) => t.tags.includes('Bodyweight') },
+]
+
 function TemplateCard({ t, open, onToggle, onUse }) {
   return (
     <div className={'card template-card' + (open ? ' is-open' : '')}>
@@ -108,6 +118,10 @@ export default function Templates() {
   const navigate = useNavigate()
   // Collapsed by default — eleven fully expanded programs was a very long scroll.
   const [openId, setOpenId] = useState(null)
+  const [filter, setFilter] = useState('all')
+
+  const active = EQUIP_FILTERS.find((f) => f.id === filter) || EQUIP_FILTERS[0]
+  const shown = TEMPLATES.filter(active.match)
 
   const use = (t, isWizard) => {
     if (isWizard) { navigate(t.setupPath); return }
@@ -146,7 +160,21 @@ export default function Templates() {
         </p>
       </header>
 
-      {TEMPLATES.map((t) => (
+      <div className="filter-chips" role="group" aria-label="Filter by equipment">
+        {EQUIP_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            className={'chip' + (filter === f.id ? ' is-selected' : '')}
+            aria-pressed={filter === f.id}
+            onClick={() => { setFilter(f.id); setOpenId(null) }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {shown.map((t) => (
         <TemplateCard
           key={t.templateId}
           t={t}
@@ -157,7 +185,11 @@ export default function Templates() {
         />
       ))}
 
-      <SkillTreeCard />
+      {shown.length === 0 && (
+        <p className="muted small">No templates use only that equipment. Try “All”.</p>
+      )}
+
+      {(filter === 'all' || filter === 'bodyweight') && <SkillTreeCard />}
     </section>
   )
 }

@@ -69,10 +69,10 @@ export default function Today() {
             <span className="choice-title">Browse templates</span>
             <span className="muted small">Proven programs — GZCLP, bodyweight, and more. Best if you&apos;re not sure where to start.</span>
           </button>
-          <Link className="card choice-card" to="/onboarding">
+          <button type="button" className="card choice-card" onClick={() => navigate('/onboarding', { state: { guided: true } })}>
             <span className="choice-title">Answer a few questions</span>
             <span className="muted small">We&apos;ll tailor a program to your goals, equipment, and schedule.</span>
-          </Link>
+          </button>
           <button type="button" className="card choice-card" onClick={() => navigate('/builder')}>
             <span className="choice-title">Build your own</span>
             <span className="muted small">Design a custom program, exercise by exercise.</span>

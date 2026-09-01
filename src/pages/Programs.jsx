@@ -49,27 +49,39 @@ export default function Programs() {
   return (
     <section className="page">
       <header className="page-header">
-        <h1>Programs</h1>
-        <p className="muted">Switch between programs, or build a new one.</p>
+        <h1>Plans</h1>
+        <p className="muted">Create, switch, and manage your programs — plus extras and tools.</p>
       </header>
 
       <div className="card">
+        <p className="group-label">Create a program</p>
         <button type="button" className="btn btn-primary" onClick={() => navigate('/templates')}>
           Browse templates (GZCLP, bodyweight…)
         </button>
-        <button type="button" className="btn btn-ghost" onClick={() => navigate('/builder')}>
-          Build custom program
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/onboarding', { state: { guided: true } })}>
+          Generate one from a few questions
         </button>
-        <Link className="btn btn-ghost" to="/onboarding">Generate one from a few questions</Link>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/builder')}>
+          Build a custom program
+        </button>
+      </div>
+
+      <div className="card">
+        <p className="group-label">Extras</p>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/recovery')}>
-          Recovery &amp; Strength
+          Recovery &amp; Strength (rehab a joint)
         </button>
         {!skillTreeAdded && (
           <button type="button" className="btn btn-ghost" onClick={addSkillTree}>
             Add the Calisthenics Skill Tree
           </button>
         )}
+      </div>
+
+      <div className="card">
+        <p className="group-label">Tools</p>
         <Link className="btn btn-ghost" to="/one-rep-max">Find your starting weights (1RM)</Link>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
       </div>
 
       {programs.length === 0 && !skillTreeAdded && (
@@ -126,6 +138,11 @@ export default function Programs() {
               )}
             </div>
             <div className="program-card-actions">
+              {isActive && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/program')}>
+                  View days
+                </button>
+              )}
               {isActive && (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/schedule')}>
                   Schedule

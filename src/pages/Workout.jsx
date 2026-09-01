@@ -673,25 +673,6 @@ export default function Workout() {
           />
         </div>
 
-        {/* ---- Update estimated 1RMs from strong sets ---- */}
-        {rmUpdates.length > 0 && (
-          <div className="card">
-            <p className="group-label">Update your 1RM?</p>
-            <p className="muted small">A strong set beat your saved max — update it so recommended weights stay accurate.</p>
-            {rmUpdates.map((u) => (
-              <div className="review-row rm-row" key={u.exId}>
-                <span className="review-name">
-                  {u.name}
-                  <span className="muted small"> · {u.weight}×{u.reps} → {u.oneRM} {units}{u.prev > 0 ? ` (was ${u.prev})` : ''}</span>
-                </span>
-                {rmDone[u.exId]
-                  ? <span className="rm-done">✓ Updated</span>
-                  : <button type="button" className="btn btn-ghost btn-sm" onClick={() => applyRmUpdate(u)}>Update</button>}
-              </div>
-            ))}
-          </div>
-        )}
-
         {review.suggestions.length > 0 && (
           <div className="card">
             <p className="group-label">Progress next time?</p>
@@ -739,6 +720,25 @@ export default function Workout() {
           </details>
         )}
 
+        {/* ---- Update estimated 1RMs from strong sets ---- */}
+        {rmUpdates.length > 0 && (
+          <div className="card">
+            <p className="group-label">Update your 1RM?</p>
+            <p className="muted small">A strong set beat your saved max — update it so recommended weights stay accurate.</p>
+            {rmUpdates.map((u) => (
+              <div className="review-row rm-row" key={u.exId}>
+                <span className="review-name">
+                  {u.name}
+                  <span className="muted small"> · {u.weight}×{u.reps} → {u.oneRM} {units}{u.prev > 0 ? ` (was ${u.prev})` : ''}</span>
+                </span>
+                {rmDone[u.exId]
+                  ? <span className="rm-done">✓ Updated</span>
+                  : <button type="button" className="btn btn-ghost btn-sm" onClick={() => applyRmUpdate(u)}>Update</button>}
+              </div>
+            ))}
+          </div>
+        )}
+
         {review.autoNotes.length > 0 && (
           <div className="card notice">
             <p className="group-label">Adjusted automatically</p>
@@ -746,8 +746,14 @@ export default function Workout() {
           </div>
         )}
 
-        {/* ---- Share session ---- */}
-        <div className="card">
+        <div className="flow-actions">
+          <button className="btn btn-primary" onClick={done}>
+            {review.suggestions.length ? 'Save & finish' : 'Done'}
+          </button>
+        </div>
+
+        {/* ---- Share session (optional, after the primary finish action) ---- */}
+        <div className="card share-card">
           <p className="group-label">Share this session</p>
           <p className="muted small">Copy a text recap to paste into a Strava activity, your notes, or socials.</p>
           <div className="share-actions">
@@ -761,12 +767,6 @@ export default function Workout() {
           {shareStatus === 'copied' && <p className="muted small share-note">✓ Copied to clipboard — paste it into Strava.</p>}
           {shareStatus === 'shared' && <p className="muted small share-note">✓ Shared.</p>}
           {shareStatus === 'error' && <p className="muted small share-note">Couldn’t copy — long-press to select instead.</p>}
-        </div>
-
-        <div className="flow-actions">
-          <button className="btn btn-primary" onClick={done}>
-            {review.suggestions.length ? 'Save & finish' : 'Done'}
-          </button>
         </div>
       </section>
     )
@@ -1069,7 +1069,15 @@ export default function Workout() {
       </div>
 
       <div className="flow-actions">
-        <button className="btn btn-ghost" onClick={() => navigate('/today')}>Exit</button>
+        <button
+          className="btn btn-ghost"
+          onClick={() => {
+            if (doneSets > 0 && !window.confirm("You've logged sets but haven't finished. Exit without recording this workout? Your sets are saved — resume and tap Finish to record it and get your weight bumps.")) return
+            navigate('/today')
+          }}
+        >
+          {doneSets > 0 ? 'Save & exit' : 'Exit'}
+        </button>
         <button className="btn btn-primary" onClick={finish}>Finish workout</button>
       </div>
 
