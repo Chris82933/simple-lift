@@ -82,6 +82,28 @@ const DIFF_LABELS = {
 const shortDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 const muscleLabel = (m) => m.replace(/_/g, ' ')
 
+// Sections the user can reorder (the header + summary dashboard stay pinned on
+// top). Ids match each card's collapse-state key so everything stays in sync.
+const SECTION_LABELS = {
+  prs: 'Personal records',
+  weight: 'Lift progress',
+  bodyweight: 'Bodyweight',
+  bw: 'Bodyweight reps',
+  exlist: 'Exercise history',
+  cardio: 'Cardio',
+  log: 'Session log',
+}
+const DEFAULT_ORDER = ['prs', 'weight', 'bodyweight', 'bw', 'exlist', 'cardio', 'log']
+// Merge a saved order with the defaults: keep the saved positions, drop ids we
+// no longer know, and append any new sections at the end — so a saved layout
+// keeps working even as sections are added or removed in future versions.
+const orderFrom = (saved) => {
+  const known = new Set(DEFAULT_ORDER)
+  const valid = Array.isArray(saved) ? saved.filter((id) => known.has(id)) : []
+  const seen = new Set(valid)
+  return [...valid, ...DEFAULT_ORDER.filter((id) => !seen.has(id))]
+}
+
 // A card whose body can be collapsed. The open/closed state is owned by the
 // page (and persisted to settings), so the layout is remembered.
 function CollapsibleCard({ title, subtitle, open, onToggle, children }) {
@@ -324,6 +346,10 @@ export default function Progress() {
   const PAGE = 8
   const [shownSessions, setShownSessions] = useState(PAGE)
 
+  // Persisted section order + a layout edit mode to change it.
+  const [order, setOrder] = useState(() => orderFrom(loadSettings().progressOrder))
+  const [layoutEdit, setLayoutEdit] = useState(false)
+
   // Weigh-ins alone are enough to have something worth showing here.
   if (history.length === 0 && cardio.length === 0 && bodyweightLog.length < 2) {
     return (
@@ -339,12 +365,70 @@ export default function Progress() {
     )
   }
 
+  // Which sections have something to show right now.
+  const sectionVisible = {
+    prs: prs.length > 0,
+    weight: true,
+    bodyweight: bodyweightLog.length > 1,
+    bw: bwSeries.length > 0,
+    exlist: exercisesTracked.length > 0,
+    cardio: true,
+    log: history.length > 0,
+  }
+  const visibleOrder = order.filter((id) => sectionVisible[id])
+  // CSS flex `order` drives the layout, so reordering never moves the chart DOM.
+  const orderStyle = (id) => ({ order: order.indexOf(id) + 1 })
+  // Move a section among the visible ones, swapping with the nearest visible
+  // neighbour so hidden sections never create a dead step. Persists immediately.
+  const moveSection = (id, dir) => {
+    const target = visibleOrder[visibleOrder.indexOf(id) + dir]
+    if (!target) return
+    const arr = [...order]
+    const a = arr.indexOf(id)
+    const b = arr.indexOf(target)
+    ;[arr[a], arr[b]] = [arr[b], arr[a]]
+    setOrder(arr)
+    saveSettings({ ...loadSettings(), progressOrder: arr })
+  }
+
   return (
-    <section className="page">
+    <section className={'page' + (layoutEdit ? ' is-layout-edit' : '')}>
       <header className="page-header">
-        <h1>Progress</h1>
-        <p className="muted">{history.length} session{history.length === 1 ? '' : 's'} · {cardio.length} cardio logged.</p>
+        <div className="progress-head-row">
+          <div className="progress-head-text">
+            <h1>Progress</h1>
+            <p className="muted">{history.length} session{history.length === 1 ? '' : 's'} · {cardio.length} cardio logged.</p>
+          </div>
+          {history.length > 0 && (
+            <button
+              type="button"
+              className={'edit-toggle' + (layoutEdit ? ' is-on' : '')}
+              onClick={() => setLayoutEdit((v) => !v)}
+              aria-pressed={layoutEdit}
+            >
+              {layoutEdit ? 'Done' : <><Icon name="edit" size={14} /> Layout</>}
+            </button>
+          )}
+        </div>
       </header>
+
+      {layoutEdit && (
+        <div className="card layout-editor">
+          <p className="group-label">Reorder sections</p>
+          <p className="muted small">Use the arrows to move a section up or down. Your layout is saved automatically and used every time you open Progress.</p>
+          <ul className="layout-list">
+            {visibleOrder.map((id, i) => (
+              <li className="layout-row" key={id}>
+                <span className="layout-row-name">{SECTION_LABELS[id]}</span>
+                <div className="ex-reorder">
+                  <button type="button" className="icon-btn" disabled={i === 0} onClick={() => moveSection(id, -1)} aria-label={`Move ${SECTION_LABELS[id]} up`}>↑</button>
+                  <button type="button" className="icon-btn" disabled={i === visibleOrder.length - 1} onClick={() => moveSection(id, 1)} aria-label={`Move ${SECTION_LABELS[id]} down`}>↓</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {history.length > 0 && (
         <>
@@ -405,6 +489,7 @@ export default function Progress() {
       )}
 
       {prs.length > 0 && (
+        <div className="progress-section" style={orderStyle('prs')}>
         <CollapsibleCard
           title="Personal records"
           subtitle={`${prs.length} total`}
@@ -422,8 +507,10 @@ export default function Progress() {
           </ul>
           {prs.length > 30 && <p className="muted small">Showing your 30 most recent records.</p>}
         </CollapsibleCard>
+        </div>
       )}
 
+      <div className="progress-section" style={orderStyle('weight')}>
       <CollapsibleCard
         title={`${weightMetric === 'e1rm' ? 'Estimated 1RM' : 'Top set'} over time (${units})`}
         open={cardOpen('weight')}
@@ -461,9 +548,11 @@ export default function Progress() {
           <p className="muted small">Weighted lifts will plot here once you log some.</p>
         )}
       </CollapsibleCard>
+      </div>
 
       {/* ---- Bodyweight over time ---- */}
       {bodyweightLog.length > 1 && (
+        <div className="progress-section" style={orderStyle('bodyweight')}>
         <CollapsibleCard
           title={`Bodyweight over time (${units})`}
           subtitle={`${bodyweightLog[0].weight} ${units} now`}
@@ -476,10 +565,12 @@ export default function Progress() {
             bodyweight + added load.
           </p>
         </CollapsibleCard>
+        </div>
       )}
 
       {/* ---- Bodyweight reps ---- */}
       {bwSeries.length > 0 && (
+        <div className="progress-section" style={orderStyle('bw')}>
         <CollapsibleCard title="Bodyweight reps over time" open={cardOpen('bw')} onToggle={() => toggleCard('bw')}>
           <ProgressChart series={bwVisible} ariaLabel="Bodyweight reps over time" />
           <div className="legend">
@@ -497,10 +588,12 @@ export default function Progress() {
           </div>
           <p className="muted small">Best set&apos;s reps each session — watch these climb, then level up the movement.</p>
         </CollapsibleCard>
+        </div>
       )}
 
       {/* ---- Per-exercise history ---- */}
       {exercisesTracked.length > 0 && (
+        <div className="progress-section" style={orderStyle('exlist')}>
         <CollapsibleCard
           title="Exercise history"
           subtitle={`${exercisesTracked.length} tracked`}
@@ -542,9 +635,11 @@ export default function Progress() {
             <button type="button" className="btn btn-ghost btn-sm show-more" onClick={() => setExShown(EX_PAGE)}>Show fewer</button>
           )}
         </CollapsibleCard>
+        </div>
       )}
 
       {/* ---- Cardio ---- */}
+      <div className="progress-section" style={orderStyle('cardio')}>
       <CollapsibleCard
         title="Cardio over time"
         subtitle={cardio.length ? `${cardio.length} logged` : null}
@@ -590,8 +685,10 @@ export default function Progress() {
           </div>
         )}
       </CollapsibleCard>
+      </div>
 
       {history.length > 0 && (
+        <div className="progress-section" style={orderStyle('log')}>
         <CollapsibleCard
           title="Session log"
           subtitle={`${history.length} session${history.length === 1 ? '' : 's'}`}
@@ -612,6 +709,7 @@ export default function Progress() {
             </button>
           )}
         </CollapsibleCard>
+        </div>
       )}
 
       {detailEx && (

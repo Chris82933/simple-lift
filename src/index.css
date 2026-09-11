@@ -741,6 +741,25 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .ex-history-date { flex: none; }
 .chip.cap { text-transform: capitalize; }
 
+/* ---- Progress: reorderable sections + layout edit mode ---- */
+/* Header row holds the title block and the "Layout" edit toggle. */
+.progress-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.progress-head-text { min-width: 0; }
+/* Each section is a flex item of .page; its `order` is set inline from the
+   saved layout, so reordering never touches the chart DOM. */
+.progress-section { display: flex; flex-direction: column; }
+/* In edit mode the real sections are hidden and the reorder list stands in. */
+.page.is-layout-edit .progress-section { display: none; }
+.layout-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.layout-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.layout-row-name { flex: 1; min-width: 0; font-weight: 600; }
+
 .detail-sheet {
   margin: auto;
   width: min(94vw, 460px);
