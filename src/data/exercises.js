@@ -135,7 +135,6 @@ const BASE_EXERCISES = [
   { id: 'farmer_carry', name: 'Farmer’s Carry', pattern: 'core', regions: ['core', 'arms', 'back'], requires: ['dumbbells'], compound: true, hold: true, unit: 'sec', tags: ['climbing'], cues: 'Grab a heavy dumbbell in each hand, stand tall, and walk — shoulders back, ribs down, no leaning. Carry for time. One-bell “suitcase” carries make the core work even harder.' },
   { id: 'plank', name: 'Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, addLoad: true, load: false, hold: true, tags: ['climbing', 'running'], cues: 'Straight line, squeeze glutes and abs, breathe. Hold for time.' },
   { id: 'side_plank_leg_lift', name: 'Side Plank + Leg Lift', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, cues: 'Hold a side plank and raise the top leg with control — hits the obliques and hip abductors. Reps per side.' },
-  { id: 'hollow_hold', name: 'Hollow Body Hold', pattern: 'core', regions: ['core'], requires: [], compound: false, addLoad: true, load: false, hold: true, cues: 'Low back pressed flat, shoulders and legs off the floor in a shallow banana. Hold for time — the foundation for levers and handstands.' },
   { id: 'hanging_leg_raise', name: 'Hanging Leg Raise', pattern: 'core', regions: ['core'], requires: ['pullup_bar'], compound: false, addLoad: true, load: false, tags: ['climbing'], cues: 'No swinging, lift the legs with the abs, lower slow.' },
   { id: 'dead_bug', name: 'Dead Bug', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Low back pinned, extend opposite arm and leg slowly.' },
   { id: 'ab_wheel', name: 'Ab Rollout', pattern: 'core', regions: ['core'], requires: [], compound: false, load: false, tags: ['climbing'], cues: 'Roll out only as far as you can keep the back flat.' },
@@ -150,8 +149,6 @@ const BASE_EXERCISES = [
   { id: 'leg_extension', name: 'Leg Extension', pattern: 'squat', regions: ['legs'], requires: ['leg_curl_ext'], compound: false, tags: ['running'], cues: 'Extend to nearly locked, squeeze the quads at the top, lower under control.' },
   { id: 'incline_bench', name: 'Incline Bench Press', pattern: 'horiz_push', regions: ['chest', 'shoulders', 'arms'], requires: ['barbell', 'adj_bench'], compound: true, cues: 'Bench at ~30°, bar to the upper chest, drive up and slightly back.' },
   { id: 'cable_fly', name: 'Cable Fly', pattern: 'horiz_push', regions: ['chest'], requires: ['cable'], compound: false, cues: 'Soft elbows, hug a wide arc, squeeze the chest at the front — slow on the stretch.' },
-  { id: 'arnold_press', name: 'Arnold Press', pattern: 'vert_push', regions: ['shoulders', 'arms'], requires: ['dumbbells'], compound: true, cues: 'Start palms-in at the chin, rotate as you press overhead, reverse on the way down.' },
-  { id: 'pendlay_row', name: 'Pendlay Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['barbell'], compound: true, tags: ['climbing'], cues: 'Flat back parallel to the floor, explode the bar to your lower chest, reset each rep on the floor.' },
   { id: 'chest_supported_row', name: 'Chest-Supported Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['dumbbells', 'adj_bench'], compound: true, tags: ['climbing'], cues: 'Chest on an incline bench, row the bells to your hips, squeeze the mid-back.' },
   { id: 'face_pull', name: 'Face Pull', pattern: 'horiz_pull', regions: ['back', 'shoulders'], requires: ['cable'], compound: false, cues: 'Rope to eye level, pull to your forehead with elbows high — great for shoulder health.' },
   { id: 'barbell_curl', name: 'Barbell Curl', pattern: 'biceps', regions: ['arms'], requires: ['barbell'], compound: false, cues: 'Elbows pinned, curl the bar without swinging, control the lower.' },
@@ -281,7 +278,13 @@ const BASE_EXERCISES = [
 // every exercise that's part of a ladder (base or variant).
 import { LADDER_EXERCISES, LADDERS } from './progressions.js'
 
-export const EXERCISES = [...BASE_EXERCISES, ...LADDER_EXERCISES]
+// Dedupe by id (first definition wins) so an accidental duplicate entry can
+// never render twice in a picker or search.
+const dedupeById = (list) => {
+  const seen = new Set()
+  return list.filter((e) => (seen.has(e.id) ? false : seen.add(e.id)))
+}
+export const EXERCISES = dedupeById([...BASE_EXERCISES, ...LADDER_EXERCISES])
 export const EXERCISE_BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]))
 
 // ---- User-defined custom exercises ----
@@ -685,7 +688,6 @@ const ALIASES = {
   russian_twist: ['russian twists', 'seated twist'],
   situp: ['sit up', 'sit-up', 'crunch'],
   cable_crunch: ['kneeling cable crunch', 'rope crunch'],
-  hollow_hold: ['hollow body hold', 'hollow body'],
   side_plank: ['side plank hold'],
   // Cardio / conditioning
   running: ['run', 'jog', 'jogging'],
@@ -703,16 +705,53 @@ const ALIASES = {
   ring_muscle_up: ['muscle up'],
   wall_hspu: ['handstand push up', 'hspu'],
 }
+
+// Extra machine / gym-brand nicknames, merged onto the aliases above. Kept in a
+// second table so entries for the same id (e.g. leg_press) add to — rather than
+// clash with — the base aliases. Unknown ids are simply ignored on merge.
+const MACHINE_ALIASES = {
+  hack_squat: ['hack squat sled'],
+  leg_press: ['leg press machine', '45 degree leg press', 'seated leg press', 'horizontal leg press', 'sled press'],
+  leg_extension: ['leg extension machine'],
+  leg_curl: ['leg curl machine', 'hamstring curl machine'],
+  machine_shoulder_press: ['machine shoulder press', 'shoulder press machine', 'seated press machine', 'hammer strength shoulder press', 'overhead press machine'],
+  pec_deck: ['pec deck', 'pec dec', 'butterfly machine', 'chest fly machine', 'pec fly machine', 'fly machine', 'pec deck machine'],
+  seated_cable_row: ['cable row machine', 'seated row machine', 'row machine'],
+  lat_pulldown: ['pulldown machine', 'lat machine', 'lat pulldown machine'],
+  cable_pulldown: ['cable pulldown'],
+  rowing_machine: ['rowing erg', 'row erg', 'indoor rower'],
+  stationary_bike: ['assault bike', 'air bike', 'peloton', 'recumbent bike', 'upright bike'],
+  stair_climber: ['stepmill', 'step mill', 'stair machine'],
+  elliptical: ['elliptical machine', 'elliptical trainer'],
+  treadmill: ['treadmill machine'],
+  cable_fly: ['cable fly machine', 'crossover machine'],
+}
+// Apply base aliases, then fold in the machine nicknames (deduped).
 for (const [id, aliases] of Object.entries(ALIASES)) {
-  if (EXERCISE_BY_ID[id]) EXERCISE_BY_ID[id].aliases = aliases
+  if (EXERCISE_BY_ID[id]) EXERCISE_BY_ID[id].aliases = [...aliases]
+}
+for (const [id, extra] of Object.entries(MACHINE_ALIASES)) {
+  const ex = EXERCISE_BY_ID[id]
+  if (!ex) continue
+  ex.aliases = [...new Set([...(ex.aliases || []), ...extra])]
+}
+
+// Why a search result matched: 'name' when the visible name contains the query,
+// or the specific alias term when only a hidden nickname did. Returns null when
+// there's no query or no match. Used to tag results so a non-obvious hit is
+// explained (e.g. searching "erg" surfaces "Rowing Machine").
+export function matchInfo(ex, query) {
+  const q = (query || '').trim().toLowerCase()
+  if (!q) return { match: true, via: null }
+  if (ex.name.toLowerCase().includes(q)) return { match: true, via: 'name' }
+  const alias = (ex.aliases || []).find((a) => a.includes(q))
+  if (alias) return { match: true, via: 'alias', term: alias }
+  return { match: false, via: null }
 }
 
 // Search match: exercise name OR any hidden alias contains the query.
 export function matchesQuery(ex, query) {
-  const q = (query || '').trim().toLowerCase()
-  if (!q) return true
-  if (ex.name.toLowerCase().includes(q)) return true
-  return (ex.aliases || []).some((a) => a.includes(q))
+  return matchInfo(ex, query).match
 }
 
 export { LADDERS }

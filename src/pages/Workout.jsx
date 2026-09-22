@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import useModalA11y from '../lib/useModalA11y.js'
 import {
   loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation,
-  addCardio, addProgram, updateWorkout, loadHistory, loadMaxes, saveMax,
+  addCardio, deleteCardio, addProgram, updateWorkout, loadHistory, loadMaxes, saveMax,
   loadActiveSession, saveActiveSession, clearActiveSession, currentBodyweight,
 } from '../lib/storage.js'
 import { sessionRecords, buildSessionSummary, prShort } from '../lib/records.js'
@@ -25,7 +25,7 @@ import {
   getEquipment, setActiveProfile as storeSetActiveProfile, isDoable, bestSubstitute,
   missingEquipment, profileMeta, PROFILE_IDS, activeEquipmentIds, resolveExercisesForEquipment, activeCapacity,
 } from '../lib/equipment.js'
-import { isBarbellLift } from '../lib/plates.js'
+import { isBarbellLift, lazyWarmupSets, getPlateConfig, PLATE_WEIGHTS } from '../lib/plates.js'
 import { ladderInfo } from '../lib/ladder.js'
 import { measureUnit, exMeasure, EXERCISE_BY_ID, isoHoldFor, tracksLoad, loadIsOptional } from '../data/exercises.js'
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
@@ -138,9 +138,23 @@ const optionsFor = (sug, units) => {
 
 // Fresh set-tracking state for a session: warm-up ramp (rep-measured loaded
 // compounds) + working sets prefilled with the stored working weight.
-function buildInitialSets(session, units, lastWeight = {}) {
+// Warm-up config from settings: 'lazy' additive plate ramp (default) vs the
+// 'granular' percentage ramp, plus the plate set for the lazy math.
+function warmupConfig(units) {
+  const s = loadSettings()
+  const unit = units === 'kg' ? 'kg' : 'lbs'
+  const cfg = getPlateConfig(s)
+  return {
+    style: s.warmupStyle === 'granular' ? 'granular' : 'lazy',
+    bar: cfg.barWeight[unit],
+    availableWeights: PLATE_WEIGHTS[unit].filter((w) => cfg.available[unit]?.[w]),
+  }
+}
+
+function buildInitialSets(session, units, lastWeight = {}, wu = null) {
   const initial = {}
   const inc = incrementForUnits(units)
+  const cfg = wu || warmupConfig(units)
   if (session) {
     for (const ex of session.exercises) {
       const stored = ex.progression?.weight != null ? ex.progression.weight : ex.startWeight
@@ -148,9 +162,16 @@ function buildInitialSets(session, units, lastWeight = {}) {
       // Nothing prescribed? Fall back to what you lifted last time (covers
       // accessories and optional-load bodyweight moves that carry no 1RM).
       if (weight === '' && Number(lastWeight[ex.id]) > 0) weight = String(lastWeight[ex.id])
-      const warms = ex.warmups && weight && exMeasure(ex).type === 'reps'
-        ? warmupSets(Number(weight), inc).map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: false, warmup: true }))
-        : []
+      // Lazy additive ramp for a plate-loaded bar; percentage ramp otherwise
+      // (or as a fallback when the weight can't be built additively).
+      let rows = []
+      if (ex.warmups && weight && exMeasure(ex).type === 'reps') {
+        if (cfg.style === 'lazy' && isBarbellLift(ex)) {
+          rows = lazyWarmupSets(Number(weight), { bar: cfg.bar, availableWeights: cfg.availableWeights })
+        }
+        if (!rows.length) rows = warmupSets(Number(weight), inc)
+      }
+      const warms = rows.map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: false, warmup: true }))
       // Most schemes prescribe the same weight and reps for every working set.
       // Percentage-based ones (5/3/1) prescribe each set separately, so honour
       // per-set values when the exercise supplies them.
@@ -243,9 +264,8 @@ export default function Workout() {
   const cardioDialogRef = useRef(null)
   useModalA11y(cardioDialogRef, () => setCardioOpen(false), cardioOpen)
   // This session's cardio — restored on resume, persisted in the active session,
-  // and fed to the share summary. cardioSaved just drives the little "✓ N logged".
+  // fed to the share summary, and shown as cards in the session.
   const [loggedCardio, setLoggedCardio] = useState(() => (resumed?.cardio ? resumed.cardio : []))
-  const [cardioSaved, setCardioSaved] = useState(() => (resumed?.cardio?.length || 0))
 
   const [rest, setRest] = useState(null)
   const [hold, setHold] = useState(null) // in-set isometric hold timer
@@ -379,7 +399,17 @@ export default function Workout() {
   const adjustRest = (exId, delta) =>
     setExercises((list) => list.map((e) => (e.id === exId ? { ...e, restSec: Math.max(0, e.restSec + delta) } : e)))
 
-  const logCardio = (entry) => { addCardio(entry); setLoggedCardio((l) => [...l, entry]); setCardioSaved((n) => n + 1); setCardioOpen(false) }
+  const logCardio = (entry) => {
+    // Tag with an id so this session's card can delete the right cardio log row.
+    const withId = { id: `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, ...entry }
+    addCardio(withId)
+    setLoggedCardio((l) => [...l, withId])
+    setCardioOpen(false)
+  }
+  const removeLoggedCardio = (entry) => {
+    if (entry.id) deleteCardio(entry.id)
+    setLoggedCardio((l) => l.filter((e) => e !== entry))
+  }
 
   if (!program || !session) {
     return (
@@ -854,13 +884,19 @@ export default function Workout() {
           const activePlateIdx = plateTarget ? plateTarget.setNumber - 1 : -1
           // Bodyweight moves progress by variation — show where they sit in the ladder.
           const lad = !loaded ? ladderInfo(ex.id) : null
+          // Every working set logged? De-emphasise the finished exercise so the
+          // eye falls on what's left — but restore full weight while editing.
+          const workingRows = (sets[ex.id] || []).filter((r) => !r.warmup)
+          const exComplete = workingRows.length > 0 && workingRows.every((r) => r.done)
+          const dimmed = exComplete && !editMode
           return (
-            <div className={'card exercise-card' + (doable ? '' : ' is-unavailable')} key={ex.id}>
+            <div className={'card exercise-card' + (doable ? '' : ' is-unavailable') + (dimmed ? ' is-complete' : '')} key={ex.id}>
               <div className="exercise-top">
                 <MuscleMap pattern={ex.pattern} exId={ex.id} size={104} />
                 <div className="exercise-headings">
                   <div className="ex-title-row">
                     <p className="ex-name big">{ex.name}{ex.adhoc ? ' ＋' : ''}</p>
+                    {dimmed && <span className="ex-done-chip">✓ Done</span>}
                     {editMode
                       ? <button type="button" className="icon-btn" onClick={() => removeExercise(ex.id)} aria-label={`Remove ${ex.name}`}>✕</button>
                       : <FormCheckButton name={ex.name} />}
@@ -1039,6 +1075,33 @@ export default function Workout() {
           )
         })}
 
+        {/* Cardio logged this session — a real card, same weight as any lift. */}
+        {loggedCardio.map((c, i) => {
+          const meta = CARDIO_BY_ID[c.machine]
+          const stats = [
+            Number(c.durationMin) > 0 ? `${c.durationMin} min` : '',
+            Number(c.distance) > 0 ? `${c.distance} ${c.distanceUnit || ''}`.trim() : '',
+            Number(c.avgHr) > 0 ? `${c.avgHr} bpm` : '',
+            Number(c.calories) > 0 ? `${c.calories} cal` : '',
+          ].filter(Boolean).join(' · ')
+          return (
+            <div className="card exercise-card cardio-card" key={c.id || i}>
+              <div className="exercise-top">
+                <span className="cardio-card-icon" aria-hidden="true">{meta?.icon || '❤️'}</span>
+                <div className="exercise-headings">
+                  <div className="ex-title-row">
+                    <p className="ex-name big">{c.machineName || meta?.name || 'Cardio'}</p>
+                    <span className="ex-done-chip">✓ Done</span>
+                    <button type="button" className="icon-btn" onClick={() => removeLoggedCardio(c)} aria-label="Remove this cardio">✕</button>
+                  </div>
+                  <p className="muted small">{stats || 'Logged'}</p>
+                  {c.notes && <p className="muted small">{c.notes}</p>}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
         {Array.isArray(session?.cardio) && session.cardio.length > 0 && (
           <div className="planned-cardio">
             <p className="group-label">Cardio</p>
@@ -1071,7 +1134,6 @@ export default function Workout() {
           <button type="button" className="add-action" onClick={() => { setCardioMachine('treadmill'); setCardioOpen(true) }}>Log cardio</button>
           <button type="button" className="add-action" onClick={() => setOneRmOpen(true)}>1RM calc</button>
         </div>
-        {cardioSaved > 0 && <p className="muted small">✓ {cardioSaved} cardio session{cardioSaved === 1 ? '' : 's'} logged.</p>}
 
         {editMode && (
           <div className="edit-actions">

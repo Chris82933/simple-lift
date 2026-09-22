@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { EXERCISES, matchesQuery } from '../data/exercises.js'
+import { EXERCISES, matchInfo } from '../data/exercises.js'
 import MuscleMap from './MuscleMap.jsx'
 import CustomExerciseForm from './CustomExerciseForm.jsx'
 import { getEquipment, activeEquipmentIds, isDoable, profileMeta } from '../lib/equipment.js'
@@ -20,11 +20,21 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
   const availableSet = new Set(activeEquipmentIds())
   // Hide only the template-only ladder variants; cardio/conditioning moves (e.g.
   // Mountain Climbers, a warm-up run) can be added. Unless "Show all", also hide
-  // anything you can't do with the current equipment.
-  const filtered = EXERCISES.filter(
-    (e) => !e.ladderOnly && matchesQuery(e, q)
-      && (showAll || isDoable(e, availableSet)),
-  )
+  // anything you can't do with the current equipment. Collapse any repeated
+  // display name so the same exercise never appears twice, and keep WHY each
+  // result matched so a non-obvious hit (via an alias) can be explained.
+  const filtered = []
+  const seenNames = new Set()
+  for (const e of EXERCISES) {
+    if (e.ladderOnly) continue
+    const info = matchInfo(e, q)
+    if (!info.match) continue
+    if (!showAll && !isDoable(e, availableSet)) continue
+    const nameKey = e.name.toLowerCase()
+    if (seenNames.has(nameKey)) continue
+    seenNames.add(nameKey)
+    filtered.push({ ex: e, info })
+  }
 
   return (
     <div className="picker-overlay" role="dialog" aria-modal="true" aria-label={title} ref={dialogRef} tabIndex={-1}>
@@ -46,10 +56,13 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
           <button type="button" className={'chip' + (showAll ? ' is-selected' : '')} aria-pressed={showAll} onClick={() => setShowAll(true)}>Show all</button>
         </div>
         <div className="picker-list">
-          {filtered.map((ex) => (
+          {filtered.map(({ ex, info }) => (
             <button key={ex.id} type="button" className="picker-item" onClick={() => onPick(ex)}>
               <MuscleMap pattern={ex.pattern} exId={ex.id} size={44} compact />
-              <span className="ex-name">{ex.name}{ex.custom ? ' ·' : ''}</span>
+              <span className="ex-name">
+                {ex.name}{ex.custom ? ' ·' : ''}
+                {info.via === 'alias' && <span className="match-tag">“{info.term}”</span>}
+              </span>
               <span className="muted small">
                 {ex.custom ? 'custom · ' : ''}{ex.compound ? 'compound' : 'accessory'}{ex.requires.length === 0 ? ' · bodyweight' : ''}
               </span>

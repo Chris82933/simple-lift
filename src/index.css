@@ -1038,7 +1038,16 @@ select.text-input { appearance: none; }
   cursor: pointer;
   text-align: left;
 }
-.picker-item .ex-name { flex: 1; }
+.picker-item .ex-name { flex: 1; min-width: 0; }
+/* Small tag explaining WHY a result matched when it wasn't the visible name
+   (e.g. searching "erg" surfaces Rowing Machine via its alias). */
+.match-tag {
+  margin-left: 6px;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  color: var(--accent-text);
+  white-space: nowrap;
+}
 .add-plus { font-size: 20px; color: var(--accent-text); font-weight: 700; }
 .picker-item.is-added { opacity: 0.5; cursor: default; }
 .picker-item.is-added .add-plus { color: var(--accent-4, #82ab7d); }
@@ -1189,6 +1198,29 @@ select.text-input { appearance: none; }
 .swap-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .swap-banner p { margin: 0; }
 .exercise-card.is-unavailable { opacity: 0.82; border: 1px solid color-mix(in srgb, var(--accent-5) 45%, var(--border)); }
+/* A finished exercise recedes: dimmed and slightly desaturated so attention
+   goes to what's still to do. Editing the workout restores it (class dropped). */
+.exercise-card.is-complete { opacity: 0.6; filter: saturate(0.6); }
+.exercise-card.is-complete:focus-within { opacity: 1; filter: none; }
+.ex-done-chip {
+  flex: none;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--go);
+  border: 1px solid color-mix(in srgb, var(--go) 45%, var(--border));
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+/* Logged cardio rendered as a full exercise card: the machine emoji fills the
+   same slot the muscle figure would, so it reads with equal weight. */
+.cardio-card-icon {
+  flex: none;
+  width: 104px;
+  font-size: 46px;
+  line-height: 1;
+  text-align: center;
+}
 .swap-note {
   display: flex;
   align-items: center;
@@ -1547,7 +1579,7 @@ select.text-input { appearance: none; }
 /* Exercise title + form button row (workout cards) */
 .exercise-headings { flex: 1; min-width: 0; }
 .ex-title-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
-.ex-title-row .ex-name { min-width: 0; }
+.ex-title-row .ex-name { min-width: 0; flex: 1; }
 
 /* ---- End-of-session progression choices ---- */
 .review-row {

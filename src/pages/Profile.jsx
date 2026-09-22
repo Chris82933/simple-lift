@@ -93,6 +93,11 @@ export default function Profile() {
     setSettings(next)
     saveSettings(next)
   }
+  const setWarmupStyle = (style) => {
+    const next = { ...settings, warmupStyle: style }
+    setSettings(next)
+    saveSettings(next)
+  }
   const setRestTimer = (on) => {
     const next = { ...settings, restTimer: on }
     setSettings(next)
@@ -394,6 +399,20 @@ export default function Profile() {
               className={'seg-item' + ((settings.hidePlateCalc === true ? 'hide' : 'show') === o.id ? ' is-selected' : '')}
               aria-pressed={(settings.hidePlateCalc === true ? 'hide' : 'show') === o.id}
               onClick={() => setHidePlateCalc(o.id === 'hide')}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <p className="muted small" style={{ marginTop: 14 }}>Warm-up plate math — <strong>Lazy</strong> builds the bar up additively so each warm-up only adds plates (fewer changes). <strong>Granular</strong> uses even percentage jumps (40/60/80%).</p>
+        <div className="seg">
+          {[{ id: 'lazy', label: 'Lazy (fewer changes)' }, { id: 'granular', label: 'Granular' }].map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={'seg-item' + ((settings.warmupStyle === 'granular' ? 'granular' : 'lazy') === o.id ? ' is-selected' : '')}
+              aria-pressed={(settings.warmupStyle === 'granular' ? 'granular' : 'lazy') === o.id}
+              onClick={() => setWarmupStyle(o.id)}
             >
               {o.label}
             </button>

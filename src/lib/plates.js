@@ -78,6 +78,43 @@ export function calculatePlates(targetWeight, barWeight, availableWeights) {
   return { perSide, leftover: Math.max(0, remaining), exact: remaining <= 0.01, total, barOnly: false }
 }
 
+const repsForFraction = (f) => (f <= 0.5 ? 5 : f <= 0.7 ? 3 : f <= 0.85 ? 2 : 1)
+// Keep at most `max` values, evenly spaced, always including the first and last.
+const thinTo = (arr, max) => {
+  if (arr.length <= max) return arr
+  const out = []
+  for (let i = 0; i < max; i++) out.push(arr[Math.round((i * (arr.length - 1)) / (max - 1))])
+  return [...new Set(out)]
+}
+
+// "Lazy man's" warm-up ramp: build the bar up ADDITIVELY toward the working
+// weight so each warm-up only slides one more (larger) plate on — you never
+// strip plates between sets. Starts light (empty bar / a small plate) and grows
+// to just under your working weight. Only meaningful for a plate-loaded bar;
+// callers fall back to the percentage ramp for dumbbells/machines.
+// Returns [{ weight, reps }] like warmupSets, dropping anything ≥ working weight.
+export function lazyWarmupSets(workingWeight, { bar, availableWeights } = {}) {
+  const W = Number(workingWeight)
+  const B = Number(bar) || 0
+  if (!W || !B || W <= B) return []
+  const { perSide } = calculatePlates(W, B, availableWeights || [])
+  if (!perSide.length) return []
+  // Smallest plate first, so cumulative loads start light and each step adds a
+  // heavier plate on the outside — an additive-only ramp.
+  const asc = [...perSide].sort((a, b) => a - b)
+  const partials = []
+  let sum = 0
+  for (const p of asc) {
+    sum += p
+    const w = B + sum * 2
+    if (w < W - 1e-6) partials.push(w)
+  }
+  // Warm the empty bar first when the work is heavy enough to bother.
+  let weights = [...new Set(W >= B * 2 ? [B, ...partials] : partials)]
+  weights = thinTo(weights, 4)
+  return weights.map((w) => ({ weight: w, reps: repsForFraction(w / W) }))
+}
+
 // The smallest weight jump the user can actually load on a bar: twice the
 // lightest plate they own, since plates go on in pairs. Someone without 2.5s
 // can't make a 5 lb jump, so telling them to add 5 lb is useless advice.

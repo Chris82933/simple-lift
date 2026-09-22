@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useModalA11y from '../lib/useModalA11y.js'
-import { EXERCISES, EXERCISE_BY_ID, exMeasure, matchesQuery, isoHoldFor } from '../data/exercises.js'
+import { EXERCISES, EXERCISE_BY_ID, exMeasure, matchInfo, isoHoldFor } from '../data/exercises.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 import { GOALS } from '../data/options.js'
 import { schemeForGoals, prescriptionFor } from '../data/schemes.js'
@@ -248,7 +248,21 @@ export default function Builder() {
 
   // Hide only the template-only ladder variants; conditioning/cardio moves ARE
   // allowed so people can add a warm-up (e.g. 15 min zone-2) to a lifting day.
-  const filtered = EXERCISES.filter((e) => !e.ladderOnly && matchesQuery(e, search))
+  // Dedupe repeated display names and keep why each result matched (for the tag).
+  const filtered = (() => {
+    const out = []
+    const seen = new Set()
+    for (const e of EXERCISES) {
+      if (e.ladderOnly) continue
+      const info = matchInfo(e, search)
+      if (!info.match) continue
+      const key = e.name.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push({ ex: e, info })
+    }
+    return out
+  })()
   const dayExIds = picker !== null
     ? new Set(draft.days[picker].exercises.map((e) => e.id))
     : new Set()
@@ -520,7 +534,7 @@ export default function Builder() {
               <button type="button" className="btn btn-primary btn-sm" onClick={() => setPicker(null)}>Done</button>
             </div>
             <div className="picker-list">
-              {filtered.map((ex) => {
+              {filtered.map(({ ex, info }) => {
                 const added = dayExIds.has(ex.id)
                 return (
                   <button
@@ -531,7 +545,10 @@ export default function Builder() {
                     onClick={() => addExerciseToDay(picker, ex)}
                   >
                     <MuscleMap pattern={ex.pattern} exId={ex.id} size={46} compact />
-                    <span className="ex-name">{ex.name}</span>
+                    <span className="ex-name">
+                      {ex.name}
+                      {info.via === 'alias' && <span className="match-tag">“{info.term}”</span>}
+                    </span>
                     <span className="muted small">{ex.compound ? 'compound' : 'accessory'}{ex.requires.length === 0 ? ' · bodyweight' : ''}</span>
                     <span className="add-plus">{added ? '✓' : '+'}</span>
                   </button>
