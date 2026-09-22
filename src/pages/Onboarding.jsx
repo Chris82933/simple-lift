@@ -7,17 +7,29 @@ import {
   DAYS_OPTIONS,
   SESSION_OPTIONS,
 } from '../data/options.js'
-import { saveProfile, addProgram, loadProfile, logBodyweight, loadSettings } from '../lib/storage.js'
-import { generateProgram } from '../lib/generator.js'
+import { saveProfile, addProgram, loadProfile, logBodyweight, loadSettings, saveMax } from '../lib/storage.js'
+import { generateProgram, EXPERIENCE_LEVELS } from '../lib/generator.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
+import { estimate1RM } from '../lib/oneRepMax.js'
 import ThemeToggle from '../components/ThemeToggle.jsx'
 
 const toggle = (arr, val) =>
   arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]
 
-const STEPS = ['focus', 'balance', 'equipment', 'schedule', 'goals', 'progression', 'bodyweight']
+const STEPS = ['experience', 'focus', 'balance', 'equipment', 'schedule', 'goals', 'progression', 'strength', 'bodyweight']
+
+// The main barbell lifts we ask about for starting weights — also the ones
+// STRENGTH_RATIOS (in oneRepMax.js) can extrapolate from to seed everything
+// else loadable (front squat, RDL, rows, hip thrusts…).
+const STRENGTH_LIFTS = [
+  { key: 'squat', id: 'back_squat', label: 'Squat' },
+  { key: 'bench', id: 'bench_press', label: 'Bench press' },
+  { key: 'deadlift', id: 'deadlift', label: 'Deadlift' },
+  { key: 'ohp', id: 'overhead_press', label: 'Overhead press' },
+]
 
 const DEFAULT_DRAFT = {
+  experienceLevel: '',
   focusAreas: [],
   trainOthers: true,
   equipment: [],
@@ -25,6 +37,7 @@ const DEFAULT_DRAFT = {
   sessionLength: 45,
   goals: [],
   progressionMethod: DEFAULT_METHOD,
+  strength: { squat: '', bench: '', deadlift: '', ohp: '' }, // optional — see the strength step
   bodyweight: '', // optional — see the bodyweight step for why we ask
 }
 
@@ -49,12 +62,14 @@ export default function Onboarding() {
     setDraft((d) => ({ ...d, [field]: toggle(d[field], val) }))
 
   const isValid = {
+    experience: !!draft.experienceLevel,
     focus: draft.focusAreas.length >= 1,
     balance: true,
     equipment: true, // none selected = bodyweight only
     schedule: !!draft.daysPerWeek && !!draft.sessionLength,
     goals: draft.goals.length >= 1,
     progression: !!draft.progressionMethod,
+    strength: true, // always skippable — "not sure" still yields a safely light program
     bodyweight: true, // always skippable — never block setup on a weight
   }[STEPS[step]]
 
@@ -65,9 +80,19 @@ export default function Onboarding() {
     if (isLast) {
       const profile = { ...draft, createdAt: new Date().toISOString() }
       saveProfile(profile)
+      if (Number(draft.bodyweight) > 0) logBodyweight(Number(draft.bodyweight))
+      // Seed real 1RMs from the strength step so generateProgram (and the 1RM
+      // tool later) has something to work from instead of leaving every
+      // loaded lift blank. Assumes the number given is roughly a 5-rep set.
+      STRENGTH_LIFTS.forEach(({ key, id, label }) => {
+        const raw = Number(draft.strength?.[key])
+        if (raw > 0) {
+          const oneRM = Math.round(estimate1RM(raw, 5))
+          if (oneRM > 0) saveMax(id, { oneRM, weight: raw, reps: 5, rir: 0, units, name: label, fromOnboarding: true })
+        }
+      })
       // Carry the chosen progression style onto the generated program so the
       // after-workout screen recommends the right next step.
-      if (Number(draft.bodyweight) > 0) logBodyweight(Number(draft.bodyweight))
       const program = generateProgram(profile)
       addProgram({ ...program, progressionMethod: draft.progressionMethod })
       navigate('/today')
@@ -157,6 +182,32 @@ export default function Onboarding() {
       </header>
 
       <div className="step-body">
+        {STEPS[step] === 'experience' && (
+          <>
+            <h1>How long have you been lifting?</h1>
+            <p className="muted">This tunes how much volume we start you with, whether warm-up ramps show up, and how your program progresses.</p>
+            <div className="choice-list">
+              {EXPERIENCE_LEVELS.map((lvl) => (
+                <button
+                  key={lvl.id}
+                  type="button"
+                  className={'choice-row' + (draft.experienceLevel === lvl.id ? ' is-selected' : '')}
+                  aria-pressed={draft.experienceLevel === lvl.id}
+                  onClick={() => set({
+                    experienceLevel: lvl.id,
+                    // Steer the progression default toward what suits the level —
+                    // the progression step still lets them pick anything.
+                    progressionMethod: lvl.id === 'new' ? 'linear' : DEFAULT_METHOD,
+                  })}
+                >
+                  <span className="choice-title">{lvl.label}</span>
+                  <span className="muted small">{lvl.hint}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
         {STEPS[step] === 'focus' && (
           <>
             <h1>What do you want to focus on?</h1>
@@ -323,6 +374,47 @@ export default function Onboarding() {
               </div>
             )}
             <p className="muted small">You can change this anytime, and after every workout you still choose what to do.</p>
+          </>
+        )}
+
+        {STEPS[step] === 'strength' && (
+          <>
+            <h1>Roughly what can you lift?</h1>
+            <p className="muted">
+              Optional, lift by lift — skip any you don&apos;t know. Without this, new barbell lifts
+              start with a blank weight box; with it, we set a real starting weight for you. Enter
+              what you can comfortably lift for about 5 reps.
+            </p>
+            <div className="choice-list">
+              {STRENGTH_LIFTS.map((lift) => (
+                <div className="strength-row" key={lift.key}>
+                  <label className="strength-label" htmlFor={`sw-${lift.key}`}>{lift.label}</label>
+                  <div className="strength-input-row">
+                    <input
+                      id={`sw-${lift.key}`}
+                      type="number"
+                      inputMode="decimal"
+                      className="text-input"
+                      placeholder={`${units}, ~5 reps`}
+                      value={draft.strength[lift.key]}
+                      onChange={(e) => set({ strength: { ...draft.strength, [lift.key]: e.target.value } })}
+                      aria-label={`${lift.label} weight in ${units}, for about 5 reps`}
+                    />
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() => set({ strength: { ...draft.strength, [lift.key]: String(units === 'kg' ? 20 : 45) } })}
+                    >
+                      Not sure? Just the bar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="muted small">
+              Anything left blank starts light (near the empty bar) instead of blank — never a dead
+              end. Fine-tune anytime with the 1RM tool in Settings.
+            </p>
           </>
         )}
 

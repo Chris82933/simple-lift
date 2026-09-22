@@ -9,6 +9,7 @@
 import { EQUIPMENT_GROUPS } from '../data/options.js'
 import { EXERCISES, EXERCISE_BY_ID } from '../data/exercises.js'
 import { loadSettings, saveSettings } from './storage.js'
+import { exerciseEntryFromLibrary } from './exerciseEntry.js'
 
 export const ALL_EQUIPMENT_IDS = EQUIPMENT_GROUPS.flatMap((g) => g.items.map((i) => i.id))
 const HOME_DEFAULT = ['dumbbells', 'bands', 'pullup_bar', 'adj_bench']
@@ -164,20 +165,30 @@ export function resolveForEquipment(ex, available, opts = {}) {
   for (const altId of ex.alts) {
     const lib = EXERCISE_BY_ID[altId]
     if (lib && isDoable(lib, have, opts)) {
-      return {
-        ...ex,
-        id: lib.id, name: lib.name, pattern: lib.pattern, regions: lib.regions,
-        compound: lib.compound, load: lib.load !== false, cues: lib.cues,
-        hold: lib.hold || undefined, distance: lib.distance || undefined, unit: lib.unit || undefined,
-        ladderId: lib.ladderId || null, nextId: lib.nextId || null, prevId: lib.prevId || null,
-        swappedFrom: ex.name, // so the UI can note why it changed
-      }
+      // Carry over the program-side fields (sets/reps/rest/progression/
+      // supersetNext/…) from the pre-swap entry; identity/metadata come from
+      // the alt's library definition. `swappedFrom` notes why it changed.
+      return exerciseEntryFromLibrary(lib, { ...ex, swappedFrom: ex.name })
     }
   }
   return ex // nothing doable — leave the original (the workout will flag it)
 }
 
+// Resolve every exercise in a day for the current equipment. Two different
+// exercises can resolve to the same alt (e.g. both fall back to the same
+// bodyweight substitute) — that would collide in per-exercise set tracking
+// (same id twice), so once an alt id has been used, later exercises that
+// would resolve to it are left on their original id instead.
 export function resolveExercisesForEquipment(exercises, available, opts = {}) {
   const have = asSet(available)
-  return (exercises || []).map((e) => resolveForEquipment(e, have, opts))
+  const list = exercises || []
+  // Seed with every original id too, so a resolved alt can't collide with
+  // another (possibly not-yet-resolved) exercise still on its own id.
+  const usedIds = new Set(list.map((e) => e.id))
+  return list.map((e) => {
+    const resolved = resolveForEquipment(e, have, opts)
+    if (resolved.id !== e.id && usedIds.has(resolved.id)) return e // de-dupe: keep the first, leave this one original
+    usedIds.add(resolved.id)
+    return resolved
+  })
 }

@@ -8,6 +8,7 @@ import { schemeOf, evaluateProgression, applyStage } from './gzclp.js'
 import { is531, evaluateProgression as eval531 } from './fiveThreeOne.js'
 import { isExtraScheme, evaluateExtra } from './progression.js'
 import { EXERCISE_BY_ID, exMeasure } from '../data/exercises.js'
+import { exerciseEntryFromLibrary } from './exerciseEntry.js'
 
 // Selectable weight increments per unit (smallest → largest).
 export const INCREMENTS = { lbs: [2.5, 5, 10], kg: [1.25, 2.5, 5] }
@@ -161,13 +162,7 @@ export function applyChoices(program, dayIndex, suggestions, choices) {
     if ((choice === 'levelUp' && sug.nextId) || (choice === 'levelDown' && sug.prevId)) {
       const target = EXERCISE_BY_ID[choice === 'levelUp' ? sug.nextId : sug.prevId]
       if (!target) return ex
-      return {
-        ...ex,
-        id: target.id, name: target.name, pattern: target.pattern, regions: target.regions,
-        compound: target.compound, load: target.load !== false, cues: target.cues,
-        ladderId: target.ladderId || null, nextId: target.nextId || null, prevId: target.prevId || null,
-        startWeight: '',
-      }
+      return exerciseEntryFromLibrary(target, { ...ex, startWeight: '' })
     }
     if (choice === 'reps' && sug.reps) {
       return { ...ex, repHigh: sug.reps.to }

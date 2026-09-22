@@ -22,7 +22,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', not 'autoUpdate': a deploy while someone is mid-workout used to
+      // activate the new worker and reload the page under them, losing the last
+      // unsaved edits. Now the app asks first (see UpdatePrompt).
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'icon.svg'],
       manifest: {
         name: 'Simple Lift',

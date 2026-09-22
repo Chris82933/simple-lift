@@ -1,6 +1,26 @@
 import { Fragment, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useModalA11y from '../lib/useModalA11y.js'
+import { EXERCISES, EXERCISE_BY_ID, exMeasure, matchInfo, isoHoldFor } from '../data/exercises.js'
+import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
+import { GOALS } from '../data/options.js'
+import { schemeForGoals, prescriptionFor } from '../data/schemes.js'
+import { WEEKDAY_LABELS } from '../lib/generator.js'
+import {
+  loadProfile, getProgram, addProgram, updateProgram, getMax, loadMaxes, loadSettings,
+  clampRotationPointer,
+} from '../lib/storage.js'
+import { weightForReps, incrementForUnits, interpolate1RM } from '../lib/oneRepMax.js'
+import { ladderInfo } from '../lib/ladder.js'
+import MuscleMap from '../components/MuscleMap.jsx'
+import { plannedMuscleHeat } from '../lib/muscleHeat.js'
+import CustomExerciseForm from '../components/CustomExerciseForm.jsx'
+import { CARDIO_MACHINES, CARDIO_BY_ID } from '../data/cardio.js'
+import Icon from '../components/Icon.jsx'
+import { exerciseEntryFromLibrary } from '../lib/exerciseEntry.js'
+import { getEquipment, activeEquipmentIds, isDoable, profileMeta } from '../lib/equipment.js'
+
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
 
 // Two exercises share equipment when their required-gear lists overlap (or both
 // are bodyweight) — the natural case for a superset that doesn't hog stations.
@@ -10,23 +30,6 @@ const sameEquip = (a, b) => {
   if (!ra.length && !rb.length) return true
   return ra.some((r) => rb.includes(r))
 }
-import { EXERCISES, EXERCISE_BY_ID, exMeasure, matchInfo, isoHoldFor } from '../data/exercises.js'
-import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
-import { GOALS } from '../data/options.js'
-import { schemeForGoals, prescriptionFor } from '../data/schemes.js'
-import { WEEKDAY_LABELS } from '../lib/generator.js'
-import {
-  loadProfile, getProgram, addProgram, updateProgram, getMax, loadMaxes, loadSettings,
-} from '../lib/storage.js'
-import { weightForReps, incrementForUnits, interpolate1RM } from '../lib/oneRepMax.js'
-import { ladderInfo } from '../lib/ladder.js'
-import MuscleMap from '../components/MuscleMap.jsx'
-import { plannedMuscleHeat } from '../lib/muscleHeat.js'
-import CustomExerciseForm from '../components/CustomExerciseForm.jsx'
-import { CARDIO_MACHINES, CARDIO_BY_ID } from '../data/cardio.js'
-import Icon from '../components/Icon.jsx'
-
-const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
 
 const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
 
@@ -53,16 +56,12 @@ function resolveStartWeight(ex, repHigh, inc) {
 // and compound lifts get a warm-up ramp by default.
 function makeExercise(ex, scheme, inc) {
   const p = prescriptionFor(ex, scheme)
-  const entry = {
-    id: ex.id, name: ex.name, pattern: ex.pattern, regions: ex.regions,
-    compound: ex.compound, load: ex.load !== false, cues: ex.cues,
-    ladderId: ex.ladderId || null, nextId: ex.nextId || null, prevId: ex.prevId || null,
-    hold: ex.hold || undefined, distance: ex.distance || undefined, unit: ex.unit || undefined,
+  const overrides = {
     sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec,
     startWeight: resolveStartWeight(ex, p.repHigh, inc),
   }
-  if (ex.load !== false && ex.compound && exMeasure(ex).type === 'reps') entry.warmups = true
-  return entry
+  if (ex.load !== false && ex.compound && exMeasure(ex).type === 'reps') overrides.warmups = true
+  return exerciseEntryFromLibrary(ex, overrides)
 }
 
 export default function Builder() {
@@ -104,6 +103,7 @@ export default function Builder() {
 
   const [picker, setPicker] = useState(null) // dayIndex being edited, or null
   const [search, setSearch] = useState('')
+  const [showAll, setShowAll] = useState(false) // U6: false = filter to active-location gear
   const [creating, setCreating] = useState(false) // custom-exercise form open?
   const [amrapInfo, setAmrapInfo] = useState(false)
   const [warmupInfo, setWarmupInfo] = useState(false)
@@ -142,6 +142,19 @@ export default function Builder() {
   const removeCardio = (di, ci) =>
     updateDay(di, { cardio: (draft.days[di].cardio || []).filter((_, j) => j !== ci) })
   const removeDay = (i) => update({ days: draft.days.filter((_, j) => j !== i) })
+
+  // Reorder a whole training day. The day's weekday travels WITH it (we swap
+  // the whole day object, same as moveExercise swaps whole exercises) —
+  // dragging "Legs" above "Push" means "I want to do Legs first", not "keep
+  // whatever's assigned to slot 1 but rename it". Its exercises and cardio
+  // blocks move as one unit, untouched.
+  const moveDay = (i, dir) => {
+    const j = i + dir
+    if (j < 0 || j >= draft.days.length) return
+    const next = [...draft.days]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    update({ days: next })
+  }
   const removeExercise = (di, ei) =>
     updateDay(di, {
       // Drop the exercise; clear the previous one's superset link so it doesn't
@@ -199,11 +212,11 @@ export default function Builder() {
     const target = targetId && EXERCISE_BY_ID[targetId]
     if (!target) return
     if (draft.days[di].exercises.some((e, j) => j !== ei && e.id === target.id)) return // no dup
-    updateExercise(di, ei, {
-      id: target.id, name: target.name, pattern: target.pattern, regions: target.regions,
-      compound: target.compound, load: target.load !== false, cues: target.cues,
-      ladderId: target.ladderId || null, nextId: target.nextId || null, prevId: target.prevId || null,
-    })
+    // Program-side fields (sets/reps/rest/supersetNext/…) carry over from the
+    // current entry; identity/metadata (including hold/distance/unit, which
+    // the old hand-rolled version here used to silently drop) come from the
+    // target level's library definition.
+    updateExercise(di, ei, exerciseEntryFromLibrary(target, ex))
   }
 
   // Reset one exercise to the recommended setup for the current goal: sets/reps/
@@ -266,10 +279,33 @@ export default function Builder() {
           }),
         })),
     }
-    if (editId) updateProgram({ ...getProgram(editId), ...program })
-    else addProgram(program)
+    if (editId) {
+      const existing = getProgram(editId)
+      // C1: this editor is weekday-based — it doesn't expose rotation mode or
+      // trainingDays (that's Schedule.jsx's job) — so a rotation program's
+      // schedule must survive an edit here untouched EXCEPT for `pointer`,
+      // which indexes into `days`. The day list we just wrote can be shorter
+      // (or longer) than before, so a pointer left over from the old list can
+      // point past the end of the new one. Clamp it with the same helper the
+      // data layer uses, so Builder can never hand back a program whose
+      // pointer is already out of range. We keep the rotation/trainingDays
+      // choice itself as-is — that's a decision this screen doesn't make.
+      const schedule = existing?.schedule?.mode === 'rotation'
+        ? { ...existing.schedule, pointer: clampRotationPointer(existing.schedule.pointer, program.days.length) }
+        : existing?.schedule
+      updateProgram({ ...existing, ...program, schedule })
+    } else {
+      addProgram(program)
+    }
     navigate('/today')
   }
+
+  // U6: same equipment-aware filtering as the in-workout ExercisePicker —
+  // default to what the active location can actually do, with a "Show all"
+  // escape hatch, so Builder stops silently loading programs full of gear
+  // the user doesn't own.
+  const equipActive = getEquipment().active
+  const equipAvailable = new Set(activeEquipmentIds())
 
   // Hide only the template-only ladder variants; conditioning/cardio moves ARE
   // allowed so people can add a warm-up (e.g. 15 min zone-2) to a lifting day.
@@ -281,6 +317,7 @@ export default function Builder() {
       if (e.ladderOnly) continue
       const info = matchInfo(e, search)
       if (!info.match) continue
+      if (!showAll && !isDoable(e, equipAvailable)) continue
       const key = e.name.toLowerCase()
       if (seen.has(key)) continue
       seen.add(key)
@@ -367,7 +404,9 @@ export default function Builder() {
           </p>
         </div>
 
-        {draft.days.map((day, di) => (
+        {draft.days.map((day, di) => {
+          const dayName = day.title.trim() || WEEKDAY_LABELS[day.weekday]
+          return (
           <div className="card day-card" key={di}>
             <div className="builder-day-head">
               <select
@@ -379,8 +418,18 @@ export default function Builder() {
                   <option key={wd} value={wd}>{WEEKDAY_LABELS[wd]}</option>
                 ))}
               </select>
+              <div className="ex-reorder">
+                <button type="button" className="icon-btn" disabled={di === 0} onClick={() => moveDay(di, -1)} aria-label={`Move ${dayName} up`}>
+                  <span aria-hidden="true">▲</span>
+                </button>
+                <button type="button" className="icon-btn" disabled={di === draft.days.length - 1} onClick={() => moveDay(di, 1)} aria-label={`Move ${dayName} down`}>
+                  <span aria-hidden="true">▼</span>
+                </button>
+              </div>
               {draft.days.length > 1 && (
-                <button type="button" className="icon-btn" onClick={() => removeDay(di)} aria-label="Remove day">✕</button>
+                <button type="button" className="icon-btn" onClick={() => removeDay(di)} aria-label="Remove day">
+                  <span aria-hidden="true">✕</span>
+                </button>
               )}
             </div>
             <input
@@ -405,10 +454,16 @@ export default function Builder() {
                   <MuscleMap pattern={ex.pattern} exId={ex.id} size={46} compact />
                   <span className="ex-name">{ex.name}</span>
                   <div className="ex-reorder">
-                    <button type="button" className="icon-btn" disabled={ei === 0} onClick={() => moveExercise(di, ei, -1)} aria-label={`Move ${ex.name} up`}>▲</button>
-                    <button type="button" className="icon-btn" disabled={ei === day.exercises.length - 1} onClick={() => moveExercise(di, ei, 1)} aria-label={`Move ${ex.name} down`}>▼</button>
+                    <button type="button" className="icon-btn" disabled={ei === 0} onClick={() => moveExercise(di, ei, -1)} aria-label={`Move ${ex.name} up`}>
+                      <span aria-hidden="true">▲</span>
+                    </button>
+                    <button type="button" className="icon-btn" disabled={ei === day.exercises.length - 1} onClick={() => moveExercise(di, ei, 1)} aria-label={`Move ${ex.name} down`}>
+                      <span aria-hidden="true">▼</span>
+                    </button>
                   </div>
-                  <button type="button" className="icon-btn" onClick={() => removeExercise(di, ei)} aria-label="Remove exercise">✕</button>
+                  <button type="button" className="icon-btn" onClick={() => removeExercise(di, ei)} aria-label="Remove exercise">
+                    <span aria-hidden="true">✕</span>
+                  </button>
                 </div>
                 <div className="builder-fields">
                   <label>Sets<input type="number" inputMode="numeric" value={ex.sets} onChange={(e) => updateExercise(di, ei, { sets: e.target.value })} /></label>
@@ -447,7 +502,7 @@ export default function Builder() {
                       aria-pressed={!!ex.warmups}
                       onClick={() => updateExercise(di, ei, { warmups: ex.warmups ? undefined : true })}
                     >
-                      <span className="amrap-box">{ex.warmups ? '✓' : ''}</span>
+                      <span className="amrap-box" aria-hidden="true">{ex.warmups ? '✓' : ''}</span>
                       Warm-up ramp
                     </button>
                     <button type="button" className="info-icon" onClick={() => setWarmupInfo(true)} aria-label="What is a warm-up ramp?">i</button>
@@ -461,7 +516,7 @@ export default function Builder() {
                       aria-pressed={!!ex.amrap}
                       onClick={() => updateExercise(di, ei, { amrap: ex.amrap ? undefined : true })}
                     >
-                      <span className="amrap-box">{ex.amrap ? '✓' : ''}</span>
+                      <span className="amrap-box" aria-hidden="true">{ex.amrap ? '✓' : ''}</span>
                       AMRAP last set
                     </button>
                     <button type="button" className="info-icon" onClick={() => setAmrapInfo(true)} aria-label="What is AMRAP?">i</button>
@@ -479,7 +534,7 @@ export default function Builder() {
                         aria-pressed={!!ex.iso}
                         onClick={() => toggleIso(di, ei)}
                       >
-                        <span className="amrap-box">{ex.iso ? '✓' : ''}</span>
+                        <span className="amrap-box" aria-hidden="true">{ex.iso ? '✓' : ''}</span>
                         Isometric hold
                       </button>
                       <button type="button" className="info-icon" onClick={() => setIsoInfo(true)} aria-label="What is an isometric hold?">i</button>
@@ -526,7 +581,9 @@ export default function Builder() {
                     >
                       {CARDIO_MACHINES.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
-                    <button type="button" className="icon-btn" onClick={() => removeCardio(di, ci)} aria-label="Remove cardio">✕</button>
+                    <button type="button" className="icon-btn" onClick={() => removeCardio(di, ci)} aria-label="Remove cardio">
+                      <span aria-hidden="true">✕</span>
+                    </button>
                   </div>
                   <div className="builder-fields">
                     <label>Target min<input type="number" inputMode="numeric" value={c.targetMin} placeholder="–" onChange={(e) => updateCardio(di, ci, { targetMin: e.target.value })} /></label>
@@ -547,7 +604,8 @@ export default function Builder() {
               </button>
             </div>
           </div>
-        ))}
+          )
+        })}
 
         <button type="button" className="btn btn-ghost" onClick={addDay}>+ Add training day</button>
         <p className="muted small">{draft.days.length} day(s) · {totalExercises} exercise(s)</p>
@@ -573,6 +631,11 @@ export default function Builder() {
                 autoFocus
               />
               <button type="button" className="btn btn-primary btn-sm" onClick={() => setPicker(null)}>Done</button>
+            </div>
+            <div className="picker-filter">
+              <span className="muted small">{profileMeta(equipActive).icon} {profileMeta(equipActive).name} gear</span>
+              <button type="button" className={'chip' + (showAll ? '' : ' is-selected')} aria-pressed={!showAll} onClick={() => setShowAll(false)}>What I can do</button>
+              <button type="button" className={'chip' + (showAll ? ' is-selected' : '')} aria-pressed={showAll} onClick={() => setShowAll(true)}>Show all</button>
             </div>
             <div className="picker-list">
               {filtered.map(({ ex, info }) => {

@@ -14,7 +14,9 @@ export default function CardioForm({ onSaved, units = 'lbs', initialMachine = 't
   const [notes, setNotes] = useState('')
 
   const hasDistance = CARDIO_BY_ID[machine]?.distance
-  const canSave = Number(duration) > 0
+  // Any ONE meaningful metric is enough to save — someone logging "3 miles"
+  // with no watch on shouldn't be blocked just because duration is blank (U5).
+  const canSave = Number(duration) > 0 || (hasDistance && Number(distance) > 0) || Number(calories) > 0
 
   const save = () => {
     if (!canSave) return
@@ -22,7 +24,7 @@ export default function CardioForm({ onSaved, units = 'lbs', initialMachine = 't
       date: new Date().toISOString(),
       machine,
       machineName: CARDIO_BY_ID[machine]?.name || 'Cardio',
-      durationMin: Number(duration),
+      durationMin: Number(duration) || 0,
       distance: hasDistance && Number(distance) ? Number(distance) : null,
       distanceUnit: distUnit,
       avgHr: Number(avgHr) || null,

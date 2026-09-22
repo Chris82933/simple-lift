@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { loadPrograms, getActiveProgramId, loadHistory, loadSettings, saveSettings, loadActiveSession } from '../lib/storage.js'
 import { isIOS } from '../lib/platform.js'
@@ -31,7 +31,10 @@ export default function Today() {
   const navigate = useNavigate()
   const auth = useAuth()
   const programs = loadPrograms()
-  const history = loadHistory()
+  // R2: seed once per mount instead of re-parsing all of localStorage on
+  // every render (nothing in this page mutates history itself, so a stable
+  // load is safe — the second loadHistory() call below was pure duplication).
+  const history = useMemo(() => loadHistory(), [])
 
   // iOS quietly deletes local app data after ~7 days of no use. Nudge iOS users
   // with no cloud backup to save a backup — once, until they dismiss or sign in.
@@ -85,6 +88,26 @@ export default function Today() {
 
   const todayWeekday = new Date().getDay()
   const pick = pickSession(program, todayWeekday)
+  // C1: a rotation program with an empty `days` array makes pickSession return
+  // null (no valid index at all) — fall back to an empty state below rather
+  // than reading .index/.session off null or indexing program.days[...] with
+  // an out-of-range value.
+  if (!pick || !program.days.length) {
+    return (
+      <section className="page">
+        <header className="page-header">
+          <p className="eyebrow">Today</p>
+          <h1>No sessions in this program</h1>
+        </header>
+        <div className="card placeholder-card">
+          <p className="placeholder-title">Nothing to train yet</p>
+          <p className="muted">This program doesn&apos;t have any days set up. Add one, or switch to a different program.</p>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/builder', { state: { id: program.id } })}>Edit program</button>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/programs')}>Switch program</button>
+        </div>
+      </section>
+    )
+  }
   // The day being previewed: the user's chosen day, else today's scheduled one.
   const dayIndex = selectedDay != null && selectedDay < program.days.length ? selectedDay : pick.index
   const session = program.days[dayIndex]
@@ -139,15 +162,16 @@ export default function Today() {
       <FocusTiles current="program" onPickProgram={pickProgram} />
 
       {(() => {
-        const hist = loadHistory()
-        if (!hist.length) return null
-        const thisWeek = sessionsThisWeek(hist)
-        const streak = trainingStreakWeeks(hist)
+        // R2: reuse the history already loaded once per mount above instead
+        // of re-parsing all of localStorage again here.
+        if (!history.length) return null
+        const thisWeek = sessionsThisWeek(history)
+        const streak = trainingStreakWeeks(history)
         return (
           <Link className="card consistency-card" to="/progress">
             <span className="consistency-stat"><strong>{thisWeek}</strong> workout{thisWeek === 1 ? '' : 's'} this week</span>
             {streak > 1 && <span className="consistency-stat"><strong>{streak}</strong>-week streak</span>}
-            <span className="consistency-link">Progress →</span>
+            <span className="consistency-link">Progress <span aria-hidden="true">→</span></span>
           </Link>
         )
       })()}
@@ -181,7 +205,7 @@ export default function Today() {
                 aria-pressed={activeProfile === id}
                 onClick={() => switchProfile(id)}
               >
-                {profileMeta(id).icon} {profileMeta(id).name}
+                <span aria-hidden="true">{profileMeta(id).icon}</span> {profileMeta(id).name}
               </button>
             ))}
           </div>
@@ -234,10 +258,26 @@ export default function Today() {
         )}
         {needSwap > 0 && (
           <p className="muted small">
-            🏠 {needSwap} move{needSwap === 1 ? '' : 's'} need a swap in {profileMeta(activeProfile).name} mode — you can swap them one-tap during the workout.
+            <span aria-hidden="true">🏠</span> {needSwap} move{needSwap === 1 ? '' : 's'} need a swap in {profileMeta(activeProfile).name} mode — you can swap them one-tap during the workout.
           </p>
         )}
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
+      </div>
+
+      {/* U7: Recovery, the Skill Tree, and the 1RM finder otherwise live only
+          inside the Plans hub's Extras/Tools sections and a Settings link, so
+          anyone who never digs in there never finds them. A compact row here
+          surfaces them from the main screen without competing with the
+          primary "start workout" action above. Inline style: index.css is
+          off-limits for this change; reuses .card/.group-label/.btn classes
+          for everything but the row layout itself. */}
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p className="group-label" style={{ margin: 0 }}>Tools</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/recovery')}>Recovery &amp; Strength</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/skills')}>Skill Tree</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/one-rep-max')}>1RM finder</button>
+        </div>
       </div>
 
       <div className="card">

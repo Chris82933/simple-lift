@@ -38,10 +38,14 @@ export default function CardioLog() {
                   <div className="cardio-info">
                     <span className="ex-name">{c.machineName}</span>
                     <span className="muted small">
-                      {c.durationMin} min
-                      {c.distance ? ` · ${c.distance} ${c.distanceUnit}` : ''}
-                      {c.avgHr ? ` · ${c.avgHr} bpm` : ''}
-                      {c.calories ? ` · ${c.calories} cal` : ''}
+                      {/* Cardio can be logged without a duration (distance- or
+                          calories-only), so build the line from what's there. */}
+                      {[
+                        Number(c.durationMin) > 0 ? `${c.durationMin} min` : '',
+                        c.distance ? `${c.distance} ${c.distanceUnit}` : '',
+                        c.avgHr ? `${c.avgHr} bpm` : '',
+                        c.calories ? `${c.calories} cal` : '',
+                      ].filter(Boolean).join(' · ')}
                     </span>
                   </div>
                   <span className="muted small cardio-date">{new Date(c.date).toLocaleDateString()}</span>

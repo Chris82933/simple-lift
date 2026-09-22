@@ -5,8 +5,10 @@ import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { ToastProvider } from './components/Toast.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+import UpdatePrompt from './components/UpdatePrompt.jsx'
 import { initInstallPrompt } from './lib/installPrompt.js'
-import { applyTheme } from './lib/theme.js'
+import { applyTheme, watchSystemTheme } from './lib/theme.js'
 import { loadSettings, loadCustomExercises } from './lib/storage.js'
 import { registerCustomExercises } from './data/exercises.js'
 
@@ -21,16 +23,22 @@ registerCustomExercises(loadCustomExercises())
 // Apply the saved color theme (defaults to dark). An inline script in
 // index.html already sets it pre-paint; this keeps it in sync on load.
 applyTheme(loadSettings().theme)
+// On "System" (the default), follow the OS live from anywhere in the app — not
+// just while Settings is open. An explicit Dark/Light pick is never overridden.
+watchSystemTheme(() => loadSettings().theme)
 
 // HashRouter keeps deep links working on GitHub Pages (no server-side SPA fallback needed).
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <ToastProvider>
-        <HashRouter>
-          <App />
-        </HashRouter>
-      </ToastProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <HashRouter>
+            <App />
+          </HashRouter>
+          <UpdatePrompt />
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )

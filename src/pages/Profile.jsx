@@ -1,23 +1,138 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   loadProfile, loadSettings, saveSettings, clearAll,
   exportCode, importCode,
+  loadPrograms, savePrograms, loadMaxes, saveMax, loadBodyweight, logBodyweight,
+  loadHistory, updateWorkout,
 } from '../lib/storage.js'
 import { REGIONS, EQUIPMENT_GROUPS, GOALS } from '../data/options.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { isIOS } from '../lib/platform.js'
 import InstallApp from '../components/InstallApp.jsx'
-import { applyTheme } from '../lib/theme.js'
+import { applyTheme, watchSystemTheme } from '../lib/theme.js'
 import { notificationsSupported, notificationPermission, requestNotifyPermission } from '../lib/notify.js'
 import {
   getEquipment, setActiveProfile as storeSetActiveProfile, saveProfileEquipment,
   saveProfileCapacity, LOAD_SOURCES, profileMeta, PROFILE_IDS,
 } from '../lib/equipment.js'
+import { roundTo, incrementForUnits } from '../lib/oneRepMax.js'
 import PlateSettings from '../components/PlateSettings.jsx'
 import BodyweightCard from '../components/BodyweightCard.jsx'
+import useModalA11y from '../lib/useModalA11y.js'
 
 const ALL_EQUIP = EQUIPMENT_GROUPS.flatMap((g) => g.items)
+
+// ---- In-app confirm dialog (U11) — replaces window.confirm for the two
+// destructive actions on this page (import & replace, reset everything).
+// Reuses the picker-overlay/picker-sheet modal look and useModalA11y for the
+// focus trap + Escape, matching PlateSettings and other overlays.
+function ConfirmModal({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, onConfirm, onCancel }) {
+  const dialogRef = useRef(null)
+  useModalA11y(dialogRef, onCancel)
+
+  return (
+    <div className="picker-overlay" role="dialog" aria-modal="true" aria-label={title} ref={dialogRef} tabIndex={-1}>
+      <div className="picker-sheet">
+        <div className="picker-head">
+          <p className="ex-name big" style={{ flex: 1 }}>{title}</p>
+        </div>
+        <div className="picker-list">
+          <p className="muted small">{message}</p>
+        </div>
+        <div className="picker-foot confirm-foot">
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>{cancelLabel}</button>
+          <button type="button" className={'btn btn-primary' + (danger ? ' danger' : '')} onClick={onConfirm}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---- Units conversion (C6) — switching lbs↔kg must convert stored numbers,
+// not just relabel them. 1 kg = 2.20462 lb exactly; round to a sensible
+// loadable increment for the target unit (the same increments the rest of the
+// app already uses — 2.5 kg / 5 lb, via incrementForUnits).
+const KG_PER_LB = 0.45359237
+function convertWeight(w, from, to) {
+  const n = Number(w)
+  if (!n || from === to) return w // blank/zero/NaN stays as-is; no-op if units match
+  const kg = from === 'kg' ? n : n * KG_PER_LB
+  const out = to === 'kg' ? kg : kg / KG_PER_LB
+  return roundTo(out, incrementForUnits(to))
+}
+
+// Converts every weight field a generated/custom/GZCLP/5-3-1 program can carry:
+// each exercise's startWeight, its progression.weight (double/linear/t1/t2),
+// progression.tm (5-3-1 training max), progression.stage1Weight (GZCLP T2),
+// and — for GZCLP — the wizard's own remembered seed maxes + units.
+function convertProgramWeights(program, from, to) {
+  const next = { ...program }
+  if (Array.isArray(next.days)) {
+    next.days = next.days.map((day) => ({
+      ...day,
+      exercises: (day.exercises || []).map((ex) => {
+        const e2 = { ...ex }
+        if (e2.startWeight !== '' && e2.startWeight != null) e2.startWeight = convertWeight(e2.startWeight, from, to)
+        if (e2.progression) {
+          const p = { ...e2.progression }
+          for (const key of ['weight', 'tm', 'stage1Weight']) {
+            if (p[key] != null) p[key] = convertWeight(p[key], from, to)
+          }
+          e2.progression = p
+        }
+        return e2
+      }),
+    }))
+  }
+  if (next.gzclp) {
+    next.gzclp = {
+      ...next.gzclp,
+      units: to,
+      maxes: Object.fromEntries(
+        Object.entries(next.gzclp.maxes || {}).map(([id, v]) => [id, convertWeight(v, from, to)]),
+      ),
+    }
+  }
+  return next
+}
+
+// Converts every stored weight in one pass: programs, saved 1RMs, the
+// bodyweight log, and past workout history (so Progress charts stay
+// coherent). Uses only storage.js's existing exported API — no new storage
+// helper, per the file-ownership rule for this change; each collection is
+// read in full and written back through its normal save/update function.
+function convertStoredWeights(from, to) {
+  savePrograms(loadPrograms().map((p) => convertProgramWeights(p, from, to)))
+
+  const maxes = loadMaxes()
+  Object.entries(maxes).forEach(([id, m]) => {
+    if (!m || m.units === to) return // already in the target unit — never double-convert
+    const patch = { ...m, units: to }
+    if (m.oneRM != null) patch.oneRM = convertWeight(m.oneRM, from, to)
+    if (m.weight != null) patch.weight = convertWeight(m.weight, from, to)
+    saveMax(id, patch)
+  })
+
+  // logBodyweight(weight, date) overwrites the single entry for that date, so
+  // this rewrites each historical entry in place rather than appending.
+  loadBodyweight().forEach((entry) => {
+    if (entry?.date && entry.weight != null) logBodyweight(convertWeight(entry.weight, from, to), entry.date)
+  })
+
+  // Past workouts: convert each logged set's weight so Progress charts don't
+  // suddenly show a unit break at the switch date.
+  loadHistory().forEach((workout) => {
+    if (!workout?.date || !Array.isArray(workout.entries)) return
+    const entries = workout.entries.map((e) => ({
+      ...e,
+      sets: (e.sets || []).map((s) => (
+        s.weight === '' || s.weight == null ? s : { ...s, weight: String(convertWeight(s.weight, from, to)) }
+      )),
+    }))
+    updateWorkout(workout.date, { entries })
+  })
+}
 
 // "2 min ago" for the last successful sync.
 function syncAgo(ts) {
@@ -45,6 +160,8 @@ export default function Profile() {
   const [settings, setSettings] = useState(loadSettings())
   const [signingIn, setSigningIn] = useState(false)
   const [plateSettingsOpen, setPlateSettingsOpen] = useState(false)
+  // In-app confirm dialog (U11): { title, message, confirmLabel, danger, onConfirm } | null
+  const [confirmModal, setConfirmModal] = useState(null)
 
   // ---- Backup & transfer (copy-paste code) ----
   const [myCode, setMyCode] = useState('')
@@ -71,21 +188,45 @@ export default function Profile() {
     }
   }
 
-  const runImport = async () => {
-    if (!window.confirm('Import this code? It will replace the programs, history, and settings on this device.')) return
-    try {
-      await importCode(importText)
-      setCodeStatus({ ok: true, msg: 'Imported! Reloading…' })
-      setTimeout(() => window.location.reload(), 600)
-    } catch (e) {
-      setCodeStatus({ ok: false, msg: e?.message || 'Import failed.' })
-    }
+  const runImport = () => {
+    setConfirmModal({
+      title: 'Import this code?',
+      message: 'This replaces the programs, history, and settings on this device with what’s in the code. Your current data on this device is not kept unless you’ve saved a backup code for it too.',
+      confirmLabel: 'Import & replace',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null)
+        try {
+          await importCode(importText)
+          setCodeStatus({ ok: true, msg: 'Imported! Reloading…' })
+          setTimeout(() => window.location.reload(), 600)
+        } catch (e) {
+          setCodeStatus({ ok: false, msg: e?.message || 'Import failed.' })
+        }
+      },
+    })
   }
 
+  // C6: switching units must CONVERT stored numbers, not just relabel them —
+  // otherwise a 185 lb squat silently becomes "185 kg". Destructive-ish and
+  // slow to undo, so confirm first and explain exactly what changes.
   const setUnits = (units) => {
-    const next = { ...settings, units }
-    setSettings(next)
-    saveSettings(next)
+    if (units === (settings.units || 'lbs')) return
+    const from = settings.units || 'lbs'
+    const inc = incrementForUnits(units)
+    setConfirmModal({
+      title: `Switch to ${units}?`,
+      message: `We'll convert your saved starting weights, saved 1RMs, bodyweight log, and past workout history from ${from} to ${units} (rounded to the nearest ${inc}${units}) — nothing just gets relabeled. This isn't perfectly reversible if you switch back and forth. Plate/bar settings aren't converted; check those under Plate calculator settings after switching.`,
+      confirmLabel: `Convert to ${units}`,
+      danger: true,
+      onConfirm: () => {
+        setConfirmModal(null)
+        convertStoredWeights(from, units)
+        const next = { ...settings, units }
+        setSettings(next)
+        saveSettings(next)
+      },
+    })
   }
 
   const setHidePlateCalc = (hide) => {
@@ -130,13 +271,19 @@ export default function Profile() {
     setSettings(next); saveSettings(next)
   }
 
-  const theme = settings.theme || 'dark'
+  // 'system' is the default for anyone who's never explicitly chosen — it
+  // matches theme.js's own resolution so this page's selected pill always
+  // agrees with what's actually on screen.
+  const theme = settings.theme || 'system'
   const setTheme = (t) => {
     const next = { ...settings, theme: t }
     setSettings(next)
     saveSettings(next)
     applyTheme(t)
   }
+  // While Settings is open with 'System' selected, follow OS scheme changes
+  // live (U9). An explicit Dark/Light choice is never touched by this.
+  useEffect(() => watchSystemTheme(() => theme), [theme])
 
   // ---- Training location (Home / Gym equipment profiles) ----
   const [equip, setEquip] = useState(() => getEquipment())
@@ -177,10 +324,17 @@ export default function Profile() {
   }
 
   const reset = () => {
-    if (window.confirm('Reset everything? This clears your programs, settings, and workout history on this device.')) {
-      clearAll()
-      navigate('/onboarding')
-    }
+    setConfirmModal({
+      title: 'Reset everything?',
+      message: 'This clears your programs, settings, and workout history on this device. It can’t be undone unless you’ve saved a backup code.',
+      confirmLabel: 'Reset everything',
+      danger: true,
+      onConfirm: () => {
+        setConfirmModal(null)
+        clearAll()
+        navigate('/onboarding')
+      },
+    })
   }
 
   const signedIn = auth?.user
@@ -216,8 +370,9 @@ export default function Profile() {
               <span className="active-badge">
                 {auth.status === 'syncing' ? 'Syncing…'
                   : auth.status === 'conflict' ? 'Needs a choice'
-                    : auth.status === 'error' ? 'Sync failed'
-                      : auth.syncNote?.level === 'over' ? 'Sync paused' : 'Synced'}
+                    : auth.status === 'pull-pending' ? 'Update waiting'
+                      : auth.status === 'error' ? 'Sync failed'
+                        : auth.syncNote?.level === 'over' ? 'Sync paused' : 'Synced'}
               </span>
             </div>
             {auth.lastSyncedAt > 0 && auth.status !== 'conflict' && (
@@ -248,14 +403,32 @@ export default function Profile() {
                 </p>
               </div>
             )}
+            {/* A pull arrived while a workout was in progress — it's held back
+                rather than reloading the app under you mid-session. */}
+            {auth.status === 'pull-pending' && (
+              <p className="muted small sync-warn">
+                An update from another device is waiting. It&apos;ll be applied once you finish (or leave) your current workout, so the app doesn&apos;t reload mid-session.
+              </p>
+            )}
+            {/* Shape vs network failure read very differently to a user. */}
+            {auth.status === 'error' && auth.syncError?.kind === 'shape' && (
+              <p className="muted small sync-warn">
+                ⚠️ The cloud copy couldn&apos;t be read — it doesn&apos;t look like valid Simple Lift data, so nothing on this device was changed. Your data here is untouched; keep a backup code below.
+              </p>
+            )}
+            {auth.status === 'error' && auth.syncError?.kind !== 'shape' && (
+              <p className="muted small sync-warn">
+                Couldn&apos;t reach the cloud. Your data is still saved on this device and will sync when you&apos;re back online.
+              </p>
+            )}
             {auth.syncNote?.level === 'over' && (
               <p className="muted small sync-warn">
-                ⚠️ Your data has grown past the cloud limit ({auth.syncNote.pct}% of 1&nbsp;MB), so cloud sync is paused — your data is still safe on this device. Trim old sessions in Progress, or keep a backup code below.
+                ⚠️ Your data has grown past the cloud limit ({auth.syncNote.pct}% of 1&nbsp;MB), so cloud sync is paused — your data is still safe on this device. Keep a backup code below.
               </p>
             )}
             {auth.syncNote?.level === 'warn' && (
               <p className="muted small sync-warn">
-                Cloud backup is {auth.syncNote.pct}% full. It still syncs, but consider deleting some old sessions in Progress before it fills up.
+                Cloud backup is {auth.syncNote.pct}% full. Workout history is stored separately and no longer counts toward this, so it should stay well clear of the limit.
               </p>
             )}
             <button className="btn btn-ghost btn-sm" onClick={() => auth.signOut()}>Sign out</button>
@@ -376,6 +549,7 @@ export default function Profile() {
         <p className="group-label">Appearance</p>
         <div className="seg">
           {[
+            { id: 'system', label: '🖥️ System' },
             { id: 'dark', label: '🌙 Dark' },
             { id: 'light', label: '☀️ Light' },
           ].map((t) => (
@@ -577,6 +751,10 @@ export default function Profile() {
       <div className="card">
         <button type="button" className="btn btn-ghost danger" onClick={reset}>Reset all data</button>
       </div>
+
+      {confirmModal && (
+        <ConfirmModal {...confirmModal} onCancel={() => setConfirmModal(null)} />
+      )}
     </section>
   )
 }

@@ -13,6 +13,7 @@ const SKILLS_KEY = 'simple-lift:skills'
 const BODYWEIGHT_KEY = 'simple-lift:bodyweight'
 const CUSTOM_EX_KEY = 'simple-lift:customExercises'
 const UPDATED_KEY = 'simple-lift:updatedAt'
+const REV_KEY = 'simple-lift:rev' // monotonic local revision counter (R4 — see getRev)
 const ACTIVE_SESSION_KEY = 'simple-lift:activeSession' // in-progress workout (resume)
 const LEGACY_PROGRAM_KEY = 'simple-lift:program' // pre-multi-program
 
@@ -74,11 +75,30 @@ function write(key, value, { silent = false } = {}) {
     return false
   }
   if (!silent) {
-    try { localStorage.setItem(UPDATED_KEY, JSON.stringify(Date.now())) } catch { /* ignore */ }
+    try {
+      localStorage.setItem(UPDATED_KEY, JSON.stringify(Date.now()))
+      // R4: bump the device-local revision counter alongside the wall-clock
+      // stamp. Every non-silent write is, by definition, a local mutation that
+      // touches synced data, so this is the one place that needs to do it.
+      localStorage.setItem(REV_KEY, JSON.stringify((read(REV_KEY, 0) || 0) + 1))
+    } catch { /* ignore */ }
     window.dispatchEvent(new CustomEvent('sl-data-changed'))
   }
   return true
 }
+
+// ---- Sync revision counter (R4) ----
+// `updatedAt` is Date.now() from whichever device wrote it, so a skewed device
+// clock can make a genuinely newer cloud copy look older. `rev` is monotonic
+// and device-independent: it only ever increments by 1, once per local write
+// (see `write()` above), so comparing revs across devices is safe even when
+// their clocks aren't. Read it with getRev(); it travels in exportData()/the
+// backup codes, and importData() installs a cloud-provided rev verbatim
+// (not incremented) since that's adopting the remote value, not a new local
+// mutation. Callers writing a sync marker should stash the rev each side was
+// at (`cloudRev`/`localRev`) alongside the existing `cloudUpdatedAt`/
+// `localUpdatedAt` — see syncDecision() below for exactly how it's used.
+export const getRev = () => read(REV_KEY, 0)
 
 // Safe load-modify-save for a collection. If the read itself failed (not merely
 // empty), it declines to write rather than overwrite good data with a degraded
@@ -166,10 +186,32 @@ function migrateLegacy() {
   }
 }
 
-// Ensure every program has a schedule (older ones default to fixed weekdays).
-function normalizeProgram(p) {
-  if (!p.schedule) p.schedule = { mode: 'fixed' }
-  if (p.schedule.mode === 'rotation' && p.schedule.pointer == null) p.schedule.pointer = 0
+// Clamp a rotation pointer into [0, len). Handles undefined/null/NaN (→ 0),
+// negative values (wrap from the end), and out-of-range values (modulo) — the
+// single source of truth used everywhere a pointer is read or advanced, so an
+// out-of-range pointer can never hand back `undefined` for `days[pointer]`.
+// len <= 0 (no days) always clamps to 0; callers with empty `days` must still
+// handle that themselves (there's no valid index to return).
+export function clampRotationPointer(pointer, len) {
+  if (!(len > 0)) return 0
+  const n = Number(pointer)
+  if (!Number.isFinite(n)) return 0
+  return ((n % len) + len) % len
+}
+
+// Ensure every program has a schedule (older ones default to fixed weekdays),
+// and that a rotation pointer is always in range. Immutable (R9): returns a
+// new object rather than mutating its argument, mirroring the rest of the store.
+// Exported so callers (and tests) can normalize a program without going
+// through localStorage.
+export function normalizeProgram(p) {
+  if (!p.schedule) return { ...p, schedule: { mode: 'fixed' } }
+  if (p.schedule.mode === 'rotation') {
+    const len = Array.isArray(p.days) ? p.days.length : 0
+    const pointer = clampRotationPointer(p.schedule.pointer ?? 0, len)
+    if (pointer === p.schedule.pointer) return p
+    return { ...p, schedule: { ...p.schedule, pointer } }
+  }
   return p
 }
 
@@ -187,13 +229,17 @@ export function loadPrograms() {
 }
 
 // Advance a rotation program's pointer to the next workout after one is done.
+// Immutable (R9): builds a new program object and a new array rather than
+// mutating the one just read.
 export function advanceRotation(programId, completedDayIndex) {
   const { ok, programs } = readPrograms()
   if (!ok) return // storage read failed — don't rewrite from a bad base
   const p = programs.find((x) => x.id === programId)
   if (!p || p.schedule?.mode !== 'rotation') return
-  p.schedule.pointer = (completedDayIndex + 1) % p.days.length
-  savePrograms(programs)
+  const len = Array.isArray(p.days) ? p.days.length : 0
+  const pointer = clampRotationPointer(completedDayIndex + 1, len)
+  const updated = { ...p, schedule: { ...p.schedule, pointer } }
+  savePrograms(programs.map((x) => (x.id === programId ? updated : x)))
 }
 
 export const savePrograms = (arr) => write(PROGRAMS_KEY, arr)
@@ -379,6 +425,7 @@ export function exportData() {
     bodyweight: read(BODYWEIGHT_KEY, []),
     customExercises: read(CUSTOM_EX_KEY, []),
     updatedAt: read(UPDATED_KEY, 0),
+    rev: read(REV_KEY, 0),
   }
 }
 
@@ -409,21 +456,156 @@ export function cloudSizeInfo() {
   }
 }
 
-// Applies a cloud snapshot to local storage. Silent so it doesn't echo back out.
+// ---- Import validation (R5) ----
+// A cloud pull or a pasted backup code can't be trusted to match the current
+// schema: a hand-edited code, a partial cloud write, or a blob from a future
+// app version can hand back a top-level field of the wrong type entirely (an
+// object where an array was expected, say), which would crash the UI the
+// moment it tries to .map() or .find() it. Individual entries can also be
+// malformed without the container itself being the wrong type.
+//
+// We reject the former outright (nothing is written) and quietly drop/coerce
+// the latter — permissive about unknown extra fields for forward
+// compatibility, strict about the shapes the UI indexes into.
+const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
+
+// A program needs a real id and an array of days; each day needs an array of
+// exercises. Bad days/exercises are dropped rather than failing the whole
+// program. Runs the pointer through the same clamp as everywhere else (C1).
+function sanitizeProgram(p) {
+  if (!isPlainObject(p) || typeof p.id !== 'string' || !p.id) return null
+  if (!Array.isArray(p.days)) return null
+  const days = p.days
+    .filter(isPlainObject)
+    .map((d) => ({ ...d, exercises: Array.isArray(d.exercises) ? d.exercises : [] }))
+  return normalizeProgram({ ...p, days })
+}
+
+function sanitizePrograms(list) {
+  if (!Array.isArray(list)) return null
+  const out = []
+  for (const p of list) {
+    const s = sanitizeProgram(p)
+    if (s) out.push(s)
+  }
+  return out
+}
+
+// A history entry needs a date (its identity — see deleteWorkout/updateWorkout)
+// and an entries array; the sets inside are left freeform.
+function sanitizeHistoryEntry(w) {
+  if (!isPlainObject(w) || typeof w.date !== 'string' || !w.date) return null
+  return { ...w, entries: Array.isArray(w.entries) ? w.entries : [] }
+}
+
+function sanitizeHistory(list) {
+  if (!Array.isArray(list)) return null
+  const out = []
+  for (const w of list) {
+    const s = sanitizeHistoryEntry(w)
+    if (s) out.push(s)
+  }
+  return out
+}
+
+const numOrUndefined = (v) => (v === undefined || v === null || !Number.isFinite(Number(v)) ? undefined : Number(v))
+
+// Checks every field present on `blob` against the shape exportData()
+// produces. Returns { ok: true, value } with a cleaned, ready-to-write copy,
+// or { ok: false, errors } naming the top-level fields whose type didn't
+// match at all — those abort the whole import rather than installing a
+// partial/garbled snapshot.
+export function validateImportBlob(blob) {
+  if (!isPlainObject(blob)) return { ok: false, errors: ['(not an object)'] }
+  const errors = []
+  const out = {}
+
+  if (blob.profile !== undefined) {
+    if (blob.profile === null || isPlainObject(blob.profile)) out.profile = blob.profile
+    else errors.push('profile')
+  }
+  if (blob.programs !== undefined) {
+    const sanitized = sanitizePrograms(blob.programs)
+    if (sanitized) out.programs = sanitized
+    else errors.push('programs')
+  }
+  if (blob.activeProgramId !== undefined) {
+    if (blob.activeProgramId === null || typeof blob.activeProgramId === 'string') out.activeProgramId = blob.activeProgramId
+    else errors.push('activeProgramId')
+  }
+  if (blob.history !== undefined) {
+    const sanitized = sanitizeHistory(blob.history)
+    if (sanitized) out.history = sanitized
+    else errors.push('history')
+  }
+  if (blob.settings !== undefined) {
+    if (isPlainObject(blob.settings)) out.settings = blob.settings
+    else errors.push('settings')
+  }
+  if (blob.maxes !== undefined) {
+    if (isPlainObject(blob.maxes)) out.maxes = blob.maxes
+    else errors.push('maxes')
+  }
+  if (blob.cardio !== undefined) {
+    if (Array.isArray(blob.cardio)) out.cardio = blob.cardio
+    else errors.push('cardio')
+  }
+  if (blob.skills !== undefined) {
+    if (isPlainObject(blob.skills)) out.skills = blob.skills
+    else errors.push('skills')
+  }
+  if (blob.bodyweight !== undefined) {
+    if (Array.isArray(blob.bodyweight)) out.bodyweight = blob.bodyweight
+    else errors.push('bodyweight')
+  }
+  if (blob.customExercises !== undefined) {
+    if (Array.isArray(blob.customExercises)) out.customExercises = blob.customExercises
+    else errors.push('customExercises')
+  }
+  if (blob.updatedAt !== undefined) {
+    const n = numOrUndefined(blob.updatedAt)
+    if (n !== undefined) out.updatedAt = n
+    else errors.push('updatedAt')
+  }
+  if (blob.rev !== undefined) {
+    const n = numOrUndefined(blob.rev)
+    if (n !== undefined) out.rev = n
+    else errors.push('rev')
+  }
+
+  if (errors.length) return { ok: false, errors }
+  return { ok: true, value: out }
+}
+
+// Applies a cloud snapshot (or an imported backup code) to local storage.
+// Silent so it doesn't echo back out. Validates/normalizes first (R5) and
+// throws rather than installing anything if a top-level field is the wrong
+// type — callers (importCode, the cloud-sync layer) should surface the error
+// to the user instead of applying a partial snapshot.
 export function importData(blob) {
   if (!blob) return
-  if (blob.profile !== undefined) write(PROFILE_KEY, blob.profile, { silent: true })
-  if (blob.programs !== undefined) write(PROGRAMS_KEY, blob.programs, { silent: true })
-  if (blob.activeProgramId !== undefined) write(ACTIVE_KEY, blob.activeProgramId, { silent: true })
-  if (blob.history !== undefined) write(HISTORY_KEY, blob.history, { silent: true })
-  if (blob.settings !== undefined) write(SETTINGS_KEY, blob.settings, { silent: true })
-  if (blob.maxes !== undefined) write(MAXES_KEY, blob.maxes, { silent: true })
-  if (blob.cardio !== undefined) write(CARDIO_KEY, blob.cardio, { silent: true })
-  if (blob.skills !== undefined) write(SKILLS_KEY, blob.skills, { silent: true })
-  if (blob.bodyweight !== undefined) write(BODYWEIGHT_KEY, blob.bodyweight, { silent: true })
-  if (blob.customExercises !== undefined) write(CUSTOM_EX_KEY, blob.customExercises, { silent: true })
-  if (blob.updatedAt !== undefined) {
-    try { localStorage.setItem(UPDATED_KEY, JSON.stringify(blob.updatedAt)) } catch { /* ignore */ }
+  const result = validateImportBlob(blob)
+  if (!result.ok) {
+    throw new Error(`That data has an unexpected shape (${result.errors.join(', ')}) — nothing was changed.`)
+  }
+  const clean = result.value
+  if (clean.profile !== undefined) write(PROFILE_KEY, clean.profile, { silent: true })
+  if (clean.programs !== undefined) write(PROGRAMS_KEY, clean.programs, { silent: true })
+  if (clean.activeProgramId !== undefined) write(ACTIVE_KEY, clean.activeProgramId, { silent: true })
+  if (clean.history !== undefined) write(HISTORY_KEY, clean.history, { silent: true })
+  if (clean.settings !== undefined) write(SETTINGS_KEY, clean.settings, { silent: true })
+  if (clean.maxes !== undefined) write(MAXES_KEY, clean.maxes, { silent: true })
+  if (clean.cardio !== undefined) write(CARDIO_KEY, clean.cardio, { silent: true })
+  if (clean.skills !== undefined) write(SKILLS_KEY, clean.skills, { silent: true })
+  if (clean.bodyweight !== undefined) write(BODYWEIGHT_KEY, clean.bodyweight, { silent: true })
+  if (clean.customExercises !== undefined) write(CUSTOM_EX_KEY, clean.customExercises, { silent: true })
+  if (clean.updatedAt !== undefined) {
+    try { localStorage.setItem(UPDATED_KEY, JSON.stringify(clean.updatedAt)) } catch { /* ignore */ }
+  }
+  // Cloud-provided rev is installed verbatim (not incremented) — adopting the
+  // remote value isn't itself a new local mutation. See getRev() above.
+  if (clean.rev !== undefined) {
+    try { localStorage.setItem(REV_KEY, JSON.stringify(clean.rev)) } catch { /* ignore */ }
   }
 }
 
@@ -448,13 +630,21 @@ export const clearSyncMarker = () => {
  *   'pull'     — only the cloud moved
  *   'conflict' — both moved since the last sync; the user must choose
  *   'none'     — already in step
+ *
+ * R4: `updatedAt` is Date.now() from whichever device wrote it, so a skewed
+ * device clock can make a genuinely newer cloud copy look older (or hide a
+ * real conflict). When BOTH the cloud snapshot carries a `rev` AND the sync
+ * marker recorded a `cloudRev`/`localRev` baseline, rev comparison is used
+ * instead — it's monotonic and immune to clock skew. Otherwise (legacy cloud
+ * data with no `rev`, or a marker saved before this existed) it falls back to
+ * the original `updatedAt` comparison unchanged, so existing users keep
+ * working through the upgrade. See getRev() above for the write side.
  */
-export function syncDecision(cloud, marker = getSyncMarker(), localUpdatedAt = getUpdatedAt()) {
+export function syncDecision(cloud, marker = getSyncMarker(), localUpdatedAt = getUpdatedAt(), localRev = getRev()) {
+  if (!cloud) return 'push' // nothing up there yet
+
   const cloudAt = Number(cloud?.updatedAt) || 0
   const localAt = Number(localUpdatedAt) || 0
-  if (!cloud) return 'push' // nothing up there yet
-  const agreedCloud = Number(marker?.cloudUpdatedAt) || 0
-  const agreedLocal = Number(marker?.localUpdatedAt) || 0
 
   if (!marker) {
     // First sync on this device: no shared history to reason from. Identical
@@ -462,8 +652,24 @@ export function syncDecision(cloud, marker = getSyncMarker(), localUpdatedAt = g
     if (cloudAt === localAt) return 'none'
     return localAt > 0 ? 'conflict' : 'pull'
   }
-  const cloudMoved = cloudAt > agreedCloud
-  const localMoved = localAt > agreedLocal
+
+  const cloudRev = numOrUndefined(cloud?.rev)
+  const localRevNum = numOrUndefined(localRev)
+  const markerCloudRev = numOrUndefined(marker.cloudRev)
+  const markerLocalRev = numOrUndefined(marker.localRev)
+  const useRev = cloudRev !== undefined && localRevNum !== undefined && markerCloudRev !== undefined && markerLocalRev !== undefined
+
+  let cloudMoved, localMoved
+  if (useRev) {
+    cloudMoved = cloudRev > markerCloudRev
+    localMoved = localRevNum > markerLocalRev
+  } else {
+    const agreedCloud = Number(marker?.cloudUpdatedAt) || 0
+    const agreedLocal = Number(marker?.localUpdatedAt) || 0
+    cloudMoved = cloudAt > agreedCloud
+    localMoved = localAt > agreedLocal
+  }
+
   if (cloudMoved && localMoved) return 'conflict'
   if (cloudMoved) return 'pull'
   if (localMoved) return 'push'
@@ -543,7 +749,7 @@ export async function importCode(code) {
 }
 
 export function clearAll() {
-  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, BODYWEIGHT_KEY, CUSTOM_EX_KEY, UPDATED_KEY, ACTIVE_SESSION_KEY, LEGACY_PROGRAM_KEY].forEach(
+  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, BODYWEIGHT_KEY, CUSTOM_EX_KEY, UPDATED_KEY, REV_KEY, ACTIVE_SESSION_KEY, LEGACY_PROGRAM_KEY].forEach(
     (k) => { try { localStorage.removeItem(k) } catch { /* ignore */ } },
   )
   window.dispatchEvent(new CustomEvent('sl-data-changed'))

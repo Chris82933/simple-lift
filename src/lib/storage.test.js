@@ -11,6 +11,7 @@ import {
   loadCustomExercises, saveCustomExercise, deleteCustomExercise,
   saveActiveSession, loadActiveSession, clearActiveSession,
   syncDecision, summarizeSnapshot, getSyncMarker, setSyncMarker,
+  clampRotationPointer, normalizeProgram, advanceRotation, getRev, validateImportBlob,
 } from './storage.js'
 
 const PROGRAMS = 'simple-lift:programs'
@@ -376,5 +377,220 @@ describe('export / import', () => {
     importData({ history: [{ date: '2026-01-01', sessionTitle: 'A' }] })
     expect(loadPrograms()).toHaveLength(1)
     expect(loadSettings().units).toBe('kg')
+  })
+})
+
+// ---- C1 / R9: rotation pointer can never white-screen the app ----
+describe('rotation pointer safety (C1)', () => {
+  const rotationProgram = (over = {}) => ({
+    id: 'p1',
+    name: 'Rotation',
+    days: [{ title: 'A', exercises: [] }, { title: 'B', exercises: [] }, { title: 'C', exercises: [] }],
+    schedule: { mode: 'rotation', trainingDays: [1, 3, 5], pointer: 0 },
+    ...over,
+  })
+
+  it('clampRotationPointer wraps an out-of-range pointer', () => {
+    expect(clampRotationPointer(5, 3)).toBe(2)
+    expect(clampRotationPointer(3, 3)).toBe(0)
+  })
+
+  it('clampRotationPointer wraps a negative pointer', () => {
+    expect(clampRotationPointer(-1, 3)).toBe(2)
+  })
+
+  it('clampRotationPointer treats non-finite/missing input as 0', () => {
+    expect(clampRotationPointer(undefined, 3)).toBe(0)
+    expect(clampRotationPointer(NaN, 3)).toBe(0)
+  })
+
+  it('clampRotationPointer returns 0 for empty/zero-length days', () => {
+    expect(clampRotationPointer(2, 0)).toBe(0)
+  })
+
+  it('normalizeProgram (via loadPrograms) clamps a stale out-of-range pointer', () => {
+    savePrograms([rotationProgram({ schedule: { mode: 'rotation', trainingDays: [1, 3, 5], pointer: 9 } })])
+    expect(loadPrograms()[0].schedule.pointer).toBe(0) // 9 % 3
+  })
+
+  it('normalizeProgram returns a new object rather than mutating its argument (R9)', () => {
+    const input = { id: 'p1', schedule: { mode: 'rotation', pointer: 9 }, days: [{}, {}, {}] }
+    const originalSchedule = input.schedule
+    const result = normalizeProgram(input)
+    expect(input.schedule).toBe(originalSchedule) // untouched reference
+    expect(input.schedule.pointer).toBe(9) // untouched value
+    expect(result).not.toBe(input)
+    expect(result.schedule.pointer).toBe(0) // 9 % 3
+  })
+
+  it('normalizeProgram is a no-op (same reference) when nothing needs changing', () => {
+    const input = { id: 'p1', schedule: { mode: 'rotation', pointer: 1 }, days: [{}, {}, {}] }
+    expect(normalizeProgram(input)).toBe(input)
+  })
+
+  it('advanceRotation clamps into range', () => {
+    savePrograms([rotationProgram()])
+    advanceRotation('p1', 2) // completed the last day (index 2) of a 3-day rotation
+    expect(loadPrograms()[0].schedule.pointer).toBe(0) // (2+1) % 3
+  })
+
+  it('advanceRotation is a no-op for a non-rotation program', () => {
+    savePrograms([{ id: 'p1', days: [{ title: 'A', exercises: [] }], schedule: { mode: 'fixed' } }])
+    expect(() => advanceRotation('p1', 0)).not.toThrow()
+  })
+})
+
+// ---- R5: imported/cloud blobs are validated before being installed ----
+describe('import validation (R5)', () => {
+  it('a valid current-schema export round-trips exactly', () => {
+    savePrograms([{
+      id: 'p1', name: 'Test Program',
+      schedule: { mode: 'rotation', trainingDays: [1, 3], pointer: 1 },
+      days: [{ title: 'A', exercises: [] }, { title: 'B', exercises: [] }],
+    }])
+    appendWorkout({ date: '2026-01-01', sessionTitle: 'A', entries: [] })
+    saveSettings({ units: 'kg' })
+    const blob = exportData()
+
+    clearAll()
+    importData(blob)
+    expect(exportData()).toEqual(blob)
+  })
+
+  it('rejects a blob whose programs field is not an array', () => {
+    const result = validateImportBlob({ programs: { not: 'an array' } })
+    expect(result.ok).toBe(false)
+    expect(result.errors).toContain('programs')
+  })
+
+  it('rejects a blob whose history field is not an array', () => {
+    const result = validateImportBlob({ history: 'nope' })
+    expect(result.ok).toBe(false)
+    expect(result.errors).toContain('history')
+  })
+
+  it('rejects a non-object top-level blob', () => {
+    expect(validateImportBlob('just a string').ok).toBe(false)
+    expect(validateImportBlob(42).ok).toBe(false)
+    expect(validateImportBlob([1, 2, 3]).ok).toBe(false)
+  })
+
+  it('drops malformed program entries rather than rejecting the whole import', () => {
+    const result = validateImportBlob({
+      programs: [
+        { id: 'good', days: [{ title: 'A', exercises: [] }] },
+        { name: 'no id, no days' },
+        { id: 'bad-days', days: 'not an array' },
+        null,
+        'garbage',
+      ],
+    })
+    expect(result.ok).toBe(true)
+    expect(result.value.programs.map((p) => p.id)).toEqual(['good'])
+  })
+
+  it('coerces a program day missing an exercises array to an empty one', () => {
+    const result = validateImportBlob({ programs: [{ id: 'p1', days: [{ title: 'No exercises field' }] }] })
+    expect(result.ok).toBe(true)
+    expect(result.value.programs[0].days[0].exercises).toEqual([])
+  })
+
+  it('drops malformed history entries rather than rejecting the whole import', () => {
+    const result = validateImportBlob({
+      history: [
+        { date: '2026-01-01', entries: [{ exerciseId: 'x' }] },
+        { sessionTitle: 'no date' },
+        { date: '2026-01-02' }, // entries missing → coerced to []
+        123,
+      ],
+    })
+    expect(result.ok).toBe(true)
+    expect(result.value.history).toHaveLength(2)
+    expect(result.value.history[1].entries).toEqual([])
+  })
+
+  it('clamps a rotation pointer found inside an imported program', () => {
+    const result = validateImportBlob({
+      programs: [{ id: 'p1', schedule: { mode: 'rotation', pointer: 99 }, days: [{ exercises: [] }, { exercises: [] }] }],
+    })
+    expect(result.ok).toBe(true)
+    expect(result.value.programs[0].schedule.pointer).toBe(1) // 99 % 2
+  })
+
+  it('importData throws and writes nothing when the top-level shape is wrong', () => {
+    savePrograms([program()])
+    expect(() => importData({ programs: 'not an array' })).toThrow()
+    expect(loadPrograms()[0].name).toBe('Test Program') // untouched
+  })
+
+  it('importCode surfaces a validation error for a malformed (but well-formed-base64) code', async () => {
+    savePrograms([program()])
+    const blob = { programs: 'not an array' }
+    const code = 'SLIFT1:' + btoa(unescape(encodeURIComponent(JSON.stringify(blob))))
+    await expect(importCode(code)).rejects.toThrow()
+    expect(loadPrograms()[0].name).toBe('Test Program') // untouched
+  })
+
+  it('is permissive about unknown extra fields (forward compatibility)', () => {
+    const result = validateImportBlob({ settings: { units: 'kg' }, someFutureField: { anything: true } })
+    expect(result.ok).toBe(true)
+    expect(result.value.settings.units).toBe('kg')
+  })
+})
+
+// ---- R4: monotonic revision counter alongside updatedAt ----
+describe('rev counter and syncDecision precedence (R4)', () => {
+  it('starts at 0 and increments once per non-silent write', () => {
+    expect(getRev()).toBe(0)
+    saveSettings({ units: 'kg' })
+    expect(getRev()).toBe(1)
+    savePrograms([program()])
+    expect(getRev()).toBe(2)
+  })
+
+  it('does not bump on a silent write (active session)', () => {
+    saveSettings({ units: 'kg' })
+    const before = getRev()
+    saveActiveSession({ programId: 'p1', dayIndex: 0, exercises: [], sets: {} })
+    expect(getRev()).toBe(before)
+  })
+
+  it('travels in the exported snapshot', () => {
+    saveSettings({ units: 'kg' })
+    expect(exportData().rev).toBe(getRev())
+  })
+
+  it('importData installs a cloud-provided rev verbatim, not incremented', () => {
+    saveSettings({ units: 'kg' }) // rev -> 1
+    importData({ rev: 50 })
+    expect(getRev()).toBe(50)
+  })
+
+  it('prefers rev over updatedAt when both sides have one', () => {
+    // Skewed local clock makes localUpdatedAt look newer than it should, but
+    // rev says the cloud is actually ahead — rev must win.
+    const cloud = { updatedAt: 100, rev: 10, programs: [], history: [] }
+    const marker = { cloudUpdatedAt: 50, localUpdatedAt: 999999, cloudRev: 5, localRev: 5 }
+    expect(syncDecision(cloud, marker, /* localUpdatedAt */ 999999, /* localRev */ 5)).toBe('pull')
+  })
+
+  it('prefers rev to correctly detect a conflict a skewed clock would hide', () => {
+    const cloud = { updatedAt: 100, rev: 10, programs: [], history: [] }
+    const marker = { cloudUpdatedAt: 50, localUpdatedAt: 50, cloudRev: 5, localRev: 5 }
+    // Local rev also moved (6 > 5) even though its updatedAt(50) <= cloud's(100)
+    // would have looked like "only cloud moved" under naive clock comparison.
+    expect(syncDecision(cloud, marker, 50, 6)).toBe('conflict')
+  })
+
+  it('falls back to updatedAt when the cloud snapshot has no rev (legacy)', () => {
+    const cloud = { updatedAt: 200, programs: [], history: [] } // no rev field
+    const marker = { cloudUpdatedAt: 100, localUpdatedAt: 100, cloudRev: 5, localRev: 5 }
+    expect(syncDecision(cloud, marker, 100, 5)).toBe('pull')
+  })
+
+  it('falls back to updatedAt when the marker predates rev tracking', () => {
+    const cloud = { updatedAt: 200, rev: 10, programs: [], history: [] }
+    const marker = { cloudUpdatedAt: 100, localUpdatedAt: 100 } // no cloudRev/localRev
+    expect(syncDecision(cloud, marker, 100, 3)).toBe('pull')
   })
 })

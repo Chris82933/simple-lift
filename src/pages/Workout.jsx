@@ -26,7 +26,8 @@ import {
   getEquipment, setActiveProfile as storeSetActiveProfile, isDoable, bestSubstitute,
   missingEquipment, profileMeta, PROFILE_IDS, activeEquipmentIds, resolveExercisesForEquipment, activeCapacity,
 } from '../lib/equipment.js'
-import { isBarbellLift, lazyWarmupSets, getPlateConfig, PLATE_WEIGHTS } from '../lib/plates.js'
+import { isBarbellLift, lazyWarmupSets, getPlateConfig, PLATE_WEIGHTS, smallestBarJump } from '../lib/plates.js'
+import { exerciseEntryFromLibrary } from '../lib/exerciseEntry.js'
 import { ladderInfo } from '../lib/ladder.js'
 import { measureUnit, exMeasure, EXERCISE_BY_ID, isoHoldFor, tracksLoad, loadIsOptional } from '../data/exercises.js'
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
@@ -50,6 +51,27 @@ function nextSetTarget(ex, rows) {
     weight = entered || Number(ex.progression?.weight ?? ex.startWeight) || 0
   }
   return { weight, setNumber: idx + 1, total }
+}
+
+// The weight step for a set's ± stepper: the smallest jump you can actually
+// load on a barbell (twice your lightest plate) when that's known, otherwise
+// the standard lift increment for your units.
+function weightStepFor(ex, units) {
+  if (isBarbellLift(ex)) {
+    const jump = smallestBarJump(units)
+    if (jump > 0) return jump
+  }
+  return incrementForUnits(units)
+}
+
+// Human-readable session length for the completion screen.
+function formatDuration(sec) {
+  const totalMin = Math.round(sec / 60)
+  if (totalMin < 1) return '<1 min'
+  if (totalMin < 60) return `${totalMin} min`
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return m ? `${h}h ${m}m` : `${h}h`
 }
 
 // Post-session difficulty ratings (saved to history).
@@ -135,6 +157,30 @@ const optionsFor = (sug, units) => {
   }
   opts.push({ key: 'keep', label: 'Keep same' })
   return opts
+}
+
+// Seed (or re-seed) progression choices to the recommended option for
+// auto-progression: GZCLP and linear/Greyskull schemes (`sug.isGzclp` is set
+// on both, true or false — only those two paths set it) are DEFINED by
+// automatic load increases, so they always seed to the recommended jump.
+// For generic exercises, linear/RPE methods seed via recommendChoice(); RPE
+// needs a difficulty rating first, so it stays 'keep' until one is picked.
+// Manual and double progression always default to 'keep' — the user decides.
+// Choices the user has manually touched are left alone.
+function seedChoices(suggestions, method, difficulty, touched = {}) {
+  const next = {}
+  suggestions.forEach((s) => {
+    if (touched[s.exId]) return
+    const schemeAuto = s.isGzclp !== undefined
+    let choice = 'keep'
+    if (schemeAuto) {
+      choice = s.recommendedInc != null ? `w${s.recommendedInc}` : 'keep'
+    } else if (method === 'linear' || method === 'rpe') {
+      choice = recommendChoice(method, s, difficulty) || 'keep'
+    }
+    next[s.exId] = choice
+  })
+  return next
 }
 
 // Fresh set-tracking state for a session: warm-up ramp (rep-measured loaded
@@ -268,6 +314,10 @@ export default function Workout() {
   // This session's cardio — restored on resume, persisted in the active session,
   // fed to the share summary, and shown as cards in the session.
   const [loggedCardio, setLoggedCardio] = useState(() => (resumed?.cardio ? resumed.cardio : []))
+  // U4: when this session started — restored from the saved active session on
+  // resume, else the first mount. Used to compute durationSec at finish.
+  const [startedAt, setStartedAt] = useState(() => (resumed?.startedAt) || Date.now())
+  const [durationSec, setDurationSec] = useState(0)
 
   const [rest, setRest] = useState(null)
   // Superset mode: several concurrent rest timers instead of the single one.
@@ -278,6 +328,9 @@ export default function Workout() {
   const [muscleHeat, setMuscleHeat] = useState({})
   const [review, setReview] = useState({ autoNotes: [], suggestions: [] })
   const [choices, setChoices] = useState({})
+  // Which suggestions' choices the user has manually picked — re-seeding on a
+  // difficulty change must never clobber those.
+  const [touchedChoices, setTouchedChoices] = useState({})
 
   // Completion-screen records: PRs, offered 1RM updates (+ which were applied),
   // and share status.
@@ -292,15 +345,43 @@ export default function Workout() {
   const [difficulty, setDifficulty] = useState(null)
   const [notes, setNotes] = useState('')
 
+  // C7: RPE's recommendation depends on the difficulty rating, which is chosen
+  // on the same completion screen — re-seed any choice the user hasn't manually
+  // touched whenever it changes. Must sit above the early return below so the
+  // hook order stays identical on every render.
+  useEffect(() => {
+    if (!finished || !review.suggestions.length) return
+    setChoices((c) => ({ ...c, ...seedChoices(review.suggestions, method, difficulty, touchedChoices) }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [difficulty])
+
   // Persist the live session (debounced) so it survives a close / crash / iOS
   // storage eviction — and can be resumed. Cleared once the workout finishes.
   useEffect(() => {
     if (!session || finished) return
     const t = setTimeout(() => {
-      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, savedAt: Date.now() })
+      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, startedAt, savedAt: Date.now() })
     }, 500)
     return () => clearTimeout(t)
-  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session])
+  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt])
+
+  // R6: the debounce above can drop the last sub-500ms of edits if the tab is
+  // backgrounded or a service-worker update swaps the page out from under it.
+  // Flush synchronously the moment the tab hides or the page is about to be
+  // unloaded, so nothing logged mid-set is lost.
+  useEffect(() => {
+    if (!session || finished) return
+    const flush = () => {
+      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, startedAt, savedAt: Date.now() })
+    }
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush() }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt])
 
   // Discard a resumed session and start this day fresh.
   const startOver = () => {
@@ -308,7 +389,7 @@ export default function Workout() {
     setExercises(session ? session.exercises : [])
     setSets(buildInitialSets(session, units))
     setLoggedCardio([])
-    setCardioSaved(0)
+    setStartedAt(Date.now()) // fresh session, fresh clock (U4)
     setShowResumed(false)
   }
 
@@ -317,12 +398,9 @@ export default function Workout() {
     if (exercises.some((e) => e.id === ex.id)) return // avoid dup ids/state collision
     const scheme = schemeForGoals(goals)
     const p = prescriptionFor(ex, scheme)
-    const entry = {
-      id: ex.id, name: ex.name, pattern: ex.pattern, regions: ex.regions,
-      compound: ex.compound, load: ex.load !== false, cues: ex.cues,
-      ladderId: ex.ladderId || null, nextId: ex.nextId || null,
+    const entry = exerciseEntryFromLibrary(ex, {
       sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec, startWeight: '', adhoc: true,
-    }
+    })
     setExercises((list) => [...list, entry])
     setSets((s) => ({
       ...s,
@@ -330,8 +408,16 @@ export default function Workout() {
     }))
   }
 
+  // C4: dropping a middle member of a superset must not let the entry before
+  // it absorb whatever shifts into the gap — clear its link (mirrors
+  // Builder's removeExercise).
   const removeExercise = (exId) => {
-    setExercises((list) => list.filter((e) => e.id !== exId))
+    setExercises((list) => {
+      const idx = list.findIndex((e) => e.id === exId)
+      return list
+        .filter((e) => e.id !== exId)
+        .map((e, j) => (j === idx - 1 ? { ...e, supersetNext: undefined } : e))
+    })
     setSets((s) => { const n = { ...s }; delete n[exId]; return n })
   }
 
@@ -344,14 +430,13 @@ export default function Workout() {
   // Replace an exercise you can't do here with a doable same-pattern alternative,
   // for this session only (marked adhoc, so it never touches program progression).
   const swapExercise = (exId, sub) => {
+    // C4: keep this exercise's superset link (if any) alive through the swap.
+    const old = exercises.find((e) => e.id === exId)
     const p = prescriptionFor(sub, schemeForGoals(goals))
-    const entry = {
-      id: sub.id, name: sub.name, pattern: sub.pattern, regions: sub.regions,
-      compound: sub.compound, load: sub.load !== false, cues: sub.cues,
-      ladderId: sub.ladderId || null, nextId: sub.nextId || null,
+    const entry = exerciseEntryFromLibrary(sub, {
       sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec,
-      startWeight: '', adhoc: true,
-    }
+      startWeight: '', adhoc: true, supersetNext: old?.supersetNext,
+    })
     setExercises((list) => {
       if (list.some((e) => e.id === sub.id)) return list.filter((e) => e.id !== exId) // avoid dup id
       return list.map((e) => (e.id === exId ? entry : e))
@@ -372,12 +457,10 @@ export default function Workout() {
     const targetId = dir > 0 ? info?.nextId : info?.prevId
     const target = targetId && EXERCISE_BY_ID[targetId]
     if (!ex || !target) return
-    const entry = {
-      ...ex,
-      id: target.id, name: target.name, pattern: target.pattern, regions: target.regions,
-      compound: target.compound, load: target.load !== false, cues: target.cues,
-      ladderId: target.ladderId || null, nextId: target.nextId || null, prevId: target.prevId || null,
-    }
+    // C4: passing the whole existing entry as overrides keeps its program
+    // fields (sets/reps/rest/progression/supersetNext/…) — only identity
+    // comes from the target rung.
+    const entry = exerciseEntryFromLibrary(target, ex)
     setExercises((list) => {
       if (list.some((e) => e.id === target.id && e.id !== exId)) return list // avoid dup id
       return list.map((e) => (e.id === exId ? entry : e))
@@ -430,23 +513,38 @@ export default function Workout() {
   const updateSet = (exId, idx, field, value) =>
     setSets((s) => ({
       ...s,
-      [exId]: s[exId].map((row, i) => (i === idx ? { ...row, [field]: value } : row)),
+      [exId]: (s[exId] || []).map((row, i) => (i === idx ? { ...row, [field]: value } : row)),
+    }))
+
+  // U2: nudge a set's weight or reps by a step (± steppers) — never below 0.
+  const bumpSet = (exId, idx, field, delta) =>
+    setSets((s) => ({
+      ...s,
+      [exId]: (s[exId] || []).map((row, i) => {
+        if (i !== idx) return row
+        const next = Math.max(0, (Number(row[field]) || 0) + delta)
+        return { ...row, [field]: String(Math.round(next * 100) / 100) }
+      }),
     }))
 
   // Copy the first working set's weight & reps into every later working set
   // that isn't done yet — one tap for straight sets instead of retyping.
   const fillDown = (exId) =>
-    setSets((s) => ({ ...s, [exId]: fillDownRows(s[exId]) }))
+    setSets((s) => ({ ...s, [exId]: fillDownRows(s[exId] || []) }))
 
   const toggleDone = (exId, idx, restSec) => {
     const rows = sets[exId] || []
     const nowDone = !rows[idx]?.done
     // No rest after the final set of an exercise — nothing left to rest for.
     const isLastSet = idx === rows.length - 1
-    setSets((s) => ({ ...s, [exId]: s[exId].map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }))
+    // C5: alternating a superset — move straight to the partner exercise and
+    // rest only once the LAST member of the group finishes a set.
+    const ex = exercises.find((e) => e.id === exId)
+    const supersetted = !!ex?.supersetNext
+    setSets((s) => ({ ...s, [exId]: (s[exId] || []).map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }))
     // Start rest AFTER the state update (never inside the updater — StrictMode
     // double-invokes updaters, which would spawn duplicate timers).
-    if (nowDone && !isLastSet && restEnabled) {
+    if (nowDone && !isLastSet && !supersetted && restEnabled) {
       const key = `${exId}-${idx}-${Date.now()}`
       if (supersetTimers) {
         const label = exercises.find((e) => e.id === exId)?.name || 'Rest'
@@ -531,17 +629,27 @@ export default function Workout() {
   const doneSets = Object.values(sets).flat().filter((r) => r.done && !r.warmup).length
 
   const finish = () => {
+    // C8: nothing logged — don't silently record an empty session and burn a
+    // rotation slot. Match how Exit already confirms.
+    if (doneSets === 0 && loggedCardio.length === 0) {
+      if (!window.confirm("You haven't logged any sets or cardio yet. Finish anyway? This will record an empty session and move the rotation forward.")) return
+    }
+
     const date = new Date().toISOString()
-    const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, sets: sets[ex.id] }))
+    const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, sets: sets[ex.id] || [] }))
+    // U4: session length, from first mount (or the resumed session's original
+    // start) to now.
+    const sessionDurationSec = Math.max(0, Math.round((Date.now() - startedAt) / 1000))
 
     // Detect PRs and fresh 1RM estimates against the history *before* this session.
     const { prs: newPrs, oneRMUpdates } = sessionRecords(entries, loadHistory(), loadMaxes(), { bodyweight: currentBodyweight() })
-    appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries, prs: newPrs })
+    appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries, prs: newPrs, durationSec: sessionDurationSec })
     clearActiveSession() // session is logged — no longer resumable
     setPrs(newPrs)
     setRmUpdates(oneRMUpdates)
     setRmDone({})
     setFinishedAt(date)
+    setDurationSec(sessionDurationSec)
     setMuscleHeat(sessionMuscleHeat(entries))
 
     // Carry values forward + auto-apply deloads; collect optional increase suggestions.
@@ -557,10 +665,10 @@ export default function Workout() {
     // Did they restructure the workout since the last save? If so, offer to save.
     setCustomized(isCustomized(baseline, exercises))
 
-    // Default is always "keep the same" — increases are an explicit choice.
-    const initChoices = {}
-    result.suggestions.forEach((s) => { initChoices[s.exId] = 'keep' })
-    setChoices(initChoices)
+    // C7: seed to the recommended option for auto-progression (GZCLP/LP/GSLP
+    // schemes, or a linear/RPE method) — manual/double still default to 'keep'.
+    setTouchedChoices({})
+    setChoices(seedChoices(result.suggestions, method, difficulty, {}))
     setReview(result)
     setFinished(true)
   }
@@ -605,7 +713,7 @@ export default function Workout() {
 
   // Build the shareable text once, on demand.
   const summaryText = () => {
-    const entries = exercises.map((ex) => ({ name: ex.name, exerciseId: ex.id, sets: sets[ex.id] }))
+    const entries = exercises.map((ex) => ({ name: ex.name, exerciseId: ex.id, sets: sets[ex.id] || [] }))
     return buildSessionSummary(session.title, entries, { units, cardio: loggedCardio })
   }
   const canShare = typeof navigator !== 'undefined' && !!navigator.share
@@ -632,6 +740,7 @@ export default function Workout() {
         <div className="card">
           <p className="placeholder-title">{session.title}</p>
           <p className="muted">{doneSets} of {totalSets} sets logged. Your weights are saved for next time.</p>
+          {durationSec > 0 && <p className="muted small">Took {formatDuration(durationSec)}.</p>}
         </div>
 
         {/* ---- Muscles worked (session heatmap) ---- */}
@@ -735,7 +844,7 @@ export default function Workout() {
               const rec = recommendChoice(method, sug, difficulty)
               return (
                 <div className="review-row" key={sug.exId}>
-                  <span className="review-name">{sug.type === 'levelUp' ? '↑' : sug.type === 'levelDown' ? '↓' : '✓'} {sug.name}</span>
+                  <span className="review-name"><span aria-hidden="true">{sug.type === 'levelUp' ? '↑' : sug.type === 'levelDown' ? '↓' : '✓'}</span> {sug.name}</span>
                   <div className="choice-chips">
                     {optionsFor(sug, units).map((opt) => {
                       const isRec = rec ? opt.key === rec : opt.recommended
@@ -745,7 +854,10 @@ export default function Workout() {
                           type="button"
                           className={'chip' + (choices[sug.exId] === opt.key ? ' is-selected' : '') + (isRec ? ' is-recommended' : '')}
                           aria-pressed={choices[sug.exId] === opt.key}
-                          onClick={() => setChoices((c) => ({ ...c, [sug.exId]: opt.key }))}
+                          onClick={() => {
+                            setChoices((c) => ({ ...c, [sug.exId]: opt.key }))
+                            setTouchedChoices((t) => ({ ...t, [sug.exId]: true }))
+                          }}
                         >
                           {opt.label}{isRec ? ' ★' : ''}
                         </button>
@@ -783,7 +895,7 @@ export default function Workout() {
                   <span className="muted small"> · {u.weight}×{u.reps} → {u.oneRM} {units}{u.prev > 0 ? ` (was ${u.prev})` : ''}</span>
                 </span>
                 {rmDone[u.exId]
-                  ? <span className="rm-done">✓ Updated</span>
+                  ? <span className="rm-done"><span aria-hidden="true">✓</span> Updated</span>
                   : <button type="button" className="btn btn-ghost btn-sm" onClick={() => applyRmUpdate(u)}>Update</button>}
               </div>
             ))}
@@ -815,8 +927,8 @@ export default function Workout() {
               <button type="button" className="btn btn-ghost" onClick={copySummary}>Copy</button>
             )}
           </div>
-          {shareStatus === 'copied' && <p className="muted small share-note">✓ Copied to clipboard — paste it into Strava.</p>}
-          {shareStatus === 'shared' && <p className="muted small share-note">✓ Shared.</p>}
+          {shareStatus === 'copied' && <p className="muted small share-note"><span aria-hidden="true">✓</span> Copied to clipboard — paste it into Strava.</p>}
+          {shareStatus === 'shared' && <p className="muted small share-note"><span aria-hidden="true">✓</span> Shared.</p>}
           {shareStatus === 'error' && <p className="muted small share-note">Couldn’t copy — long-press to select instead.</p>}
         </div>
       </section>
@@ -848,7 +960,7 @@ export default function Workout() {
                 aria-pressed={activeProfile === id}
                 onClick={() => switchProfile(id)}
               >
-                {profileMeta(id).icon} {profileMeta(id).name}
+                <span aria-hidden="true">{profileMeta(id).icon}</span> {profileMeta(id).name}
               </button>
             ))}
           </div>
@@ -867,7 +979,7 @@ export default function Workout() {
           return n > 0 ? (
             <div className="card notice swap-banner">
               <p className="muted small">
-                🏠 {n} move{n === 1 ? '' : 's'} need gear you don&apos;t have in {profileMeta(activeProfile).name} mode.
+                <span aria-hidden="true">🏠</span> {n} move{n === 1 ? '' : 's'} need gear you don&apos;t have in {profileMeta(activeProfile).name} mode.
               </p>
               <button type="button" className="btn btn-ghost btn-sm" onClick={swapAllUnavailable}>
                 Swap all to what I can do
@@ -913,7 +1025,7 @@ export default function Workout() {
             <Fragment key={ex.id}>
             {ssTop && (
               <div className="superset-head">
-                <span className="superset-badge">⛓ Superset</span>
+                <span className="superset-badge"><span aria-hidden="true">⛓</span> Superset</span>
                 <span className="muted small">Alternate these — rest after the round</span>
               </div>
             )}
@@ -927,10 +1039,10 @@ export default function Workout() {
                 <MuscleMap pattern={ex.pattern} exId={ex.id} size={104} />
                 <div className="exercise-headings">
                   <div className="ex-title-row">
-                    <p className="ex-name big">{ex.name}{ex.adhoc ? ' ＋' : ''}</p>
-                    {dimmed && <span className="ex-done-chip">✓ Done</span>}
+                    <p className="ex-name big">{ex.name}{ex.adhoc ? <span aria-hidden="true"> ＋</span> : ''}</p>
+                    {dimmed && <span className="ex-done-chip"><span aria-hidden="true">✓</span> Done</span>}
                     {editMode
-                      ? <button type="button" className="icon-btn" onClick={() => removeExercise(ex.id)} aria-label={`Remove ${ex.name}`}>✕</button>
+                      ? <button type="button" className="icon-btn" onClick={() => removeExercise(ex.id)} aria-label={`Remove ${ex.name}`}><span aria-hidden="true">✕</span></button>
                       : <FormCheckButton name={ex.name} />}
                   </div>
                   <p className="muted small">
@@ -942,7 +1054,7 @@ export default function Workout() {
                     <p className="muted small swapped-note">↔ swapped from {ex.swappedFrom} for your gear</p>
                   )}
                   {lastTime[ex.id] && (
-                    <p className="muted small last-time">↩︎ Last time: {lastTime[ex.id]}</p>
+                    <p className="muted small last-time"><span aria-hidden="true">↩︎</span> Last time: {lastTime[ex.id]}</p>
                   )}
                 </div>
               </div>
@@ -961,7 +1073,7 @@ export default function Workout() {
               {!doable && (
                 <div className="swap-note">
                   <span className="muted small">
-                    🏠 Needs {missingEquipment(ex, availableSet).join(', ')} — not in {profileMeta(activeProfile).name}.
+                    <span aria-hidden="true">🏠</span> Needs {missingEquipment(ex, availableSet).join(', ')} — not in {profileMeta(activeProfile).name}.
                   </span>
                   {sub
                     ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => swapExercise(ex.id, sub)}>Swap → {sub.name}</button>
@@ -986,7 +1098,7 @@ export default function Workout() {
                       disabled={!lad.prevId}
                       onClick={() => stepLadder(ex.id, -1)}
                     >
-                      ↓ Easier{lad.prevName ? `: ${lad.prevName}` : ''}
+                      <span aria-hidden="true">↓</span> Easier{lad.prevName ? `: ${lad.prevName}` : ''}
                     </button>
                     <button
                       type="button"
@@ -994,7 +1106,7 @@ export default function Workout() {
                       disabled={!lad.nextId}
                       onClick={() => stepLadder(ex.id, 1)}
                     >
-                      ↑ Harder{lad.nextName ? `: ${lad.nextName}` : ''}
+                      <span aria-hidden="true">↑</span> Harder{lad.nextName ? `: ${lad.nextName}` : ''}
                     </button>
                   </div>
                 </div>
@@ -1019,8 +1131,12 @@ export default function Workout() {
                   <span>{measureUnit(ex)}</span>
                   <span>done</span>
                 </div>
-                {(() => { let workingN = 0; return sets[ex.id].map((row, idx) => {
-                  const isAmrapSet = ex.amrap && idx === sets[ex.id].length - 1
+                {(() => {
+                  let workingN = 0
+                  const rows = sets[ex.id] || []
+                  const weightStep = weightStepFor(ex, units)
+                  return rows.map((row, idx) => {
+                  const isAmrapSet = ex.amrap && idx === rows.length - 1
                   if (!row.warmup) workingN += 1
                   const setLabel = row.warmup ? 'Warm-up set' : `Set ${workingN}${isAmrapSet ? ' (AMRAP — as many reps as possible)' : ''}`
                   return (
@@ -1030,25 +1146,61 @@ export default function Workout() {
                         <span className="sr-only">{setLabel}</span>
                       </span>
                       {showWeight && (
+                        <div className="set-field">
+                          <button
+                            type="button"
+                            className="set-stepper-btn"
+                            aria-label={`Subtract ${weightStep} ${units} from ${setLabel} weight`}
+                            onClick={() => bumpSet(ex.id, idx, 'weight', -weightStep)}
+                          >
+                            –
+                          </button>
+                          <input
+                            className="set-input"
+                            type="number"
+                            inputMode="decimal"
+                            aria-label={`${setLabel} weight (${units})`}
+                            value={row.weight}
+                            placeholder={optionalLoad ? 'bw' : '–'}
+                            onChange={(e) => updateSet(ex.id, idx, 'weight', e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="set-stepper-btn"
+                            aria-label={`Add ${weightStep} ${units} to ${setLabel} weight`}
+                            onClick={() => bumpSet(ex.id, idx, 'weight', weightStep)}
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                      <div className="set-field">
+                        <button
+                          type="button"
+                          className="set-stepper-btn"
+                          aria-label={`Subtract 1 rep from ${setLabel}`}
+                          onClick={() => bumpSet(ex.id, idx, 'reps', -1)}
+                        >
+                          –
+                        </button>
                         <input
                           className="set-input"
                           type="number"
-                          inputMode="decimal"
-                          aria-label={`${setLabel} weight (${units})`}
-                          value={row.weight}
-                          placeholder={optionalLoad ? 'bw' : '–'}
-                          onChange={(e) => updateSet(ex.id, idx, 'weight', e.target.value)}
+                          inputMode="numeric"
+                          aria-label={`${setLabel} reps`}
+                          value={row.reps}
+                          placeholder="–"
+                          onChange={(e) => updateSet(ex.id, idx, 'reps', e.target.value)}
                         />
-                      )}
-                      <input
-                        className="set-input"
-                        type="number"
-                        inputMode="numeric"
-                        aria-label={`${setLabel} reps`}
-                        value={row.reps}
-                        placeholder="–"
-                        onChange={(e) => updateSet(ex.id, idx, 'reps', e.target.value)}
-                      />
+                        <button
+                          type="button"
+                          className="set-stepper-btn"
+                          aria-label={`Add 1 rep to ${setLabel}`}
+                          onClick={() => bumpSet(ex.id, idx, 'reps', 1)}
+                        >
+                          +
+                        </button>
+                      </div>
                       <button
                         type="button"
                         className={'set-check' + (row.done ? ' is-on' : '')}
@@ -1056,15 +1208,16 @@ export default function Workout() {
                         aria-pressed={row.done}
                         onClick={() => toggleDone(ex.id, idx, ex.restSec)}
                       >
-                        ✓
+                        <span aria-hidden="true">✓</span>
                       </button>
                     </div>
                   )
-                }) })()}
+                  })
+                })()}
               </div>
 
               {exMeasure(ex).type !== 'time' && (() => {
-                const working = sets[ex.id].filter((r) => !r.warmup)
+                const working = (sets[ex.id] || []).filter((r) => !r.warmup)
                 if (working.length < 2) return null
                 const first = working[0]
                 const repsOk = String(first?.reps ?? '').trim() !== ''
@@ -1073,15 +1226,16 @@ export default function Workout() {
                 if (!repsOk || !weightOk || !anyToFill) return null
                 return (
                   <button type="button" className="btn btn-ghost btn-sm fill-down" onClick={() => fillDown(ex.id)}>
-                    ↓ Copy set 1 to the rest
+                    <span aria-hidden="true">↓</span> Copy set 1 to the rest
                   </button>
                 )
               })()}
 
               {exMeasure(ex).type === 'time' && (() => {
-                const nextIdx = sets[ex.id].findIndex((r) => !r.done && !r.warmup)
+                const rows = sets[ex.id] || []
+                const nextIdx = rows.findIndex((r) => !r.done && !r.warmup)
                 if (nextIdx === -1) return null
-                const target = Number(sets[ex.id][nextIdx].reps) || Number(ex.repHigh) || 30
+                const target = Number(rows[nextIdx].reps) || Number(ex.repHigh) || 30
                 const where = ex.iso ? isoHoldFor(ex.id) : null
                 return (
                   <>
@@ -1094,7 +1248,7 @@ export default function Workout() {
               })()}
 
               {editMode && (() => {
-                const working = sets[ex.id].filter((r) => !r.warmup).length
+                const working = (sets[ex.id] || []).filter((r) => !r.warmup).length
                 return (
                   <div className="set-adjust">
                     <button type="button" onClick={() => changeSetCount(ex.id, -1)} disabled={working <= 1} aria-label="Remove a set">– set</button>
@@ -1124,8 +1278,8 @@ export default function Workout() {
                 <div className="exercise-headings">
                   <div className="ex-title-row">
                     <p className="ex-name big">{c.machineName || meta?.name || 'Cardio'}</p>
-                    <span className="ex-done-chip">✓ Done</span>
-                    <button type="button" className="icon-btn" onClick={() => removeLoggedCardio(c)} aria-label="Remove this cardio">✕</button>
+                    <span className="ex-done-chip"><span aria-hidden="true">✓</span> Done</span>
+                    <button type="button" className="icon-btn" onClick={() => removeLoggedCardio(c)} aria-label="Remove this cardio"><span aria-hidden="true">✕</span></button>
                   </div>
                   <p className="muted small">{stats || 'Logged'}</p>
                   {c.notes && <p className="muted small">{c.notes}</p>}
@@ -1154,7 +1308,7 @@ export default function Workout() {
                     className="btn btn-ghost btn-sm"
                     onClick={() => { setCardioMachine(c.machine || 'treadmill'); setCardioOpen(true) }}
                   >
-                    {logged ? '✓ Logged' : 'Log'}
+                    {logged ? <><span aria-hidden="true">✓</span> Logged</> : 'Log'}
                   </button>
                 </div>
               )

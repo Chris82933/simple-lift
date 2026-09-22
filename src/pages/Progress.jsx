@@ -80,6 +80,16 @@ const DIFF_LABELS = {
   easy: 'Easy', moderate: 'Moderate', hard: 'Hard', maxed: 'Maxed out',
 }
 const shortDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+// U4: humane "48 min" / "1h 12m" formatting for a session's recorded
+// duration. Older history records won't have durationSec — callers only
+// render this when it's a positive number.
+const formatDuration = (sec) => {
+  const mins = Math.round(sec / 60)
+  if (mins < 60) return `${mins} min`
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+}
 const muscleLabel = (m) => m.replace(/_/g, ' ')
 
 // Sections the user can reorder (the header + summary dashboard stay pinned on
@@ -144,6 +154,7 @@ function SessionEntry({ workout, units, onDelete }) {
           <span className="muted small">
             {exDone}/{entries.length} moves · {setCount} set{setCount === 1 ? '' : 's'}
             {volume > 0 ? ` · ${Math.round(volume).toLocaleString()} ${units}` : ''}
+            {Number(workout.durationSec) > 0 ? ` · ${formatDuration(workout.durationSec)}` : ''}
           </span>
         </span>
         <span className="log-summary-side">
@@ -158,7 +169,10 @@ function SessionEntry({ workout, units, onDelete }) {
         <div className="log-detail">
           <div className="log-meta">
             {workout.difficulty && <span className="diff-badge">{DIFF_LABELS[workout.difficulty]}</span>}
-            <span className="muted small">{new Date(workout.date).toLocaleDateString()}</span>
+            <span className="muted small">
+              {new Date(workout.date).toLocaleDateString()}
+              {Number(workout.durationSec) > 0 ? ` · ${formatDuration(workout.durationSec)}` : ''}
+            </span>
           </div>
           {prs.length > 0 && <p className="muted small"><Icon name="trophy" size={13} /> New records: {prs.map((p) => p.name).join(', ')}</p>}
           <div className="log-exercises">
@@ -204,6 +218,15 @@ function SessionEntry({ workout, units, onDelete }) {
   )
 }
 
+// U8: a single time-range control that governs every chart on the page (lift
+// progress, bodyweight, bodyweight-reps, cardio) so months of history don't
+// flatten recent trends. "All" keeps today's behavior.
+const RANGE_OPTIONS = [
+  { id: '8w', label: '8 weeks', days: 56 },
+  { id: '6m', label: '6 months', days: 182 },
+  { id: 'all', label: 'All', days: null },
+]
+
 const CARDIO_METRICS = [
   { id: 'time', label: 'Time (min)', field: (c) => c.durationMin },
   { id: 'distance', label: 'Distance', field: (c) => c.distance },
@@ -227,11 +250,15 @@ function buildCardioSeries(cardio, metricId) {
 export default function Progress() {
   const navigate = useNavigate()
   const toast = useToast()
-  const [, setVersion] = useState(0)
-  const refresh = () => setVersion((v) => v + 1)
-  const history = loadHistory()
-  const cardio = loadCardio()
-  const bodyweightLog = loadBodyweight()
+  // R2: loadHistory/loadCardio/loadBodyweight each fully re-parse localStorage,
+  // so they must run once per mount — not on every render (every toggle,
+  // collapse, or keystroke). `refreshKey` is bumped by mutation handlers
+  // (delete/undo) to force a re-load exactly when the underlying data changed.
+  const [refreshKey, setRefreshKey] = useState(0)
+  const refresh = () => setRefreshKey((v) => v + 1)
+  const history = useMemo(() => loadHistory(), [refreshKey])
+  const cardio = useMemo(() => loadCardio(), [refreshKey])
+  const bodyweightLog = useMemo(() => loadBodyweight(), [refreshKey])
   const units = loadSettings().units || 'lbs'
   const [detailEx, setDetailEx] = useState(null) // { id, name } for the detail sheet
 
@@ -304,6 +331,19 @@ export default function Progress() {
   const bwVisible = bwSeries.filter((s) => !bwHidden.has(s.id))
   const [cardioMetric, setCardioMetric] = useState('time')
   const cardioSeries = useMemo(() => buildCardioSeries(cardio, cardioMetric), [cardio, cardioMetric])
+
+  // U8: time-range filter applied to every chart series below.
+  const [chartRange, setChartRange] = useState('all')
+  const rangeCutoff = useMemo(() => {
+    const opt = RANGE_OPTIONS.find((o) => o.id === chartRange)
+    return opt && opt.days ? Date.now() - opt.days * 86400000 : null
+  }, [chartRange])
+  const inRange = (list) => {
+    if (!rangeCutoff) return list
+    return list
+      .map((s) => ({ ...s, points: s.points.filter((p) => p.t >= rangeCutoff) }))
+      .filter((s) => s.points.length > 0)
+  }
 
   // Default: show up to the 5 most-tracked exercises.
   const [hidden, setHidden] = useState(() => new Set(allSeries.slice(5).map((s) => s.id)))
@@ -488,6 +528,28 @@ export default function Progress() {
         </>
       )}
 
+      {(history.length > 0 || cardio.length > 0) && (
+        <div className="card chart-range-card">
+          <div className="weekly-activity-head">
+            <span className="group-label">Chart range</span>
+            <span className="muted small">Applies to the charts below</span>
+          </div>
+          <div className="filter-chips" role="group" aria-label="Chart time range">
+            {RANGE_OPTIONS.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className={'chip' + (chartRange === o.id ? ' is-selected' : '')}
+                aria-pressed={chartRange === o.id}
+                onClick={() => setChartRange(o.id)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {prs.length > 0 && (
         <div className="progress-section" style={orderStyle('prs')}>
         <CollapsibleCard
@@ -523,7 +585,10 @@ export default function Progress() {
             </button>
           ))}
         </div>
-        <ProgressChart series={visible} units={units} ariaLabel={`${weightMetric === 'e1rm' ? 'Estimated 1RM' : 'Top set'} over time (${units})`} />
+        <ProgressChart series={inRange(visible)} units={units} ariaLabel={`${weightMetric === 'e1rm' ? 'Estimated 1RM' : 'Top set'} over time (${units})`} />
+        {allSeries.length > 0 && inRange(visible).length === 0 && (
+          <p className="muted small">Nothing in this range yet — try a wider one.</p>
+        )}
         {allSeries.length > 0 && (
           <div className="legend">
             {(legendAll ? allSeries : allSeries.slice(0, 8)).map((s) => (
@@ -559,7 +624,11 @@ export default function Progress() {
           open={cardOpen('bodyweight')}
           onToggle={() => toggleCard('bodyweight')}
         >
-          <ProgressChart series={bodyweightSeries} units={units} ariaLabel={`Bodyweight over time (${units})`} />
+          {inRange(bodyweightSeries).length > 0 ? (
+            <ProgressChart series={inRange(bodyweightSeries)} units={units} ariaLabel={`Bodyweight over time (${units})`} />
+          ) : (
+            <p className="muted small">No weigh-ins in this range yet — try a wider one.</p>
+          )}
           <p className="muted small">
             From your weigh-ins in Settings. Also used to score weighted pull-ups and dips as
             bodyweight + added load.
@@ -572,7 +641,11 @@ export default function Progress() {
       {bwSeries.length > 0 && (
         <div className="progress-section" style={orderStyle('bw')}>
         <CollapsibleCard title="Bodyweight reps over time" open={cardOpen('bw')} onToggle={() => toggleCard('bw')}>
-          <ProgressChart series={bwVisible} ariaLabel="Bodyweight reps over time" />
+          {inRange(bwVisible).length > 0 ? (
+            <ProgressChart series={inRange(bwVisible)} ariaLabel="Bodyweight reps over time" />
+          ) : (
+            <p className="muted small">Nothing in this range yet — try a wider one.</p>
+          )}
           <div className="legend">
             {bwSeries.map((s) => (
               <button
@@ -654,28 +727,44 @@ export default function Progress() {
             </button>
           ))}
         </div>
-        {cardioSeries.length > 0 ? (
-          <>
-            <ProgressChart series={cardioSeries} ariaLabel="Cardio over time" />
-            <div className="legend">
-              {cardioSeries.map((s) => (
-                <span key={s.id} className="legend-item static">
-                  <span className="legend-swatch" style={{ background: s.color }} />{s.name}
-                </span>
-              ))}
-            </div>
-          </>
-        ) : (
-          <p className="muted small">No cardio with this stat yet. <button className="link-btn" onClick={() => navigate('/cardio')}>Log some</button>.</p>
-        )}
+        {(() => {
+          const cardioRanged = inRange(cardioSeries)
+          if (cardioSeries.length === 0) {
+            return <p className="muted small">No cardio with this stat yet. <button className="link-btn" onClick={() => navigate('/cardio')}>Log some</button>.</p>
+          }
+          if (cardioRanged.length === 0) {
+            return <p className="muted small">Nothing in this range yet — try a wider one.</p>
+          }
+          return (
+            <>
+              <ProgressChart series={cardioRanged} ariaLabel="Cardio over time" />
+              <div className="legend">
+                {cardioRanged.map((s) => (
+                  <span key={s.id} className="legend-item static">
+                    <span className="legend-swatch" style={{ background: s.color }} />{s.name}
+                  </span>
+                ))}
+              </div>
+            </>
+          )
+        })()}
         {cardio.length > 0 && (
           <div className="cardio-loglist">
             {cardio.slice(0, 8).map((c) => {
+              // U5: cardio can be distance/calorie-only now, so durationMin may
+              // be 0 — only show it when it's meaningful, and never leave a
+              // dangling separator when it's the only metric present.
+              const parts = [
+                c.durationMin > 0 ? `${c.durationMin}m` : null,
+                c.distance ? `${c.distance}${c.distanceUnit}` : null,
+                c.calories ? `${c.calories} cal` : null,
+                c.avgHr ? `${c.avgHr}bpm` : null,
+              ].filter(Boolean)
               return (
                 <div className="log-row" key={c.id}>
                   <span><Icon name="cardio" size={13} /> {c.machineName}</span>
                   <span className="muted small">
-                    {c.durationMin}m{c.distance ? ` · ${c.distance}${c.distanceUnit}` : ''}{c.avgHr ? ` · ${c.avgHr}bpm` : ''} · {new Date(c.date).toLocaleDateString()}
+                    {parts.length > 0 ? `${parts.join(' · ')} · ` : ''}{new Date(c.date).toLocaleDateString()}
                   </span>
                   <button type="button" className="icon-btn log-del" onClick={() => removeCardio(c)} aria-label="Delete this cardio entry">✕</button>
                 </div>

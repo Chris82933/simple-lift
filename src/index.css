@@ -649,6 +649,17 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 }
 .set-line.is-plate-target .set-num { color: var(--accent-text); font-weight: 800; }
 
+/* U2: compact ± steppers flanking each weight/reps set input. */
+.set-field { display: flex; align-items: center; gap: 3px; min-width: 0; }
+.set-field .set-input { flex: 1; min-width: 0; padding: 10px 2px; }
+.set-stepper-btn {
+  flex: none; width: 24px; height: 34px; padding: 0; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: 16px; font-weight: 700; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.set-stepper-btn:active { background: color-mix(in srgb, var(--accent) 18%, var(--surface-2)); }
+.set-line.done .set-stepper-btn { opacity: 0.6; }
+
 /* ---- Personal records ---- */
 .pr-card {
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
@@ -1152,6 +1163,10 @@ select.text-input { appearance: none; }
 .cef-toggle input { margin-top: 2px; flex: none; }
 .picker-foot { padding-top: 4px; }
 .picker-foot .btn { width: 100%; }
+/* Two-button confirm dialogs (Profile's in-app replacement for window.confirm)
+   reuse the picker overlay/sheet look but need side-by-side actions. */
+.picker-foot.confirm-foot { display: flex; gap: 10px; }
+.picker-foot.confirm-foot .btn { width: auto; flex: 1; }
 
 /* ---- Quick 1RM modal ---- */
 .quick-1rm-row { display: flex; gap: 12px; }
@@ -1725,6 +1740,13 @@ select.text-input { appearance: none; }
 .bw-entry { display: flex; align-items: center; gap: 8px; }
 .bw-entry .text-input { flex: 1; }
 .bw-log { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+
+/* ---- Starting weights (onboarding strength step) ---- */
+.strength-row { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.strength-row:last-child { border-bottom: none; }
+.strength-label { font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+.strength-input-row { display: flex; align-items: center; gap: 8px; }
+.strength-input-row .text-input { flex: 1; }
 
 /* ---- Sync conflict ---- */
 .conflict-card { border-left: 3px solid var(--accent-4, var(--accent)); }

@@ -1,3 +1,5 @@
+import { clampRotationPointer } from './storage.js'
+
 export const WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
@@ -27,10 +29,15 @@ export function restWarnings(weekdays) {
 // Which session to show "today", for either scheduling mode.
 // Returns { index, isToday, session, nextWeekday } or null.
 export function pickSession(program, todayWeekday) {
-  const { days } = program
+  const days = program.days || []
   if (program.schedule?.mode === 'rotation') {
+    // C1: an out-of-range or negative pointer (e.g. a rotation program edited
+    // down to fewer days while `schedule.pointer` kept its old value) must
+    // never produce `days[pointer] === undefined` — clamp it first. An empty
+    // `days` has no valid index at all, so bail out entirely.
+    if (days.length === 0) return null
     const trainDays = trainingWeekdays(program)
-    const pointer = program.schedule.pointer || 0
+    const pointer = clampRotationPointer(program.schedule.pointer, days.length)
     const isToday = trainDays.includes(todayWeekday)
     let nextWeekday = null
     if (!isToday && trainDays.length) {
