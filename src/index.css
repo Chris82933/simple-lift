@@ -505,6 +505,36 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 
 /* ---- Workout mode ---- */
 .exercise-card { gap: 10px; }
+/* ---- Supersets ---- */
+/* Workout: a connected bracket over grouped exercises. */
+.superset-head { display: flex; align-items: baseline; gap: 8px; padding-left: 6px; margin-bottom: -6px; }
+.superset-badge {
+  font-size: var(--fs-2xs); font-weight: 800; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--accent-text);
+}
+.exercise-card.superset-member { border-left: 3px solid color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.exercise-card.superset-member:not(.superset-top) { margin-top: -8px; }
+/* Builder: the link toggle sitting between two exercises. */
+.superset-link {
+  display: flex; align-items: center; gap: 6px;
+  width: fit-content;
+  margin: -2px auto 2px;
+  padding: 5px 12px;
+  font-size: var(--fs-xs); font-weight: 600;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.superset-link.is-on {
+  color: var(--accent-text);
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--selected-tint);
+}
+.superset-link-icon { font-size: var(--fs-sm); }
+.builder-exercise.in-superset { border-left: 3px solid color-mix(in srgb, var(--accent) 45%, var(--border)); }
 .exercise-top { display: flex; align-items: center; gap: 12px; }
 .cue { font-size: var(--fs-sm); color: var(--muted); margin: 0; line-height: 1.5; }
 .suggestion {
@@ -888,6 +918,65 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   35% { transform: scale(1.04); }
   100% { transform: scale(1); }
 }
+
+/* ---- Superset rest timers: several merged into one compact pill ---- */
+.rest-timers {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  max-width: calc(100% - 24px);
+}
+.mini-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 10px;
+}
+/* A thin divider between merged timers. */
+.mini-timer + .mini-timer { border-left: 1px solid color-mix(in srgb, var(--accent-ink) 22%, transparent); }
+.mini-timer-label {
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+  max-width: 9ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mini-timer-count {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 3.4ch;
+  text-align: right;
+}
+.mini-timer-skip {
+  border: none;
+  background: color-mix(in srgb, var(--accent-ink) 15%, transparent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  cursor: pointer;
+  line-height: 1;
+  flex: none;
+}
+.mini-timer.is-go { background: var(--go); }
+.mini-timer.is-go .mini-timer-count { letter-spacing: 0.02em; }
 
 /* ---- History rows ---- */
 .history-row {

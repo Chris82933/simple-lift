@@ -1,6 +1,15 @@
-import { useMemo, useRef, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useModalA11y from '../lib/useModalA11y.js'
+
+// Two exercises share equipment when their required-gear lists overlap (or both
+// are bodyweight) — the natural case for a superset that doesn't hog stations.
+const sameEquip = (a, b) => {
+  const ra = EXERCISE_BY_ID[a.id]?.requires || a.requires || []
+  const rb = EXERCISE_BY_ID[b.id]?.requires || b.requires || []
+  if (!ra.length && !rb.length) return true
+  return ra.some((r) => rb.includes(r))
+}
 import { EXERCISES, EXERCISE_BY_ID, exMeasure, matchInfo, isoHoldFor } from '../data/exercises.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 import { GOALS } from '../data/options.js'
@@ -133,7 +142,20 @@ export default function Builder() {
     updateDay(di, { cardio: (draft.days[di].cardio || []).filter((_, j) => j !== ci) })
   const removeDay = (i) => update({ days: draft.days.filter((_, j) => j !== i) })
   const removeExercise = (di, ei) =>
-    updateDay(di, { exercises: draft.days[di].exercises.filter((_, j) => j !== ei) })
+    updateDay(di, {
+      // Drop the exercise; clear the previous one's superset link so it doesn't
+      // accidentally group with whatever shifts up into the gap.
+      exercises: draft.days[di].exercises
+        .filter((_, j) => j !== ei)
+        .map((e, j) => (j === ei - 1 ? { ...e, supersetNext: undefined } : e)),
+    })
+
+  // Group this exercise with the next into a superset (alternate them, rest
+  // after the round). Adjacent exercises carrying supersetNext form one group.
+  const toggleSuperset = (di, ei) => {
+    const ex = draft.days[di].exercises[ei]
+    updateExercise(di, ei, { supersetNext: ex.supersetNext ? undefined : true })
+  }
 
   // Block the same exercise twice in one day — duplicate ids collide with the
   // live workout's per-exercise set tracking.
@@ -162,7 +184,9 @@ export default function Builder() {
     if (j < 0 || j >= list.length) return
     const next = [...list]
     ;[next[ei], next[j]] = [next[j], next[ei]]
-    updateDay(di, { exercises: next })
+    // Reordering can only invalidate superset links around the moved pair.
+    const clear = new Set([ei, j, Math.min(ei, j) - 1])
+    updateDay(di, { exercises: next.map((e, k) => (clear.has(k) ? { ...e, supersetNext: undefined } : e)) })
   }
 
   // Swap a laddered exercise to an easier (dir<0) or harder (dir>0) variation,
@@ -374,7 +398,8 @@ export default function Builder() {
             )}
 
             {day.exercises.map((ex, ei) => (
-              <div className="builder-exercise" key={ei}>
+              <Fragment key={ei}>
+              <div className={'builder-exercise' + (ex.supersetNext || day.exercises[ei - 1]?.supersetNext ? ' in-superset' : '')}>
                 <div className="builder-ex-top">
                   <MuscleMap pattern={ex.pattern} exId={ex.id} size={46} compact />
                   <span className="ex-name">{ex.name}</span>
@@ -470,6 +495,21 @@ export default function Builder() {
                   Use recommended{ex.load ? ' (sets, reps, rest & weight from your 1RM)' : ' sets, reps & rest'}
                 </button>
               </div>
+              {ei < day.exercises.length - 1 && (
+                <button
+                  type="button"
+                  className={'superset-link' + (ex.supersetNext ? ' is-on' : '')}
+                  aria-pressed={!!ex.supersetNext}
+                  onClick={() => toggleSuperset(di, ei)}
+                >
+                  <span className="superset-link-icon" aria-hidden="true">⛓</span>
+                  {ex.supersetNext ? 'Superset — alternate with below' : 'Superset with below'}
+                  {ex.supersetNext && !sameEquip(ex, day.exercises[ei + 1]) && (
+                    <span className="muted small"> · different equipment</span>
+                  )}
+                </button>
+              )}
+              </Fragment>
             ))}
 
             {(day.cardio || []).map((c, ci) => {

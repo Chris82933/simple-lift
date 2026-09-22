@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useModalA11y from '../lib/useModalA11y.js'
 import {
@@ -16,6 +16,7 @@ import { methodFor, recommendChoice, recommendReason, methodName } from '../lib/
 import MuscleMap from '../components/MuscleMap.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import RestTimer from '../components/RestTimer.jsx'
+import RestTimers from '../components/RestTimers.jsx'
 import ExercisePicker from '../components/ExercisePicker.jsx'
 import CardioForm from '../components/CardioForm.jsx'
 import { CARDIO_BY_ID } from '../data/cardio.js'
@@ -211,6 +212,7 @@ export default function Workout() {
   const units = settings.units || 'lbs'
   const showPlates = settings.hidePlateCalc !== true
   const restEnabled = settings.restTimer !== false // rest timer on unless turned off
+  const supersetTimers = settings.supersetTimers === true // opt-in: multiple concurrent rest timers
   const stretching = settings.stretching === true // opt-in warm-up/cool-down panels
 
   // Snapshot the program & session once at mount so mid-session edits don't reload the live workout.
@@ -268,6 +270,8 @@ export default function Workout() {
   const [loggedCardio, setLoggedCardio] = useState(() => (resumed?.cardio ? resumed.cardio : []))
 
   const [rest, setRest] = useState(null)
+  // Superset mode: several concurrent rest timers instead of the single one.
+  const [rests, setRests] = useState([])
   const [hold, setHold] = useState(null) // in-set isometric hold timer
   const [finished, setFinished] = useState(false)
   const [finishedAt, setFinishedAt] = useState(null)
@@ -434,15 +438,24 @@ export default function Workout() {
   const fillDown = (exId) =>
     setSets((s) => ({ ...s, [exId]: fillDownRows(s[exId]) }))
 
-  const toggleDone = (exId, idx, restSec) =>
-    setSets((s) => {
-      const row = s[exId][idx]
-      const nowDone = !row.done
-      // No rest after the final set of an exercise — nothing left to rest for.
-      const isLastSet = idx === s[exId].length - 1
-      if (nowDone && !isLastSet && restEnabled) setRest({ seconds: restSec, key: `${exId}-${idx}-${Date.now()}` })
-      return { ...s, [exId]: s[exId].map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }
-    })
+  const toggleDone = (exId, idx, restSec) => {
+    const rows = sets[exId] || []
+    const nowDone = !rows[idx]?.done
+    // No rest after the final set of an exercise — nothing left to rest for.
+    const isLastSet = idx === rows.length - 1
+    setSets((s) => ({ ...s, [exId]: s[exId].map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }))
+    // Start rest AFTER the state update (never inside the updater — StrictMode
+    // double-invokes updaters, which would spawn duplicate timers).
+    if (nowDone && !isLastSet && restEnabled) {
+      const key = `${exId}-${idx}-${Date.now()}`
+      if (supersetTimers) {
+        const label = (exercises.find((e) => e.id === exId)?.name || 'Rest').split(' ')[0].slice(0, 8)
+        setRests((rs) => [...rs, { key, seconds: restSec, label }].slice(-4))
+      } else {
+        setRest({ seconds: restSec, key })
+      }
+    }
+  }
 
   // Start the in-set countdown for an isometric hold — the next un-done working
   // set of a time-measured exercise, for its prescribed seconds.
@@ -870,7 +883,7 @@ export default function Workout() {
             subtitle="Dynamic moves to prime the muscles you're about to train."
           />
         )}
-        {exercises.map((ex) => {
+        {exercises.map((ex, exIdx) => {
           const loaded = ex.load !== false
           // Show a weight box whenever the move can take weight — always for
           // loaded lifts, optionally for bodyweight moves that accept it
@@ -889,8 +902,27 @@ export default function Workout() {
           const workingRows = (sets[ex.id] || []).filter((r) => !r.warmup)
           const exComplete = workingRows.length > 0 && workingRows.every((r) => r.done)
           const dimmed = exComplete && !editMode
+          // Superset bracket: consecutive exercises carrying supersetNext form a
+          // group. Draw a connecting frame and a "top" header on the first.
+          const groupedWithPrev = !!exercises[exIdx - 1]?.supersetNext
+          const groupedWithNext = !!ex.supersetNext && !editMode
+          const inSuperset = (groupedWithPrev || groupedWithNext) && !editMode
+          const ssTop = inSuperset && !groupedWithPrev
+          const ssBottom = inSuperset && !groupedWithNext
           return (
-            <div className={'card exercise-card' + (doable ? '' : ' is-unavailable') + (dimmed ? ' is-complete' : '')} key={ex.id}>
+            <Fragment key={ex.id}>
+            {ssTop && (
+              <div className="superset-head">
+                <span className="superset-badge">⛓ Superset</span>
+                <span className="muted small">Alternate these — rest after the round</span>
+              </div>
+            )}
+            <div className={'card exercise-card'
+              + (doable ? '' : ' is-unavailable')
+              + (dimmed ? ' is-complete' : '')
+              + (inSuperset ? ' superset-member' : '')
+              + (ssTop ? ' superset-top' : '')
+              + (ssBottom ? ' superset-bottom' : '')}>
               <div className="exercise-top">
                 <MuscleMap pattern={ex.pattern} exId={ex.id} size={104} />
                 <div className="exercise-headings">
@@ -1072,6 +1104,7 @@ export default function Workout() {
                 )
               })()}
             </div>
+            </Fragment>
           )
         })}
 
@@ -1157,7 +1190,8 @@ export default function Workout() {
       </div>
 
       {hold && <RestTimer key={hold.key} seconds={hold.seconds} mode="hold" onDone={finishHold} />}
-      {rest && <RestTimer key={rest.key} seconds={rest.seconds} onDone={() => setRest(null)} />}
+      {!supersetTimers && rest && <RestTimer key={rest.key} seconds={rest.seconds} onDone={() => setRest(null)} />}
+      {supersetTimers && <RestTimers timers={rests} onDone={(key) => setRests((rs) => rs.filter((t) => t.key !== key))} />}
 
       {pickerOpen && (
         <ExercisePicker onPick={addExercise} onClose={() => setPickerOpen(false)} />

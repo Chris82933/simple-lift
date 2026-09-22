@@ -98,6 +98,11 @@ export default function Profile() {
     setSettings(next)
     saveSettings(next)
   }
+  const setSupersetTimers = (on) => {
+    const next = { ...settings, supersetTimers: on }
+    setSettings(next)
+    saveSettings(next)
+  }
   const setRestTimer = (on) => {
     const next = { ...settings, restTimer: on }
     setSettings(next)
@@ -427,6 +432,20 @@ export default function Profile() {
               className={'seg-item' + ((settings.restTimer === false ? 'off' : 'on') === o.id ? ' is-selected' : '')}
               aria-pressed={(settings.restTimer === false ? 'off' : 'on') === o.id}
               onClick={() => setRestTimer(o.id === 'on')}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <p className="muted small" style={{ marginTop: 14 }}>Superset rest timers — run several rest timers at once (one per exercise) as a compact merged pill, handy when you alternate supersetted lifts. Off keeps the single full-size timer.</p>
+        <div className="seg">
+          {[{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }].map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={'seg-item' + ((settings.supersetTimers === true ? 'on' : 'off') === o.id ? ' is-selected' : '')}
+              aria-pressed={(settings.supersetTimers === true ? 'on' : 'off') === o.id}
+              onClick={() => setSupersetTimers(o.id === 'on')}
             >
               {o.label}
             </button>
