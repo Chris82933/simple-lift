@@ -671,10 +671,9 @@ export default function Progress() {
         {cardio.length > 0 && (
           <div className="cardio-loglist">
             {cardio.slice(0, 8).map((c) => {
-              const m = CARDIO_BY_ID[c.machine]
               return (
                 <div className="log-row" key={c.id}>
-                  <span>{m?.icon} {c.machineName}</span>
+                  <span><Icon name="cardio" size={13} /> {c.machineName}</span>
                   <span className="muted small">
                     {c.durationMin}m{c.distance ? ` · ${c.distance}${c.distanceUnit}` : ''}{c.avgHr ? ` · ${c.avgHr}bpm` : ''} · {new Date(c.date).toLocaleDateString()}
                   </span>

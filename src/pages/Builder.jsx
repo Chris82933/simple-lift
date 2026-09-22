@@ -24,6 +24,7 @@ import MuscleMap from '../components/MuscleMap.jsx'
 import { plannedMuscleHeat } from '../lib/muscleHeat.js'
 import CustomExerciseForm from '../components/CustomExerciseForm.jsx'
 import { CARDIO_MACHINES, CARDIO_BY_ID } from '../data/cardio.js'
+import Icon from '../components/Icon.jsx'
 
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
 
@@ -517,7 +518,7 @@ export default function Builder() {
               return (
                 <div className="builder-cardio" key={`c${ci}`}>
                   <div className="builder-ex-top">
-                    <span className="machine-icon">{CARDIO_BY_ID[c.machine]?.icon || '❤️'}</span>
+                    <span className="machine-icon"><Icon name="cardio" size={18} /></span>
                     <select
                       className="text-input cardio-machine-select"
                       value={c.machine}

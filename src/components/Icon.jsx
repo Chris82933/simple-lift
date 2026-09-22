@@ -17,6 +17,13 @@ const ICONS = {
     </g>
   ),
   play: <path d="M8 5v14l11-7z" fill="currentColor" />,
+  cardio: (
+    <path
+      d="M3 12h3.5l2-5 3.5 10 2.5-7 1.5 2H21"
+      stroke="currentColor" strokeWidth="2" fill="none"
+      strokeLinecap="round" strokeLinejoin="round"
+    />
+  ),
 }
 
 export default function Icon({ name, size = 16, className = '' }) {

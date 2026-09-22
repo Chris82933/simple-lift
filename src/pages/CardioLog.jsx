@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { addCardio, loadCardio, deleteCardio, loadSettings } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import CardioForm from '../components/CardioForm.jsx'
+import Icon from '../components/Icon.jsx'
 
 export default function CardioLog() {
   const navigate = useNavigate()
@@ -33,7 +34,7 @@ export default function CardioLog() {
               const m = CARDIO_BY_ID[c.machine]
               return (
                 <div className="cardio-entry" key={c.id}>
-                  <span className="cardio-icon" style={{ background: `color-mix(in srgb, ${m?.color || '#888'} 22%, var(--surface))` }}>{m?.icon || '❤️'}</span>
+                  <span className="cardio-icon" style={{ background: `color-mix(in srgb, ${m?.color || '#888'} 22%, var(--surface))` }}><Icon name="cardio" size={18} /></span>
                   <div className="cardio-info">
                     <span className="ex-name">{c.machineName}</span>
                     <span className="muted small">

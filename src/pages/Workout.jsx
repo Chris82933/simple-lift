@@ -1120,7 +1120,7 @@ export default function Workout() {
           return (
             <div className="card exercise-card cardio-card" key={c.id || i}>
               <div className="exercise-top">
-                <span className="cardio-card-icon" aria-hidden="true">{meta?.icon || '❤️'}</span>
+                <span className="cardio-card-icon" aria-hidden="true"><Icon name="cardio" size={38} /></span>
                 <div className="exercise-headings">
                   <div className="ex-title-row">
                     <p className="ex-name big">{c.machineName || meta?.name || 'Cardio'}</p>
@@ -1146,7 +1146,7 @@ export default function Workout() {
               ].filter(Boolean).join(' · ')
               return (
                 <div className={'planned-cardio-row' + (logged ? ' is-logged' : '')} key={i}>
-                  <span className="machine-icon">{CARDIO_BY_ID[c.machine]?.icon || '❤️'}</span>
+                  <span className="machine-icon"><Icon name="cardio" size={18} /></span>
                   <span className="ex-name">{c.machineName || CARDIO_BY_ID[c.machine]?.name || 'Cardio'}</span>
                   {target && <span className="muted small">{target}</span>}
                   <button

@@ -206,7 +206,7 @@ export default function Today() {
             ].filter(Boolean).join(' · ')
             return (
               <li key={`c${j}`}>
-                <span className="cardio-preview-icon">{CARDIO_BY_ID[c.machine]?.icon || '❤️'}</span>
+                <span className="cardio-preview-icon"><Icon name="cardio" size={20} /></span>
                 <span className="ex-name">{c.machineName || CARDIO_BY_ID[c.machine]?.name || 'Cardio'}</span>
                 <span className="muted small">{target || 'cardio'}</span>
               </li>

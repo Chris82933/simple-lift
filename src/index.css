@@ -1306,10 +1306,11 @@ select.text-input { appearance: none; }
 .cardio-card-icon {
   flex: none;
   width: 104px;
-  font-size: 46px;
   line-height: 1;
   text-align: center;
+  color: var(--accent);
 }
+.cardio-preview-icon { color: var(--accent); }
 .swap-note {
   display: flex;
   align-items: center;

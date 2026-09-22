@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CARDIO_MACHINES, CARDIO_BY_ID } from '../data/cardio.js'
+import Icon from './Icon.jsx'
 
 // Fields for logging a cardio session. Calls onSaved(entry) with the data.
 // `initialMachine` preselects a machine (e.g. when logging a planned program block).
@@ -44,7 +45,7 @@ export default function CardioForm({ onSaved, units = 'lbs', initialMachine = 't
             style={machine === m.id ? { borderColor: m.color, background: `color-mix(in srgb, ${m.color} 20%, var(--surface))` } : undefined}
             onClick={() => setMachine(m.id)}
           >
-            <span className="machine-icon">{m.icon}</span>{m.name}
+            <span className="machine-icon"><Icon name="cardio" size={16} /></span>{m.name}
           </button>
         ))}
       </div>
