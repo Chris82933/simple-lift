@@ -4,13 +4,12 @@ import { loadSettings } from '../lib/storage.js'
 
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
-// One simple countdown segment inside the merged rest-timer pill. Counts down
-// from an absolute end time (so backgrounding never makes it drift), flashes
-// "Go!" with a chime, then removes itself. Deliberately minimal — the full
-// single-timer control (±15s, mute) lives in RestTimer; these are the
-// lightweight superset timers you can run several of at once.
+// One row inside the merged rest-timer stack. Counts down from an absolute end
+// time (so backgrounding never makes it drift), keeps its own ±15s / Skip
+// controls, flashes "Go!" with a chime, then removes itself. Several of these
+// run at once during a superset — hence the compact, stacked layout.
 function MiniTimer({ label, seconds, onDone }) {
-  const [endAt] = useState(() => Date.now() + seconds * 1000)
+  const [endAt, setEndAt] = useState(() => Date.now() + seconds * 1000)
   const [left, setLeft] = useState(seconds)
   const [done, setDone] = useState(false)
   const doneRef = useRef(onDone)
@@ -32,29 +31,34 @@ function MiniTimer({ label, seconds, onDone }) {
     if (!done) return undefined
     if (loadSettings().restSound !== false) { try { playRestDone() } catch { /* ignore */ } }
     try { navigator.vibrate?.(120) } catch { /* not supported */ }
-    const id = setTimeout(() => doneRef.current?.(), 800)
+    const id = setTimeout(() => doneRef.current?.(), 900)
     return () => clearTimeout(id)
   }, [done])
 
+  // ±15s shift the end time (never earlier than now).
+  const adjust = (deltaSec) => setEndAt((e) => Math.max(Date.now(), e + deltaSec * 1000))
+
   return (
     <div className={'mini-timer' + (done ? ' is-go' : '')}>
-      <span className="mini-timer-label">{label}</span>
-      <span className="mini-timer-count">{done ? 'Go!' : fmt(left)}</span>
-      <button
-        type="button"
-        className="mini-timer-skip"
-        onClick={() => doneRef.current?.()}
-        aria-label={`Skip ${label} rest`}
-      >
-        ✕
-      </button>
+      <span className="mini-timer-label" title={label}>{label}</span>
+      {done ? (
+        <span className="mini-timer-go">Go!</span>
+      ) : (
+        <>
+          <span className="mini-timer-count">{fmt(left)}</span>
+          <div className="mini-timer-actions">
+            <button type="button" className="mini-btn" onClick={() => adjust(-15)} aria-label={`Subtract 15 seconds from ${label} rest`}>−15s</button>
+            <button type="button" className="mini-btn" onClick={() => adjust(15)} aria-label={`Add 15 seconds to ${label} rest`}>+15s</button>
+            <button type="button" className="mini-btn mini-btn-skip" onClick={() => doneRef.current?.()} aria-label={`Skip ${label} rest`}>Skip</button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
 
-// The merged pill of concurrent rest timers (superset mode). Each timer keeps
-// its own countdown and its own skip button; they share one container so a
-// stack of them takes little space.
+// The merged stack of concurrent rest timers (superset mode). One container so
+// a handful of timers stay tidy; each row keeps its own name and controls.
 export default function RestTimers({ timers, onDone }) {
   if (!timers.length) return null
   return (

@@ -919,64 +919,64 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   100% { transform: scale(1); }
 }
 
-/* ---- Superset rest timers: several merged into one compact pill ---- */
+/* ---- Superset rest timers: several merged into one stacked pill ---- */
 .rest-timers {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
   bottom: calc(96px + env(safe-area-inset-bottom));
   z-index: 20;
+  width: calc(100% - 24px);
+  max-width: calc(var(--maxw) - 24px);
   display: flex;
-  flex-wrap: wrap;
-  gap: 0;
+  flex-direction: column;
   background: var(--accent);
   color: var(--accent-ink);
   border-radius: var(--radius-md);
   padding: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  max-width: calc(100% - 24px);
 }
+/* One timer per row: name · countdown · its own controls. */
 .mini-timer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 8px 4px 10px;
+  gap: 10px;
+  padding: 7px 6px 7px 12px;
   border-radius: 10px;
+  min-height: 40px;
 }
-/* A thin divider between merged timers. */
-.mini-timer + .mini-timer { border-left: 1px solid color-mix(in srgb, var(--accent-ink) 22%, transparent); }
+.mini-timer + .mini-timer { border-top: 1px solid color-mix(in srgb, var(--accent-ink) 16%, transparent); }
 .mini-timer-label {
-  font-size: var(--fs-2xs);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.85;
-  max-width: 9ch;
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .mini-timer-count {
   font-size: var(--fs-lg);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  min-width: 3.4ch;
+  min-width: 3.6ch;
   text-align: right;
 }
-.mini-timer-skip {
+.mini-timer-go { margin-left: auto; font-size: var(--fs-lg); font-weight: 800; }
+.mini-timer-actions { display: flex; gap: 4px; flex: none; }
+.mini-btn {
   border: none;
   background: color-mix(in srgb, var(--accent-ink) 15%, transparent);
   color: var(--accent-ink);
   font-weight: 700;
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
+  font-size: var(--fs-xs);
+  padding: 6px 9px;
+  border-radius: 8px;
   cursor: pointer;
-  line-height: 1;
-  flex: none;
+  white-space: nowrap;
 }
+.mini-btn-skip { background: var(--accent-ink); color: var(--accent); }
 .mini-timer.is-go { background: var(--go); }
-.mini-timer.is-go .mini-timer-count { letter-spacing: 0.02em; }
 
 /* ---- History rows ---- */
 .history-row {

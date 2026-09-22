@@ -449,7 +449,7 @@ export default function Workout() {
     if (nowDone && !isLastSet && restEnabled) {
       const key = `${exId}-${idx}-${Date.now()}`
       if (supersetTimers) {
-        const label = (exercises.find((e) => e.id === exId)?.name || 'Rest').split(' ')[0].slice(0, 8)
+        const label = exercises.find((e) => e.id === exId)?.name || 'Rest'
         setRests((rs) => [...rs, { key, seconds: restSec, label }].slice(-4))
       } else {
         setRest({ seconds: restSec, key })
