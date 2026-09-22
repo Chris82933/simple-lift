@@ -7,6 +7,8 @@
 //
 // Equipment ids come from data/options.js.
 
+import { ENRICHED_ALIASES } from './aliasesExtra.js'
+
 export const PATTERNS = {
   SQUAT: 'squat',
   HINGE: 'hinge',
@@ -731,6 +733,13 @@ for (const [id, aliases] of Object.entries(ALIASES)) {
   if (EXERCISE_BY_ID[id]) EXERCISE_BY_ID[id].aliases = [...aliases]
 }
 for (const [id, extra] of Object.entries(MACHINE_ALIASES)) {
+  const ex = EXERCISE_BY_ID[id]
+  if (!ex) continue
+  ex.aliases = [...new Set([...(ex.aliases || []), ...extra])]
+}
+// Fold in the enrichment pass (nicknames, acronyms, misspellings, condition
+// terms) the same way — additive and deduped.
+for (const [id, extra] of Object.entries(ENRICHED_ALIASES)) {
   const ex = EXERCISE_BY_ID[id]
   if (!ex) continue
   ex.aliases = [...new Set([...(ex.aliases || []), ...extra])]
