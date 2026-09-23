@@ -658,15 +658,18 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .set-line.is-plate-target .set-num { color: var(--accent-text); font-weight: 800; }
 
 /* U2: compact ± steppers flanking each weight/reps set input. */
-.set-field { display: flex; align-items: center; gap: 2px; min-width: 0; }
+/* `stretch` (not `center`) is what keeps the steppers exactly as tall as the
+   input they flank — they take their height from the row rather than setting
+   their own, so they can never out-size the number they're adjusting. */
+.set-field { display: flex; align-items: stretch; gap: 2px; min-width: 0; }
 .set-field .set-input { flex: 1; min-width: 0; padding: 10px 0; }
 .set-stepper-btn {
-  /* Used on every set of every workout — was 24×34, well under the ~44px touch
-     target guidance (unlike .set-check right beside it). Bumped to 40×40 to
-     match; .set-field's flex:1 min-width:0 input absorbs the extra width so the
-     row still fits a narrow phone instead of overflowing. */
-  flex: none; width: 40px; height: 40px; padding: 0; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--surface-2); color: var(--text); font-size: 16px; font-weight: 700; line-height: 1;
+  /* Used on every set of every workout, so the target still has to be generous
+     — but a square 40×40 read as bigger than the input between them. Narrower
+     and input-height keeps the row balanced while staying an easy thumb target
+     (~32×41), and the flex:1 min-width:0 input absorbs the freed width. */
+  flex: none; width: 32px; padding: 0; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: 15px; font-weight: 700; line-height: 1;
   display: flex; align-items: center; justify-content: center;
 }
 .set-stepper-btn:active { background: color-mix(in srgb, var(--accent) 18%, var(--surface-2)); }
@@ -909,7 +912,19 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 /* Isometric hold uses a distinct accent so it doesn't read as a rest. */
 .rest-timer.is-hold .rest-timer-inner { background: var(--warn); }
 .hold-start { width: 100%; margin-top: 6px; }
-.fill-down { margin-top: 6px; }
+/* A low-frequency convenience: useful, but it was a full-width bar carrying the
+   same visual weight as the set rows themselves. Compact right-aligned chip
+   keeps it discoverable without competing for the column. */
+.fill-down {
+  margin-top: 2px;
+  align-self: flex-end;
+  width: auto;
+  padding: 5px 10px;
+  font-size: var(--fs-xs);
+  gap: 4px;
+  color: var(--muted);
+}
+.fill-down:hover { color: var(--text); }
 /* First-use prompt for rest-end notifications (RestTimer.jsx) — same pill
    shape as .rest-timer-inner below but neutral surface colors, since it's a
    question rather than the active timer. */

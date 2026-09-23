@@ -1308,7 +1308,7 @@ export default function Workout() {
                 if (!repsOk || !weightOk || !anyToFill) return null
                 return (
                   <button type="button" className="btn btn-ghost btn-sm fill-down" onClick={() => fillDown(ex.id)}>
-                    <span aria-hidden="true">↓</span> Copy set 1 to the rest
+                    <span aria-hidden="true">↓</span> Copy set 1 down
                   </button>
                 )
               })()}
