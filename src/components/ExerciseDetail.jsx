@@ -16,6 +16,31 @@ function fmtTop(done, units) {
   return `${done.length} × ${done[0].reps} reps`
 }
 
+// All-time best marks for one exercise across full history (warm-ups and
+// incomplete sets excluded). Shared with Progress.jsx's dashboard "current
+// best" tiles (U4-4) so both read the exact same numbers this detail sheet
+// shows — no separate, possibly-drifting computation.
+export function bestMarksForExercise(history, exId) {
+  let bestE1RM = 0
+  let topWeight = 0
+  let maxReps = 0
+  let sessions = 0
+  for (const w of history || []) {
+    const e = (w.entries || []).find((x) => x.exerciseId === exId)
+    if (!e) continue
+    const done = (e.sets || []).filter((s) => s.done && !s.warmup && Number(s.reps) > 0)
+    if (!done.length) continue
+    sessions++
+    for (const s of done) {
+      const wt = Number(s.weight) || 0
+      const r = Number(s.reps) || 0
+      maxReps = Math.max(maxReps, r)
+      if (wt > 0) { topWeight = Math.max(topWeight, wt); bestE1RM = Math.max(bestE1RM, estimate1RM(wt, r)) }
+    }
+  }
+  return { bestE1RM, topWeight, maxReps, sessions }
+}
+
 // A focused view of one exercise: its trend, best marks, and recent sessions.
 export default function ExerciseDetail({ exId, name, history, units, onClose }) {
   const dialogRef = useRef(null)
@@ -23,11 +48,12 @@ export default function ExerciseDetail({ exId, name, history, units, onClose }) 
   const measure = exMeasure({ id: exId })
   const weightedByDefault = measure.type === 'reps'
 
+  // Cumulative all-time bests — computed once via the shared helper so this
+  // sheet and the Progress dashboard tiles never disagree.
+  const { bestE1RM, topWeight, maxReps } = bestMarksForExercise(history, exId)
+
   const points = [] // oldest → newest, for the chart
   const sessions = [] // newest → oldest, for the list
-  let bestE1RM = 0
-  let topWeight = 0
-  let maxReps = 0
 
   for (const w of history) { // newest first
     const e = (w.entries || []).find((x) => x.exerciseId === exId)
@@ -43,9 +69,6 @@ export default function ExerciseDetail({ exId, name, history, units, onClose }) 
       mr = Math.max(mr, r)
       if (wt > 0) { tw = Math.max(tw, wt); e1 = Math.max(e1, estimate1RM(wt, r)) }
     }
-    bestE1RM = Math.max(bestE1RM, e1)
-    topWeight = Math.max(topWeight, tw)
-    maxReps = Math.max(maxReps, mr)
     const value = tw > 0 ? Math.round(weightedByDefault ? e1 : tw) : mr
     points.unshift({ t: new Date(w.date).getTime(), weight: value }) // build oldest→newest
     sessions.push({ date: w.date, label: fmtTop(done, units) })

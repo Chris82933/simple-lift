@@ -22,6 +22,11 @@ export const isExtraScheme = (name) => name === 'lp' || name === 'gslp'
 
 export const FAIL_LIMIT = 3
 
+// A gap this long before a session explains rustiness on its own — the miss
+// streak shouldn't burn down toward a deload just because the lifter was away
+// (illness, travel, a busy stretch), not actually failing the weight.
+export const LAYOFF_DAYS = 12
+
 const roundTo = (n, step) => Math.max(step, Math.round(n / step) * step)
 const deloadStep = (units) => (units === 'kg' ? 2.5 : 5)
 const isLowerMain = (ex) => ex.regions?.includes('legs') && ['squat', 'hinge'].includes(ex.pattern)
@@ -46,7 +51,11 @@ const maxLogged = (sets) => Math.max(0, ...sets.map((s) => Number(s.weight) || 0
  *   - increase → `suggestion` holds the recommended jump (opt-in for the user)
  *   - deload   → already baked into `progression`; `autoNote` explains it
  */
-export function evaluateExtra(ex, loggedSets, units = 'lbs') {
+// `now` is an optional injection point (tests / callers with a known session
+// time); it defaults to the real clock. Threading it as a trailing optional
+// parameter keeps the existing call sites (sessionReview.js, tests) working
+// unchanged.
+export function evaluateExtra(ex, loggedSets, units = 'lbs', now = Date.now()) {
   const scheme = ex.progression.scheme
   const entered = maxLogged(loggedSets) || ex.progression.weight || 0
   const done = loggedSets.filter((s) => s.done && Number(s.reps) > 0)
@@ -57,6 +66,17 @@ export function evaluateExtra(ex, loggedSets, units = 'lbs') {
     return { kind: 'hold', progression: { ...ex.progression, weight: entered || ex.progression.weight } }
   }
 
+  // How long since this exercise was last actually attempted (a session where
+  // sets were logged, per the stamp below) — used to tell a real miss apart
+  // from understandable rust after a break. No stamp yet (older data, or the
+  // very first session) → treat as "no gap info", i.e. not a layoff.
+  const lastAttempt = ex.progression.lastAttemptDate ? new Date(ex.progression.lastAttemptDate).getTime() : null
+  const daysSinceLastAttempt = lastAttempt != null && Number.isFinite(lastAttempt)
+    ? (now - lastAttempt) / 86400000
+    : null
+  const returningFromLayoff = daysSinceLastAttempt != null && daysSinceLastAttempt > LAYOFF_DAYS
+  const stamped = (patch) => ({ ...ex.progression, ...patch, lastAttemptDate: new Date(now).toISOString() })
+
   if (scheme === 'gslp') {
     const lastReps = Number(loggedSets[loggedSets.length - 1]?.reps) || 0
     const priorDone = done.length >= ex.sets - 1 // all non-AMRAP sets completed
@@ -65,14 +85,14 @@ export function evaluateExtra(ex, loggedSets, units = 'lbs') {
       const dbl = lastReps >= target * 2
       return {
         kind: 'increase',
-        progression: { ...ex.progression, weight: entered, fails: 0 },
+        progression: stamped({ weight: entered, fails: 0 }),
         suggestion: { base: entered, recommendedInc: dbl ? inc * 2 : inc, doubleJump: dbl },
       }
     }
     const reset = roundTo(entered * 0.9, deloadStep(units))
     return {
       kind: 'deload',
-      progression: { ...ex.progression, weight: reset, fails: 0 },
+      progression: stamped({ weight: reset, fails: 0 }),
       autoNote: `${ex.name}: missed ${target} on the AMRAP set — reset to ${reset} ${units} (−10%).`,
     }
   }
@@ -82,8 +102,18 @@ export function evaluateExtra(ex, loggedSets, units = 'lbs') {
   if (success) {
     return {
       kind: 'increase',
-      progression: { ...ex.progression, weight: entered, fails: 0 },
+      progression: stamped({ weight: entered, fails: 0 }),
       suggestion: { base: entered, recommendedInc: schemeIncrement(ex, units, 'lp') },
+    }
+  }
+  // A missed session right after a long layoff isn't a real miss — it's rust.
+  // Hold the weight, don't touch the fail streak, and say why instead of
+  // quietly letting it count toward a deload the user won't understand.
+  if (returningFromLayoff) {
+    return {
+      kind: 'hold',
+      progression: stamped({ weight: entered, fails: ex.progression.fails || 0 }),
+      autoNote: `${ex.name}: first session back after a break — repeating ${entered} ${units} rather than counting this as a miss.`,
     }
   }
   const fails = (ex.progression.fails || 0) + 1
@@ -91,13 +121,13 @@ export function evaluateExtra(ex, loggedSets, units = 'lbs') {
     const reset = roundTo(entered * 0.9, deloadStep(units))
     return {
       kind: 'deload',
-      progression: { ...ex.progression, weight: reset, fails: 0 },
+      progression: stamped({ weight: reset, fails: 0 }),
       autoNote: `${ex.name}: missed ${FAIL_LIMIT} sessions in a row — deload to ${reset} ${units} (−10%) and build back up.`,
     }
   }
   return {
     kind: 'hold',
-    progression: { ...ex.progression, weight: entered, fails },
+    progression: stamped({ weight: entered, fails }),
     autoNote: `${ex.name}: missed ${ex.sets}×${target} (strike ${fails}/${FAIL_LIMIT}) — repeat ${entered} ${units} next time.`,
   }
 }

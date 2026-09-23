@@ -138,21 +138,21 @@ export default function Programs() {
               )}
             </div>
             <div className="program-card-actions">
-              {isActive && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/program')}>
-                  View days
-                </button>
-              )}
-              {isActive && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/schedule')}>
-                  Schedule
-                </button>
-              )}
-              {p.source === 'custom' && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/builder', { state: { id: p.id } })}>
-                  Edit
-                </button>
-              )}
+              {/* Available for every program, not just the active one — so you can
+                  glance at (or reschedule) an alternate program, like a hypertrophy
+                  block you're not currently running, without switching to it. */}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/program', { state: { id: p.id } })}>
+                View days
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/schedule', { state: { id: p.id } })}>
+                Schedule
+              </button>
+              {/* Same fix as Program.jsx's "Edit this program": Builder opens any
+                  program regardless of source, so this is no longer limited to
+                  source === 'custom' (which locked out template/generated programs). */}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/builder', { state: { id: p.id } })}>
+                Edit
+              </button>
               <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => remove(p)}>
                 Delete
               </button>

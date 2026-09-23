@@ -590,8 +590,13 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 }
 .plate-label { flex: none; font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .plate-text { flex: 1; }
+/* The plate combo is the actual answer to "what do I put on the bar" — it was
+   reading smaller (fs-sm, 13px) than the set inputs right beside it (fs-md).
+   Bump it up so it reads at a glance instead of blending into the row. */
+.plate-text strong { font-size: var(--fs-lg); }
 .plate-approx { color: var(--accent-5); }
 .plate-gear {
+  position: relative;
   flex: none;
   border: none;
   background: transparent;
@@ -603,6 +608,9 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   border-radius: 6px;
 }
 .plate-gear:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+/* Extend the tap target to ~44px without growing the visual link (A11y 2.5.5) —
+   it's the only entry point into plate settings and was sized like plain text. */
+.plate-gear::after { content: ''; position: absolute; inset: -13px; }
 .bar-custom { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 14px; }
 .plate-head-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
 .plate-quick-btns { display: flex; gap: 10px; }
@@ -650,10 +658,14 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .set-line.is-plate-target .set-num { color: var(--accent-text); font-weight: 800; }
 
 /* U2: compact ± steppers flanking each weight/reps set input. */
-.set-field { display: flex; align-items: center; gap: 3px; min-width: 0; }
-.set-field .set-input { flex: 1; min-width: 0; padding: 10px 2px; }
+.set-field { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.set-field .set-input { flex: 1; min-width: 0; padding: 10px 0; }
 .set-stepper-btn {
-  flex: none; width: 24px; height: 34px; padding: 0; border-radius: 8px; border: 1px solid var(--border);
+  /* Used on every set of every workout — was 24×34, well under the ~44px touch
+     target guidance (unlike .set-check right beside it). Bumped to 40×40 to
+     match; .set-field's flex:1 min-width:0 input absorbs the extra width so the
+     row still fits a narrow phone instead of overflowing. */
+  flex: none; width: 40px; height: 40px; padding: 0; border-radius: 8px; border: 1px solid var(--border);
   background: var(--surface-2); color: var(--text); font-size: 16px; font-weight: 700; line-height: 1;
   display: flex; align-items: center; justify-content: center;
 }
@@ -888,11 +900,32 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   width: calc(100% - 32px);
   max-width: calc(var(--maxw) - 32px);
   z-index: 20;
+  /* Column so the optional notify-prompt banner stacks above the timer pill
+     itself, both inside this one fixed-position wrapper. */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 /* Isometric hold uses a distinct accent so it doesn't read as a rest. */
 .rest-timer.is-hold .rest-timer-inner { background: var(--warn); }
 .hold-start { width: 100%; margin-top: 6px; }
 .fill-down { margin-top: 6px; }
+/* First-use prompt for rest-end notifications (RestTimer.jsx) — same pill
+   shape as .rest-timer-inner below but neutral surface colors, since it's a
+   question rather than the active timer. */
+.rest-notify-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.rest-notify-prompt p { margin: 0; flex: 1; font-size: var(--fs-sm); }
+.rest-notify-prompt-actions { flex: none; display: flex; gap: 8px; }
 .rest-timer-inner {
   display: flex;
   align-items: center;
@@ -1822,6 +1855,7 @@ select.text-input { appearance: none; }
 /* ---- Workout edit / add ---- */
 .workout-head-row { display: flex; align-items: center; justify-content: space-between; }
 .edit-toggle {
+  position: relative;
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
@@ -1832,6 +1866,9 @@ select.text-input { appearance: none; }
   cursor: pointer;
 }
 .edit-toggle.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+/* Extend the tap target to ~44px without growing the visual pill (A11y 2.5.5) —
+   this is the only entry point to add/remove sets or exercises mid-workout. */
+.edit-toggle::after { content: ''; position: absolute; inset: -10px; }
 .rest-edit {
   display: flex;
   align-items: center;

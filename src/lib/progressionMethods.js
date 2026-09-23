@@ -15,7 +15,7 @@ export const PROGRESSION_METHODS = [
     pros: [
       'Works for any goal and any lift',
       'Forgiving — you earn the weight with reps first',
-      'No need to know your 1RM',
+      'No need to know your one-rep max (1RM)',
     ],
     cons: [
       'A touch slower on the big barbell lifts than pure linear',
@@ -40,7 +40,7 @@ export const PROGRESSION_METHODS = [
   },
   {
     id: 'rpe',
-    name: 'RPE / autoregulation',
+    name: 'Go by feel (RPE)',
     tagline: 'Progress by how hard it felt',
     how: 'Rate how hard the session was afterwards. Felt easy? Add weight. Just right? Add a rep. Hard? Repeat it. Maxed out? Hold or back off — so training bends to how you feel day to day.',
     pros: [

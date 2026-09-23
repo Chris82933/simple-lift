@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt, loadBodyweight } from '../lib/storage.js'
+import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt, loadBodyweight, updateWorkout, loadMaxes, currentBodyweight } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { exMeasure, musclesFor, matchesQuery, EXERCISE_BY_ID } from '../data/exercises.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
-import { prShort } from '../lib/records.js'
+import { prShort, sessionRecords } from '../lib/records.js'
 import { sessionsThisWeek, trainingStreakWeeks, weeklyCounts, volumeThisWeek, prTimeline } from '../lib/consistency.js'
 import ProgressChart from '../components/ProgressChart.jsx'
-import ExerciseDetail from '../components/ExerciseDetail.jsx'
+import ExerciseDetail, { bestMarksForExercise } from '../components/ExerciseDetail.jsx'
 import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
 
@@ -66,14 +66,47 @@ function buildBodyweightSeries(history) {
     .map((s, i) => ({ ...s, color: PALETTE[i % PALETTE.length] }))
 }
 
-function topSet(entry) {
+// A history entry only stores `exerciseId`, so the measure has to be looked up
+// from the library rather than read off the entry. Without this, a 30-second
+// hold rendered as "3 × 30 lbs" — the weight unit was appended to every entry
+// regardless of whether it tracked load at all.
+function entryUnit(entry) {
+  return exMeasure({ id: entry.exerciseId }).unit
+}
+
+function topSet(entry, units) {
+  const unit = entryUnit(entry)
   const withW = (entry.sets || []).filter((s) => Number(s.weight) > 0)
   if (withW.length) {
     const t = withW.reduce((a, b) => (Number(b.weight) > Number(a.weight) ? b : a))
-    return `${t.weight} × ${t.reps}`
+    return `${t.weight} ${units} × ${t.reps} ${unit}`
   }
   const done = (entry.sets || []).filter((s) => Number(s.reps) > 0)
-  return done.length ? `${done.length} × ${done[0].reps}` : '—'
+  return done.length ? `${done.length} × ${done[0].reps} ${unit}` : '—'
+}
+
+// U4-1: after a session's sets are edited (fixing a typo'd weight/reps), the
+// PRs recorded for THAT session and every session after it may no longer be
+// right — a later session's "PR" may have only been a PR because this one's
+// bad number set too low a bar (or a real PR here may have been missed
+// because a later typo looked like it broke the record first). Re-derive
+// `prs` chronologically from the edited session forward against sessionRecords
+// (read-only, unchanged) so the timeline self-heals instead of staying wrong
+// until someone notices. Returns [{ date, prs }] for every session that needs
+// a rewrite — callers persist each via updateWorkout.
+export function recomputeRecordsAfterEdit(history, editedDate, editedEntries, maxes, bodyweight) {
+  const chrono = [...history].sort((a, b) => (a.date < b.date ? -1 : 1)) // oldest → newest
+  const idx = chrono.findIndex((w) => w.date === editedDate)
+  if (idx === -1) return []
+  chrono[idx] = { ...chrono[idx], entries: editedEntries }
+  const updates = []
+  for (let i = idx; i < chrono.length; i++) {
+    const prior = chrono.slice(0, i)
+    const { prs } = sessionRecords(chrono[i].entries, prior, maxes, { bodyweight })
+    chrono[i] = { ...chrono[i], prs }
+    updates.push({ date: chrono[i].date, prs })
+  }
+  return updates
 }
 
 const DIFF_LABELS = {
@@ -134,9 +167,11 @@ function CollapsibleCard({ title, subtitle, open, onToggle, children }) {
 // One session in the log. Collapsed it's a compact two-line summary; tapping it
 // opens the detail — per-exercise completion, PRs, rating, notes, and (opt-in)
 // every logged set.
-function SessionEntry({ workout, units, onDelete }) {
+function SessionEntry({ workout, units, onDelete, onEditSaved }) {
   const [open, setOpen] = useState(false)
   const [showSets, setShowSets] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(null) // [[{...set}, ...], ...] — one array per entry, mirrors entries
   const entries = workout.entries || []
   const working = (e) => (e.sets || []).filter((s) => !s.warmup)
   const setCount = entries.reduce((n, e) => n + working(e).filter((s) => s.done).length, 0)
@@ -145,6 +180,41 @@ function SessionEntry({ workout, units, onDelete }) {
     .reduce((a, s) => a + (Number(s.weight) || 0) * (Number(s.reps) || 0), 0), 0)
   const prs = workout.prs || []
   const prIds = new Set(prs.map((p) => p.exId))
+  // Persisted onto the workout record by the auto-progression flow (see
+  // sessionReview.js's autoNotes) — may be absent on older records logged
+  // before this existed, so it's always read defensively.
+  const autoNotes = workout.autoNotes || []
+
+  // U4-1: there was previously no way to fix a mis-logged set short of
+  // deleting the whole session (losing every other exercise logged that day).
+  // Editing writes straight through the existing updateWorkout(date, patch)
+  // API — nothing new on the storage side — and PRs are recomputed rather
+  // than left stale (see recomputeRecordsAfterEdit above).
+  const startEdit = () => {
+    setDraft(entries.map((e) => (e.sets || []).map((s) => ({ ...s }))))
+    setEditing(true)
+  }
+  const cancelEdit = () => { setEditing(false); setDraft(null) }
+  const updateSet = (exIdx, setIdx, field, value) => {
+    setDraft((d) => {
+      const next = d.map((arr) => arr.slice())
+      next[exIdx][setIdx] = { ...next[exIdx][setIdx], [field]: value }
+      return next
+    })
+  }
+  const saveEdit = () => {
+    const newEntries = entries.map((e, j) => ({
+      ...e,
+      sets: draft[j].map((s) => ({
+        ...s,
+        weight: s.weight === '' ? '' : Number(s.weight) || 0,
+        reps: s.reps === '' ? '' : Number(s.reps) || 0,
+      })),
+    }))
+    onEditSaved(workout, newEntries)
+    setEditing(false)
+    setDraft(null)
+  }
 
   return (
     <div className={'log-entry' + (open ? ' is-open' : '')}>
@@ -175,43 +245,91 @@ function SessionEntry({ workout, units, onDelete }) {
             </span>
           </div>
           {prs.length > 0 && <p className="muted small"><Icon name="trophy" size={13} /> New records: {prs.map((p) => p.name).join(', ')}</p>}
-          <div className="log-exercises">
-            {entries.map((e, j) => {
-              const rows = working(e)
-              const done = rows.filter((s) => s.done).length
-              const skipped = done === 0
-              return (
-                <div key={j} className={skipped ? 'log-ex is-skipped' : 'log-ex'}>
-                  <div className="log-row">
-                    <span className="log-ex-name">
-                      <span className={'log-status' + (skipped ? '' : ' is-done')} aria-hidden="true">{skipped ? '○' : '✓'}</span>
-                      {e.name}{e.adhoc ? ' ＋' : ''}{prIds.has(e.exerciseId) ? <> <Icon name="trophy" size={12} /></> : null}
-                    </span>
-                    <span className="muted small">
-                      {skipped ? 'not done' : `${done}/${rows.length} sets · ${topSet(e)} ${units}`}
-                    </span>
+          {autoNotes.length > 0 && (
+            <div className="log-auto-notes">
+              {autoNotes.map((n, i) => (
+                <p className="muted small log-note" key={i}>⚙ Auto-adjusted: {n}</p>
+              ))}
+            </div>
+          )}
+
+          {editing ? (
+            <div className="log-edit">
+              {entries.map((e, j) => (
+                <div key={j} className="log-ex">
+                  <div className="log-row"><span className="log-ex-name">{e.name}</span></div>
+                  <div className="log-sets">
+                    {(e.sets || []).map((s, k) => (
+                      <div className="log-set-row log-set-edit" key={k}>
+                        <span className="muted small">{s.warmup ? 'Warm-up' : `Set ${k + 1}`}</span>
+                        <input
+                          type="number" inputMode="decimal" className="text-input" style={{ width: '4.5em' }}
+                          aria-label={`${e.name} set ${k + 1} weight (${units})`}
+                          value={draft[j][k].weight}
+                          onChange={(ev) => updateSet(j, k, 'weight', ev.target.value)}
+                        />
+                        <span className="muted small">{units} ×</span>
+                        <input
+                          type="number" inputMode="numeric" className="text-input" style={{ width: '3.5em' }}
+                          aria-label={`${e.name} set ${k + 1} ${entryUnit(e)}`}
+                          value={draft[j][k].reps}
+                          onChange={(ev) => updateSet(j, k, 'reps', ev.target.value)}
+                        />
+                        <span className="muted small">{entryUnit(e)}</span>
+                      </div>
+                    ))}
+                    {(e.sets || []).length === 0 && <p className="muted small">No sets logged.</p>}
                   </div>
-                  {showSets && (
-                    <div className="log-sets">
-                      {(e.sets || []).map((s, k) => (
-                        <div className="log-set-row" key={k}>
-                          <span>{s.warmup ? 'Warm-up' : `Set ${k + 1}`}{s.done ? ' ✓' : ''}</span>
-                          <span>{Number(s.weight) > 0 ? `${s.weight} ${units} × ` : ''}{s.reps || '–'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              )
-            })}
-          </div>
-          {workout.notes && <p className="muted small log-note">{workout.notes}</p>}
-          <div className="log-detail-actions">
-            <button type="button" className="log-toggle" onClick={() => setShowSets((s) => !s)}>
-              {showSets ? '▴ Hide every set' : '▾ Show every set'}
-            </button>
-            <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => onDelete(workout)}>Delete</button>
-          </div>
+              ))}
+              <p className="muted small">Fixing a number here re-checks this session&apos;s personal records.</p>
+              <div className="log-detail-actions">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={cancelEdit}>Cancel</button>
+                <button type="button" className="btn btn-primary btn-sm" onClick={saveEdit}>Save changes</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="log-exercises">
+                {entries.map((e, j) => {
+                  const rows = working(e)
+                  const done = rows.filter((s) => s.done).length
+                  const skipped = done === 0
+                  return (
+                    <div key={j} className={skipped ? 'log-ex is-skipped' : 'log-ex'}>
+                      <div className="log-row">
+                        <span className="log-ex-name">
+                          <span className={'log-status' + (skipped ? '' : ' is-done')} aria-hidden="true">{skipped ? '○' : '✓'}</span>
+                          {e.name}{e.adhoc ? ' ＋' : ''}{prIds.has(e.exerciseId) ? <> <Icon name="trophy" size={12} /></> : null}
+                        </span>
+                        <span className="muted small">
+                          {skipped ? 'not done' : `${done}/${rows.length} sets · ${topSet(e, units)}`}
+                        </span>
+                      </div>
+                      {showSets && (
+                        <div className="log-sets">
+                          {(e.sets || []).map((s, k) => (
+                            <div className="log-set-row" key={k}>
+                              <span>{s.warmup ? 'Warm-up' : `Set ${k + 1}`}{s.done ? ' ✓' : ''}</span>
+                              <span>{Number(s.weight) > 0 ? `${s.weight} ${units} × ` : ''}{s.reps || '–'} {entryUnit(e)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {workout.notes && <p className="muted small log-note">{workout.notes}</p>}
+              <div className="log-detail-actions">
+                <button type="button" className="log-toggle" onClick={() => setShowSets((s) => !s)}>
+                  {showSets ? '▴ Hide every set' : '▾ Show every set'}
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={startEdit}>Edit</button>
+                <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => onDelete(workout)}>Delete</button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -275,6 +393,21 @@ export default function Progress() {
     refresh()
     toast.show('Cardio entry deleted', { actionLabel: 'Undo', onAction: () => { insertCardioAt(c, idx); refresh() } })
   }
+  // U4-1: apply an edited session's sets, then re-run PR detection from that
+  // session forward (see recomputeRecordsAfterEdit) so a corrected weight can
+  // retroactively fix a wrongly-awarded — or wrongly missing — PR.
+  const saveSessionEdit = (workout, newEntries) => {
+    const maxes = loadMaxes()
+    const bodyweight = currentBodyweight()
+    const updates = recomputeRecordsAfterEdit(history, workout.date, newEntries, maxes, bodyweight)
+    updateWorkout(workout.date, { entries: newEntries, prs: updates.find((u) => u.date === workout.date)?.prs || [] })
+    for (const u of updates) {
+      if (u.date === workout.date) continue // already written above, together with the entries
+      updateWorkout(u.date, { prs: u.prs })
+    }
+    refresh()
+    toast.show('Session updated')
+  }
   const [weightMetric, setWeightMetric] = useState('top') // 'top' | 'e1rm'
   const allSeries = useMemo(() => buildSeries(history, weightMetric), [history, weightMetric])
   const bwSeries = useMemo(() => buildBodyweightSeries(history), [history])
@@ -299,6 +432,23 @@ export default function Progress() {
     }
     return [...seen.values()]
   }, [history])
+
+  // U4-4: "current best" dashboard tiles for the user's most-logged lifts, so
+  // "what's my best bench ever?" doesn't take Progress → scroll → search →
+  // tap → read a tile. Reuses the exact same all-time-best computation
+  // ExerciseDetail's stat tiles use (bestMarksForExercise), just surfaced
+  // higher up, for up to the 3 most-tracked weighted lifts.
+  const bestTiles = useMemo(() => {
+    const byCount = [...exercisesTracked].sort((a, b) => b.count - a.count)
+    const out = []
+    for (const ex of byCount) {
+      const { bestE1RM, topWeight } = bestMarksForExercise(history, ex.id)
+      if (topWeight <= 0) continue // bodyweight-only moves don't have a "top weight" tile to show
+      out.push({ id: ex.id, name: ex.name, topWeight, bestE1RM: Math.round(bestE1RM) })
+      if (out.length >= 3) break
+    }
+    return out
+  }, [exercisesTracked, history])
 
   // Exercise-history controls: good defaults (recency-sorted, capped) with
   // search + muscle-group filter revealed only when the list is long. No
@@ -362,7 +512,23 @@ export default function Progress() {
   // Primary cards (chart, PRs, weigh-ins) open by default; secondary ones start
   // collapsed so the first visit is scannable. Remembered once toggled.
   const CARD_DEFAULTS = { bw: false, exlist: false, cardio: false, log: false }
-  const cardOpen = (id) => (cards[id] === undefined ? (CARD_DEFAULTS[id] ?? true) : cards[id])
+  // U4-6: early on (1-2 sessions logged) several cards have nothing to show
+  // but a "will plot here once you log some" placeholder — collapsing them
+  // (not hiding — the card, and the option to open it, still exists) keeps
+  // the page from reading as a stack of empty shells before real data leads.
+  // Only affects the *default* the first time a card is seen; once the user
+  // has toggled it, their choice (in `cards`) always wins.
+  const lowSignal = history.length <= 2
+  const isLowSignalCard = (id) => {
+    if (id === 'weight') return allSeries.length === 0
+    if (id === 'cardio') return cardio.length === 0
+    return false
+  }
+  const cardOpen = (id) => {
+    if (cards[id] !== undefined) return cards[id]
+    if (lowSignal && isLowSignalCard(id)) return false
+    return CARD_DEFAULTS[id] ?? true
+  }
   const toggleCard = (id) => {
     const next = { ...cards, [id]: !cardOpen(id) }
     setCards(next)
@@ -382,9 +548,19 @@ export default function Progress() {
   }, [history])
   const prs = useMemo(() => prTimeline(history), [history])
 
-  // Keep the log short by default; load more on demand.
+  // Keep the log short by default; load more on demand. Persisted the same
+  // way as `cards`/`progressOrder` (U4-7) — someone who regularly checks
+  // older sessions shouldn't have to re-tap "Show 8 more" from scratch on
+  // every visit.
   const PAGE = 8
-  const [shownSessions, setShownSessions] = useState(PAGE)
+  const [shownSessions, setShownSessionsState] = useState(() => Math.max(PAGE, Number(loadSettings().progressShown) || PAGE))
+  const setShownSessions = (updater) => {
+    setShownSessionsState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      saveSettings({ ...loadSettings(), progressShown: next })
+      return next
+    })
+  }
 
   // Persisted section order + a layout edit mode to change it.
   const [order, setOrder] = useState(() => orderFrom(loadSettings().progressOrder))
@@ -490,6 +666,27 @@ export default function Progress() {
               <span className="stat-label">PR{prs.length === 1 ? '' : 's'}</span>
             </div>
           </div>
+
+          {bestTiles.length > 0 && (
+            <div className="card">
+              <span className="group-label">Current bests</span>
+              <div className="detail-stats">
+                {bestTiles.map((t) => (
+                  // detail-stat is normally a plain <div> (see ExerciseDetail);
+                  // reused here as a tap target, so the button-chrome reset is
+                  // inline rather than adding a new CSS class.
+                  <button
+                    type="button" key={t.id} className="detail-stat"
+                    style={{ border: 'none', font: 'inherit', color: 'inherit', cursor: 'pointer' }}
+                    onClick={() => setDetailEx({ id: t.id, name: t.name })}
+                  >
+                    <span className="detail-stat-num">{t.topWeight}</span>
+                    <span className="muted small">{t.name} ({units})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="card weekly-activity">
             <div className="weekly-activity-head">
@@ -784,7 +981,7 @@ export default function Progress() {
           onToggle={() => toggleCard('log')}
         >
           {history.slice(0, shownSessions).map((w, i) => (
-            <SessionEntry key={w.date || i} workout={w} units={units} onDelete={removeSession} />
+            <SessionEntry key={w.date || i} workout={w} units={units} onDelete={removeSession} onEditSaved={saveSessionEdit} />
           ))}
           {history.length > shownSessions && (
             <button type="button" className="btn btn-ghost btn-sm show-more" onClick={() => setShownSessions((n) => n + PAGE)}>

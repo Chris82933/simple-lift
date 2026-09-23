@@ -10,6 +10,12 @@ import { encodeGzip, decodeGzip, hasCompression } from './codec.js'
 
 const SHARE_PREFIX = 'SLPROG1:'
 
+// Highest payload version this build understands. Bump alongside any
+// breaking change to the payload shape, and keep decodeProgramCode's check
+// below in sync — an unrecognised higher version must fail loudly rather
+// than be silently parsed as v1 with unpredictable downstream breakage.
+const SUPPORTED_VERSION = 1
+
 // Fields that are private to the sharer or specific to their install, stripped
 // before a program ever leaves the device.
 const PRIVATE_PROGRAM_FIELDS = ['id', 'createdAt', 'updatedAt']
@@ -88,6 +94,9 @@ export async function decodeProgramCode(code) {
   } catch {
     throw new Error('That code is incomplete or corrupted. Copy the whole thing and try again.')
   }
+  if (payload?.v > SUPPORTED_VERSION) {
+    throw new Error('This code was made with a newer version of Simple Lift — update the app to import it.')
+  }
   const program = payload?.program
   if (!program || !Array.isArray(program.days) || program.days.length === 0) {
     throw new Error('That code doesn’t contain a program.')
@@ -100,10 +109,14 @@ export async function decodeProgramCode(code) {
 export function summarizeProgram(program) {
   const exercises = new Set()
   let unknown = 0
+  const unknownNames = [] // display names of exercises this app doesn't have in its library
   for (const day of program.days || []) {
     for (const ex of day.exercises || []) {
       exercises.add(ex.id)
-      if (!EXERCISE_BY_ID[ex.id]) unknown += 1
+      if (!EXERCISE_BY_ID[ex.id]) {
+        unknown += 1
+        if (ex.name && !unknownNames.includes(ex.name)) unknownNames.push(ex.name)
+      }
     }
   }
   const schemes = new Set()
@@ -117,6 +130,7 @@ export function summarizeProgram(program) {
     days: program.days.length,
     exercises: exercises.size,
     unknown, // exercises this app version doesn't recognise
+    unknownNames, // their display names, for a specific (not vague) notice
     hasWeights: (program.days || []).some((d) => (d.exercises || []).some(
       (e) => Number(e.startWeight) > 0 || Number(e.progression?.weight) > 0 || Number(e.progression?.tm) > 0,
     )),

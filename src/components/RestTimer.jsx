@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { playRestDone } from '../lib/sound.js'
 import { loadSettings, saveSettings } from '../lib/storage.js'
-import { scheduleRestDone, cancelRestDone, notificationPermission } from '../lib/notify.js'
+import {
+  scheduleRestDone, cancelRestDone, notificationPermission, notificationsSupported,
+  requestNotifyPermission,
+} from '../lib/notify.js'
 
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 const secsLeft = (endAt) => Math.max(0, Math.round((endAt - Date.now()) / 1000))
@@ -22,8 +25,46 @@ export default function RestTimer({ seconds, onDone, mode = 'rest' }) {
   doneRef.current = onDone
   const soundRef = useRef(soundOn)
   soundRef.current = soundOn
+  // restNotify defaults to unset (falsy) for everyone, which silently disables the
+  // single most gym-relevant case: locking the phone between sets. Treat "unset,
+  // but permission is already granted" as on — someone who already granted the OS
+  // permission clearly wants it — while an explicit `false` (they turned it off)
+  // always stays off.
+  const restNotifySetting =
+    loadSettings().restNotify === true
+    || (loadSettings().restNotify === undefined && notificationPermission() === 'granted')
   // Background notifications only apply to rest (you're actively holding otherwise).
-  const notifyOn = !isHold && loadSettings().restNotify === true && notificationPermission() === 'granted'
+  const notifyOn = !isHold && restNotifySetting && notificationPermission() === 'granted'
+  // Inline, dismissible first-use prompt: only for rest (not hold), only while
+  // permission hasn't been decided yet, only if the setting isn't already on, and
+  // only if the user hasn't dismissed it before (persisted so it never nags).
+  const [promptDismissed, setPromptDismissed] = useState(() => loadSettings().restNotifyPromptDismissed === true)
+  const [notifyBusy, setNotifyBusy] = useState(false)
+  const showNotifyPrompt =
+    !isHold && !promptDismissed && !restNotifySetting
+    && notificationsSupported() && notificationPermission() === 'default'
+
+  // Persist the setting on to true when permission was already granted before this
+  // component ever mounted (e.g. granted from Profile) — so the toggle in Profile
+  // reflects reality instead of silently relying on the fallback above.
+  useEffect(() => {
+    const s = loadSettings()
+    if (s.restNotify === undefined && notificationPermission() === 'granted') {
+      saveSettings({ ...s, restNotify: true })
+    }
+  }, [])
+
+  const dismissNotifyPrompt = () => {
+    setPromptDismissed(true)
+    saveSettings({ ...loadSettings(), restNotifyPromptDismissed: true })
+  }
+  const acceptNotifyPrompt = async () => {
+    setNotifyBusy(true)
+    const granted = await requestNotifyPermission()
+    setNotifyBusy(false)
+    if (granted) saveSettings({ ...loadSettings(), restNotify: true })
+    dismissNotifyPrompt() // ask once, whichever way it goes
+  }
 
   const toggleSound = () => {
     setSoundOn((on) => {
@@ -104,6 +145,19 @@ export default function RestTimer({ seconds, onDone, mode = 'rest' }) {
 
   return (
     <div className={'rest-timer' + (isHold ? ' is-hold' : '')} role="status">
+      {showNotifyPrompt && (
+        <div className="rest-notify-prompt">
+          <p>Want a buzz when rest ends, even with the phone locked?</p>
+          <div className="rest-notify-prompt-actions">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={dismissNotifyPrompt} disabled={notifyBusy}>
+              Not now
+            </button>
+            <button type="button" className="btn btn-primary btn-sm" onClick={acceptNotifyPrompt} disabled={notifyBusy}>
+              {notifyBusy ? 'Asking…' : 'Turn on'}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="rest-timer-inner">
         <span className="rest-label">{isHold ? 'Hold' : 'Rest'}</span>
         <span className="rest-count">{fmt(Math.max(0, remaining))}</span>

@@ -7,9 +7,9 @@ import { weightForReps, interpolate1RM, incrementForUnits } from './oneRepMax.js
 // default progression method. Templates already carry a similar `level`
 // concept; this is the equivalent knob for a generated program.
 export const EXPERIENCE_LEVELS = [
-  { id: 'new', label: 'New to lifting', hint: 'Under ~6 months. Lighter volume, no warm-up ramps yet, simple linear progression.' },
-  { id: 'some', label: 'Some experience', hint: '6 months to 2 years. Standard volume, double progression.' },
-  { id: 'experienced', label: 'Experienced', hint: '2+ years. Fuller volume — you already know your body.' },
+  { id: 'new', label: 'New to lifting', hint: 'Under ~6 months. We’ll start you light and keep things simple, and add weight one clear step at a time.' },
+  { id: 'some', label: 'Some experience', hint: '6 months to 2 years. A standard amount of work each session, building up as you earn it.' },
+  { id: 'experienced', label: 'Experienced', hint: '2+ years. A fuller session — you already know your body.' },
 ]
 export const DEFAULT_EXPERIENCE = 'some'
 

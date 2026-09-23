@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { loadActiveProgram, updateProgram } from '../lib/storage.js'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { loadActiveProgram, updateProgram, getProgram, getActiveProgramId } from '../lib/storage.js'
 import {
   WEEKDAY_LABELS, WEEKDAY_SHORT, WEEKDAY_ORDER, trainingWeekdays, restWarnings,
 } from '../lib/schedule.js'
@@ -9,7 +9,13 @@ const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...a
 
 export default function Schedule() {
   const navigate = useNavigate()
-  const program = loadActiveProgram()
+  const location = useLocation()
+  // Optional program id in router state (Programs.jsx / Program.jsx pass it) lets
+  // you schedule a non-active program without switching to it first. Falls back
+  // to the active program when absent, same pattern as Program.jsx.
+  const viewId = location.state?.id
+  const program = viewId ? (getProgram(viewId) || loadActiveProgram()) : loadActiveProgram()
+  const isActiveView = !!program && program.id === getActiveProgramId()
 
   const [draft, setDraft] = useState(() => {
     if (!program) return null
@@ -66,15 +72,27 @@ export default function Schedule() {
       }
     }
     updateProgram(next)
-    navigate('/today')
+    // '/today' reflects the ACTIVE program, so scheduling a non-active one (viewed
+    // via the optional id above) should return to that program's own page instead.
+    if (isActiveView) navigate('/today')
+    else navigate('/program', { state: { id: program.id } })
   }
 
   return (
     <section className="page full-flow">
       <header className="page-header">
-        <p className="eyebrow">{program.name}</p>
+        <p className="eyebrow">{isActiveView ? program.name : `${program.name} (not active)`}</p>
         <h1>Workout schedule</h1>
       </header>
+
+      {!isActiveView && (
+        <div className="card notice">
+          <p className="muted small">
+            You&apos;re scheduling a program that isn&apos;t active. Saving updates its schedule, but
+            it won&apos;t show on Today until you make it active.
+          </p>
+        </div>
+      )}
 
       <div className="step-body">
         <div className="card">

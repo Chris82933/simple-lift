@@ -1,18 +1,33 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { addCardio, loadCardio, deleteCardio, loadSettings } from '../lib/storage.js'
+import { addCardio, loadCardio, deleteCardio, insertCardioAt, loadSettings } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import CardioForm from '../components/CardioForm.jsx'
 import Icon from '../components/Icon.jsx'
+import { useToast } from '../components/Toast.jsx'
 
 export default function CardioLog() {
   const navigate = useNavigate()
+  const toast = useToast()
   const units = loadSettings().units || 'lbs'
   const [, force] = useState(0)
   const log = loadCardio()
 
   const onSaved = (entry) => { addCardio(entry); force((n) => n + 1) }
-  const remove = (id) => { deleteCardio(id); force((n) => n + 1) }
+  // Delete immediately, offer Undo via toast (mirrors Progress.jsx) — deleting
+  // was instant and unrecoverable before, so a mis-tap forced re-entering the
+  // whole entry from memory.
+  const remove = (id) => {
+    const idx = log.findIndex((c) => c.id === id)
+    const entry = log[idx]
+    deleteCardio(id)
+    force((n) => n + 1)
+    if (!entry) return
+    toast.show('Cardio entry deleted', {
+      actionLabel: 'Undo',
+      onAction: () => { insertCardioAt(entry, idx); force((n) => n + 1) },
+    })
+  }
 
   return (
     <section className="page full-flow">

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { MOVEMENT_TYPES, makeCustomExercise } from '../data/exercises.js'
+import { EXERCISES, MOVEMENT_TYPES, makeCustomExercise } from '../data/exercises.js'
 import { saveCustomExercise } from '../lib/storage.js'
 import { registerCustomExercises } from '../data/exercises.js'
 import { EQUIPMENT_GROUPS, REGIONS } from '../data/options.js'
@@ -27,6 +27,16 @@ export default function CustomExerciseForm({ onCreate, onClose }) {
   useModalA11y(dialogRef, onClose)
 
   const type = MOVEMENT_TYPES.find((t) => t.pattern === pattern) || MOVEMENT_TYPES[0]
+
+  // Warn (don't block) on a name collision with the built-in library or an
+  // already-saved custom exercise — EXERCISES already has prior customs
+  // merged in at startup (see main.jsx's registerCustomExercises call), so
+  // this one lookup covers both cases. A collision means the new lift would
+  // be tracked as a separate exercise for 1RM/history purposes.
+  const trimmedName = name.trim()
+  const collision = trimmedName
+    ? EXERCISES.find((e) => e.name.toLowerCase() === trimmedName.toLowerCase())
+    : null
 
   // Picking a movement type reseeds the defaults the user hasn't overridden.
   const chooseType = (p) => {
@@ -73,6 +83,11 @@ export default function CustomExerciseForm({ onCreate, onClose }) {
               onChange={(e) => setName(e.target.value)}
               autoFocus
             />
+            {collision && (
+              <p className="muted small import-error">
+                An exercise called “{collision.name}” already exists — you can still create this one, but it&apos;ll be tracked separately for 1RM &amp; history.
+              </p>
+            )}
           </label>
 
           <div className="cef-field">

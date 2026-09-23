@@ -96,8 +96,16 @@ export default function ImportProgram() {
             {summary.unknown > 0 && (
               <div className="card notice">
                 <p className="muted small">
-                  ⚠️ {summary.unknown} exercise{summary.unknown === 1 ? '' : 's'} in this program{summary.unknown === 1 ? ' isn’t' : ' aren’t'} in
-                  your version of the app and will be skipped. You can add replacements in the builder afterwards.
+                  {/* This program does NOT get filtered on import — every exercise, including
+                      ones missing from our library, comes through with its embedded name/cues
+                      intact and works fine in workouts. The real limitation is just that it
+                      won't be found by search/swap until saved as a custom exercise, so say
+                      that instead of the old (wrong) "will be skipped" claim. */}
+                  ⚠️ {summary.unknownNames.length > 0
+                    ? summary.unknownNames.map((n) => `“${n}”`).join(', ')
+                    : `${summary.unknown} exercise${summary.unknown === 1 ? '' : 's'}`}
+                  {' '}{summary.unknown === 1 ? "isn't" : "aren't"} in your exercise library — {summary.unknown === 1 ? 'it' : 'they'} come across
+                  as-is and will work fine in this program, but won't show up in search or swaps until you save {summary.unknown === 1 ? 'it' : 'them'} as a custom exercise.
                 </p>
               </div>
             )}
@@ -113,6 +121,9 @@ export default function ImportProgram() {
                   { id: 'theirs', label: 'Use their weights' },
                 ]}
               />
+              {/* Plate/bar setup isn't part of a shared program (same gap the unit-switch
+                  flow already warns about in Profile.jsx) — say so here too. */}
+              <p className="muted small">Plate/bar settings aren&apos;t part of a shared program — check Plate calculator settings for your own gym&apos;s plates.</p>
             </div>
 
             {summary.schemes.length > 0 && (

@@ -9,6 +9,7 @@ import { measureUnit } from '../data/exercises.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { pickSession, trainingWeekdays, restWarnings, WEEKDAY_SHORT, WEEKDAY_LABELS } from '../lib/schedule.js'
 import { sessionsThisWeek, trainingStreakWeeks } from '../lib/consistency.js'
+import { sessionMuscleHeat, describeHeat } from '../lib/muscleHeat.js'
 import MuscleMap from '../components/MuscleMap.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import FocusTiles from '../components/FocusTiles.jsx'
@@ -35,6 +36,18 @@ export default function Today() {
   // every render (nothing in this page mutates history itself, so a stable
   // load is safe — the second loadHistory() call below was pure duplication).
   const history = useMemo(() => loadHistory(), [])
+  // "Did I actually train legs this week?" — built from real logged sets in
+  // the last 7 days (not the schedule), reusing the same heat map the
+  // end-of-workout screen shows. Hook lives above every early return below,
+  // and stays cheap/empty ({}) rather than skipped so the hook order never
+  // changes between renders.
+  const weekHeat = useMemo(() => {
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const recentEntries = history
+      .filter((w) => new Date(w.date).getTime() >= weekAgo)
+      .flatMap((w) => w.entries || [])
+    return sessionMuscleHeat(recentEntries)
+  }, [history])
 
   // iOS quietly deletes local app data after ~7 days of no use. Nudge iOS users
   // with no cloud backup to save a backup — once, until they dismiss or sign in.
@@ -68,13 +81,24 @@ export default function Today() {
           </p>
         </div>
         <div className="welcome-choices">
+          {/* Guided setup leads, matching the "Recommended" steer this same
+              choice gets one screen later in Onboarding.jsx — a nervous
+              first-timer should be pointed somewhere, not handed a list of
+              10+ unfamiliar program names first (see fix #3). */}
+          <button
+            type="button"
+            className="card choice-card"
+            style={{ borderColor: 'var(--accent)' }}
+            onClick={() => navigate('/onboarding', { state: { guided: true } })}
+          >
+            <span className="choice-title">
+              Answer a few questions <span className="rec-badge">Recommended</span>
+            </span>
+            <span className="muted small">We&apos;ll tailor a program to your goals, equipment, and schedule.</span>
+          </button>
           <button type="button" className="card choice-card" onClick={() => navigate('/templates')}>
             <span className="choice-title">Browse templates</span>
-            <span className="muted small">Proven programs — GZCLP, bodyweight, and more. Best if you&apos;re not sure where to start.</span>
-          </button>
-          <button type="button" className="card choice-card" onClick={() => navigate('/onboarding', { state: { guided: true } })}>
-            <span className="choice-title">Answer a few questions</span>
-            <span className="muted small">We&apos;ll tailor a program to your goals, equipment, and schedule.</span>
+            <span className="muted small">Proven programs — GZCLP, bodyweight, and more. Best if you already know what you want.</span>
           </button>
           <button type="button" className="card choice-card" onClick={() => navigate('/builder')}>
             <span className="choice-title">Build your own</span>
@@ -178,18 +202,24 @@ export default function Today() {
 
       {program.days.length > 1 && (
         <div className="day-picker" role="group" aria-label="Choose a day">
-          {program.days.map((d, i) => (
-            <button
-              key={i}
-              type="button"
-              className={'chip day-chip-btn' + (i === dayIndex ? ' is-selected' : '')}
-              aria-pressed={i === dayIndex}
-              onClick={() => setSelectedDay(i)}
-            >
-              {d.title}
-              {i === pick.index && pick.isToday && <span className="day-dot" aria-hidden="true" />}
-            </button>
-          ))}
+          {program.days.map((d, i) => {
+            // A day with nothing programmed yet used to render as a bare,
+            // selectable chip over a blank exercise list with no explanation
+            // — label it instead of leaving it silently empty (see fix #8).
+            const isEmpty = !(d.exercises?.length) && !(d.cardio?.length)
+            return (
+              <button
+                key={i}
+                type="button"
+                className={'chip day-chip-btn' + (i === dayIndex ? ' is-selected' : '')}
+                aria-pressed={i === dayIndex}
+                onClick={() => setSelectedDay(i)}
+              >
+                {d.title}{isEmpty ? ' · Rest / no exercises set' : ''}
+                {i === pick.index && pick.isToday && <span className="day-dot" aria-hidden="true" />}
+              </button>
+            )
+          })}
         </div>
       )}
 
@@ -279,6 +309,20 @@ export default function Today() {
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/one-rep-max')}>1RM finder</button>
         </div>
       </div>
+
+      {Object.keys(weekHeat).length > 0 && (
+        // Feature #9: nothing else on Today answers "did I actually train
+        // legs this week?" — a beginner three months in asked exactly that.
+        // Built from real history, not the schedule; simply absent (no
+        // placeholder) when there's nothing logged in the last 7 days.
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <MuscleMap heat={weekHeat} size={84} />
+          <div>
+            <p className="group-label" style={{ margin: 0 }}>Trained this week</p>
+            <p className="muted small">{describeHeat(weekHeat)}</p>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="week-head">

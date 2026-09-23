@@ -19,6 +19,7 @@ import { CARDIO_MACHINES, CARDIO_BY_ID } from '../data/cardio.js'
 import Icon from '../components/Icon.jsx'
 import { exerciseEntryFromLibrary } from '../lib/exerciseEntry.js'
 import { getEquipment, activeEquipmentIds, isDoable, profileMeta } from '../lib/equipment.js'
+import { useToast } from '../components/Toast.jsx'
 
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
 
@@ -33,21 +34,17 @@ const sameEquip = (a, b) => {
 
 const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
 
-// The 1RM we can attribute to a lift: a saved max, else one interpolated from
-// your other saved lifts. Weights are computed off this — never off a single
-// logged set, which might be a warm-up or an off day.
-function oneRMfor(exId) {
-  const max = getMax(exId)
-  if (max?.oneRM) return Number(max.oneRM)
-  return interpolate1RM(exId, loadMaxes()) || 0
-}
-
 // Starting (working) weight for a loadable lift, derived from its 1RM and the
-// rep target. Empty string when we have no 1RM to work from.
+// rep target, PLUS whether that 1RM was a real saved max or a population-
+// strength-ratio guess (interpolate1RM). The guess is fine to use, but the
+// user needs to be able to tell it apart from a tested number — see the
+// "≈ estimated" badge next to Start wt below.
 function resolveStartWeight(ex, repHigh, inc) {
-  if (ex.load === false) return ''
-  const oneRM = oneRMfor(ex.id)
-  return oneRM ? String(weightForReps(oneRM, repHigh, inc)) : ''
+  if (ex.load === false) return { value: '', estimated: false }
+  const real = getMax(ex.id)?.oneRM ? Number(getMax(ex.id).oneRM) : 0
+  const oneRM = real || interpolate1RM(ex.id, loadMaxes()) || 0
+  if (!oneRM) return { value: '', estimated: false }
+  return { value: String(weightForReps(oneRM, repHigh, inc)), estimated: !real }
 }
 
 // Build a day's default exercise entry from the library + current goal scheme.
@@ -56,12 +53,34 @@ function resolveStartWeight(ex, repHigh, inc) {
 // and compound lifts get a warm-up ramp by default.
 function makeExercise(ex, scheme, inc) {
   const p = prescriptionFor(ex, scheme)
+  const sw = resolveStartWeight(ex, p.repHigh, inc)
   const overrides = {
     sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec,
-    startWeight: resolveStartWeight(ex, p.repHigh, inc),
+    startWeight: sw.value,
   }
   if (ex.load !== false && ex.compound && exMeasure(ex).type === 'reps') overrides.warmups = true
-  return exerciseEntryFromLibrary(ex, overrides)
+  // exerciseEntryFromLibrary only copies its known PROGRAM_FIELDS allowlist,
+  // which doesn't include startWeightEstimated — add it after, not before.
+  return { ...exerciseEntryFromLibrary(ex, overrides), startWeightEstimated: sw.estimated || undefined }
+}
+
+// Validate one exercise entry's user-editable numbers. Returns a map of
+// field -> message; empty object means the entry is fine to save as-is.
+// Deliberately strict rather than clamping-with-a-silent-default: an invalid
+// number should block Save and tell the user, never get quietly rewritten
+// into something they didn't type (that's the whole bug this fixes).
+function exerciseErrors(ex) {
+  const errs = {}
+  const sets = Number(ex.sets)
+  if (Number.isNaN(sets) || sets < 1) errs.sets = 'Sets must be 1 or more'
+  const restSec = Number(ex.restSec)
+  if (Number.isNaN(restSec) || restSec < 0) errs.restSec = "Rest can't be negative"
+  const repLow = Number(ex.repLow)
+  const repHigh = Number(ex.repHigh)
+  if (Number.isNaN(repLow) || repLow < 1) errs.repLow = 'Must be 1 or more'
+  if (Number.isNaN(repHigh) || repHigh < 1) errs.repHigh = 'Must be 1 or more'
+  if (!errs.repLow && !errs.repHigh && repLow > repHigh) errs.repRange = "Min can't exceed max"
+  return errs
 }
 
 export default function Builder() {
@@ -108,15 +127,19 @@ export default function Builder() {
   const [amrapInfo, setAmrapInfo] = useState(false)
   const [warmupInfo, setWarmupInfo] = useState(false)
   const [isoInfo, setIsoInfo] = useState(false)
+  const [startWtInfo, setStartWtInfo] = useState(false)
   const pickerRef = useRef(null)
   const amrapRef = useRef(null)
   const warmupRef = useRef(null)
   const isoRef = useRef(null)
+  const startWtRef = useRef(null)
   // Suspend the picker's trap while its nested custom-exercise form is open.
   useModalA11y(pickerRef, () => setPicker(null), picker !== null && !creating)
   useModalA11y(amrapRef, () => setAmrapInfo(false), amrapInfo)
   useModalA11y(warmupRef, () => setWarmupInfo(false), warmupInfo)
   useModalA11y(isoRef, () => setIsoInfo(false), isoInfo)
+  useModalA11y(startWtRef, () => setStartWtInfo(false), startWtInfo)
+  const toast = useToast()
 
   const scheme = useMemo(() => schemeForGoals(draft.goals), [draft.goals])
   const inc = incrementForUnits(loadSettings().units)
@@ -141,7 +164,23 @@ export default function Builder() {
     updateDay(di, { cardio: (draft.days[di].cardio || []).map((c, j) => (j === ci ? { ...c, ...patch } : c)) })
   const removeCardio = (di, ci) =>
     updateDay(di, { cardio: (draft.days[di].cardio || []).filter((_, j) => j !== ci) })
-  const removeDay = (i) => update({ days: draft.days.filter((_, j) => j !== i) })
+  // Removing a day is a one-tap, easy-to-fat-finger action that can wipe a
+  // whole session's worth of configured exercises — reuse the same
+  // Undo-toast pattern Programs.jsx uses for deleting a whole program,
+  // rather than a blocking confirm dialog.
+  const removeDay = (i) => {
+    const day = draft.days[i]
+    const dayName = day.title.trim() || WEEKDAY_LABELS[day.weekday]
+    update({ days: draft.days.filter((_, j) => j !== i) })
+    toast.show(`Removed "${dayName}"`, {
+      actionLabel: 'Undo',
+      onAction: () => setDraft((d) => {
+        const days = [...d.days]
+        days.splice(Math.min(i, days.length), 0, day)
+        return { ...d, days }
+      }),
+    })
+  }
 
   // Reorder a whole training day. The day's weekday travels WITH it (we swap
   // the whole day object, same as moveExercise swaps whole exercises) —
@@ -155,14 +194,37 @@ export default function Builder() {
     ;[next[i], next[j]] = [next[j], next[i]]
     update({ days: next })
   }
-  const removeExercise = (di, ei) =>
+  // Same fat-finger risk as removeDay, but for a single exercise — its sets,
+  // reps, rest, progression and superset link are all gone in one tap.
+  // Undo-toast restores the exercise AND the superset link it broke.
+  const removeExercise = (di, ei) => {
+    const day = draft.days[di]
+    const ex = day.exercises[ei]
+    const prevSupersetNext = ei > 0 ? day.exercises[ei - 1]?.supersetNext : undefined
     updateDay(di, {
       // Drop the exercise; clear the previous one's superset link so it doesn't
       // accidentally group with whatever shifts up into the gap.
-      exercises: draft.days[di].exercises
+      exercises: day.exercises
         .filter((_, j) => j !== ei)
         .map((e, j) => (j === ei - 1 ? { ...e, supersetNext: undefined } : e)),
     })
+    toast.show(`Removed "${ex.name}"`, {
+      actionLabel: 'Undo',
+      onAction: () => setDraft((d) => {
+        const days = d.days.map((dd, j) => {
+          if (j !== di) return dd
+          const exercises = [...dd.exercises]
+          const insertAt = Math.min(ei, exercises.length)
+          exercises.splice(insertAt, 0, ex)
+          if (insertAt > 0 && prevSupersetNext) {
+            exercises[insertAt - 1] = { ...exercises[insertAt - 1], supersetNext: prevSupersetNext }
+          }
+          return { ...dd, exercises }
+        })
+        return { ...d, days }
+      }),
+    })
+  }
 
   // Group this exercise with the next into a superset (alternate them, rest
   // after the round). Adjacent exercises carrying supersetNext form one group.
@@ -216,7 +278,9 @@ export default function Builder() {
     // current entry; identity/metadata (including hold/distance/unit, which
     // the old hand-rolled version here used to silently drop) come from the
     // target level's library definition.
-    updateExercise(di, ei, exerciseEntryFromLibrary(target, ex))
+    // Same PROGRAM_FIELDS-allowlist gap as makeExercise: startWeightEstimated
+    // isn't in it, so carry it over from the entry being replaced explicitly.
+    updateExercise(di, ei, { ...exerciseEntryFromLibrary(target, ex), startWeightEstimated: ex.startWeightEstimated })
   }
 
   // Reset one exercise to the recommended setup for the current goal: sets/reps/
@@ -228,15 +292,23 @@ export default function Builder() {
     const p = prescriptionFor(lib, scheme)
     const patch = { sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec }
     if (lib.load !== false) {
-      const w = resolveStartWeight(lib, p.repHigh, inc)
-      if (w) patch.startWeight = w
+      const sw = resolveStartWeight(lib, p.repHigh, inc)
+      if (sw.value) { patch.startWeight = sw.value; patch.startWeightEstimated = sw.estimated || undefined }
       patch.warmups = lib.compound && exMeasure(lib).type === 'reps' ? true : undefined
     }
     updateExercise(di, ei, patch)
   }
 
   const totalExercises = draft.days.reduce((n, d) => n + d.exercises.length, 0)
-  const canSave = draft.name.trim() && draft.days.some((d) => d.exercises.length > 0 || (d.cardio && d.cardio.length > 0))
+  // A bad Sets/reps/rest value must block Save rather than get silently
+  // swapped for a default — see exerciseErrors.
+  const hasInvalidExercise = draft.days.some((d) => d.exercises.some((e) => Object.keys(exerciseErrors(e)).length > 0))
+  const canSave = draft.name.trim() && draft.days.some((d) => d.exercises.length > 0 || (d.cardio && d.cardio.length > 0)) && !hasInvalidExercise
+
+  // Two days sharing a weekday is a real footgun for the Today day-picker
+  // (which one runs?) — legitimate for AM/PM splits, so this warns rather
+  // than blocking.
+  const weekdayCounts = draft.days.reduce((m, d) => { m[d.weekday] = (m[d.weekday] || 0) + 1; return m }, {})
 
   const save = () => {
     if (!canSave) return
@@ -265,18 +337,20 @@ export default function Builder() {
           // Spread the original entry first so advanced fields (GZCLP
           // progression, amrap, ladder links) survive an edit, then override
           // the user-editable numbers.
-          exercises: d.exercises.map((e) => {
-            const repHigh = Number(e.repHigh) || Number(e.repLow) || 8
-            const repLow = Math.min(Number(e.repLow) || repHigh, repHigh)
-            return {
-              ...e,
-              sets: Number(e.sets) || 3,
-              repLow,
-              repHigh,
-              restSec: Number(e.restSec) || 90,
-              startWeight: e.startWeight || '',
-            }
-          }),
+          // canSave already blocks Save while any exercise fails exerciseErrors,
+          // so by the time we get here every value has passed validation.
+          // Math.max is just a floor for defense-in-depth — it is never
+          // reached with a value the user didn't already confirm as valid,
+          // unlike the old `Number(e.sets) || 3` which silently substituted
+          // a fabricated default for 0/blank/invalid input.
+          exercises: d.exercises.map((e) => ({
+            ...e,
+            sets: Math.max(1, Number(e.sets) || 1),
+            repLow: Math.max(1, Number(e.repLow) || 1),
+            repHigh: Math.max(1, Number(e.repHigh) || 1),
+            restSec: Math.max(0, Number(e.restSec) || 0),
+            startWeight: e.startWeight || '',
+          })),
         })),
     }
     if (editId) {
@@ -439,6 +513,11 @@ export default function Builder() {
               value={day.title}
               onChange={(e) => updateDay(di, { title: e.target.value })}
             />
+            {weekdayCounts[day.weekday] > 1 && (
+              <p className="muted small" style={{ color: 'var(--warn)' }}>
+                Another day is also set to {WEEKDAY_LABELS[day.weekday]} — fine for an AM/PM split, but double-check that&apos;s what you meant.
+              </p>
+            )}
 
             {day.exercises.length > 0 && (
               <div className="day-muscles">
@@ -447,7 +526,9 @@ export default function Builder() {
               </div>
             )}
 
-            {day.exercises.map((ex, ei) => (
+            {day.exercises.map((ex, ei) => {
+              const errs = exerciseErrors(ex)
+              return (
               <Fragment key={ei}>
               <div className={'builder-exercise' + (ex.supersetNext || day.exercises[ei - 1]?.supersetNext ? ' in-superset' : '')}>
                 <div className="builder-ex-top">
@@ -480,9 +561,39 @@ export default function Builder() {
                   )}
                   <label>Rest s<input type="number" inputMode="numeric" value={ex.restSec} onChange={(e) => updateExercise(di, ei, { restSec: e.target.value })} /></label>
                   {ex.load && (
-                    <label>Start wt<input type="number" inputMode="decimal" value={ex.startWeight} placeholder="–" onChange={(e) => updateExercise(di, ei, { startWeight: e.target.value })} /></label>
+                    <label>
+                      Start wt{ex.startWeightEstimated && <span className="muted small"> · ≈ est.</span>}
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        value={ex.startWeight}
+                        placeholder="–"
+                        // A manual edit means this is now the user's own number, not a
+                        // guess — drop the estimated flag so the badge doesn't linger.
+                        onChange={(e) => updateExercise(di, ei, { startWeight: e.target.value, startWeightEstimated: undefined })}
+                      />
+                    </label>
                   )}
                 </div>
+                {/* Inline validation, never a silent substitution — canSave stays
+                    false while any of these are present (see exerciseErrors). */}
+                {Object.keys(errs).length > 0 && (
+                  <p className="muted small import-error">
+                    {errs.sets && <>{errs.sets}. </>}
+                    {errs.repLow && <>{exMeasure(ex).type === 'reps' ? 'Min reps' : 'Min'}: {errs.repLow}. </>}
+                    {errs.repHigh && <>{exMeasure(ex).type === 'reps' ? 'Max reps' : 'Max'}: {errs.repHigh}. </>}
+                    {errs.repRange && <>{errs.repRange}. </>}
+                    {errs.restSec && <>{errs.restSec}.</>}
+                  </p>
+                )}
+                {ex.load && (
+                  <div className="amrap-row">
+                    <span className="muted small">
+                      Start weight comes from your 1RM{ex.startWeightEstimated ? ' (estimated — no tested max saved for this lift yet)' : ''}.
+                    </span>
+                    <button type="button" className="info-icon" onClick={() => setStartWtInfo(true)} aria-label="Where does Start wt come from?">i</button>
+                  </div>
+                )}
                 {(() => {
                   const lad = ladderInfo(ex.id)
                   if (!lad || lad.length <= 1) return null
@@ -566,7 +677,8 @@ export default function Builder() {
                 </button>
               )}
               </Fragment>
-            ))}
+              )
+            })}
 
             {(day.cardio || []).map((c, ci) => {
               const hasDistance = CARDIO_BY_ID[c.machine]?.distance
@@ -609,6 +721,9 @@ export default function Builder() {
 
         <button type="button" className="btn btn-ghost" onClick={addDay}>+ Add training day</button>
         <p className="muted small">{draft.days.length} day(s) · {totalExercises} exercise(s)</p>
+        {hasInvalidExercise && (
+          <p className="muted small import-error">Fix the highlighted sets/reps/rest values above before saving.</p>
+        )}
       </div>
 
       <div className="flow-actions">
@@ -723,6 +838,24 @@ export default function Builder() {
               If the lift is loaded (like a pulldown), it <strong>keeps its weight</strong> — hold that weight for time. Bodyweight holds just track seconds.
             </p>
             <button type="button" className="btn btn-primary" onClick={() => setIsoInfo(false)}>Got it</button>
+          </div>
+        </div>
+      )}
+
+      {startWtInfo && (
+        <div className="picker-overlay" role="dialog" aria-modal="true" aria-label="About Start wt" onClick={() => setStartWtInfo(false)} ref={startWtRef} tabIndex={-1}>
+          <div className="info-sheet" onClick={(e) => e.stopPropagation()}>
+            <p className="info-title">Start wt</p>
+            <p className="muted small">
+              Your working weight is a <strong>percentage of your 1RM</strong>, picked for this exercise's rep target — heavier percentages for low reps, lighter for high reps.
+            </p>
+            <p className="muted small">
+              If you have a <strong>real, tested 1RM</strong> saved for this lift, that's what's used. If you don't, we fall back to a <strong>rough estimate</strong> from typical strength ratios to your other saved maxes — those are marked <strong>“≈ est.”</strong> right on the field, so you can always tell a guess from a tested number.
+            </p>
+            <p className="muted small">
+              Test the real thing anytime in the 1RM tool, or just type your own number here — typing over the field clears the estimate mark, since it's now your number.
+            </p>
+            <button type="button" className="btn btn-primary" onClick={() => setStartWtInfo(false)}>Got it</button>
           </div>
         </div>
       )}

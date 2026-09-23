@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useModalA11y from '../lib/useModalA11y.js'
+import { useToast } from '../components/Toast.jsx'
 import {
   loadActiveProgram, loadSettings, appendWorkout, updateProgram, advanceRotation,
-  addCardio, deleteCardio, addProgram, updateWorkout, loadHistory, loadMaxes, saveMax,
+  addCardio, deleteCardio, insertCardioAt, addProgram, updateWorkout, loadHistory, loadMaxes, saveMax,
   loadActiveSession, saveActiveSession, clearActiveSession, currentBodyweight,
 } from '../lib/storage.js'
 import { sessionRecords, buildSessionSummary, prShort } from '../lib/records.js'
@@ -62,6 +63,16 @@ function weightStepFor(ex, units) {
     if (jump > 0) return jump
   }
   return incrementForUnits(units)
+}
+
+// Two dumbbells held at once (vs. a single dumbbell — e.g. "One-Arm ..."
+// moves) need a per-hand weight label, or the total-vs-per-hand number is
+// ambiguous. The library carries no explicit flag for this, so infer it from
+// the equipment requirement plus name (session entries don't carry `requires`,
+// so look the library definition up by id).
+function isTwoDumbbell(ex) {
+  const lib = EXERCISE_BY_ID[ex.id]
+  return !!lib?.requires?.includes('dumbbells') && !/one-arm/i.test(lib.name || '')
 }
 
 // Human-readable session length for the completion screen.
@@ -254,6 +265,7 @@ function buildLastTimeMap() {
 export default function Workout() {
   const navigate = useNavigate()
   const location = useLocation()
+  const toast = useToast()
   const settings = loadSettings()
   const units = settings.units || 'lbs'
   const showPlates = settings.hidePlateCalc !== true
@@ -383,8 +395,19 @@ export default function Workout() {
     }
   }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt])
 
-  // Discard a resumed session and start this day fresh.
+  // Discard a resumed session and start this day fresh. Sits right next to the
+  // "Resumed your in-progress session" banner, so a stray tap here can wipe out
+  // real logged work — confirm first, with the real count, whenever there's
+  // anything to lose.
   const startOver = () => {
+    const loggedSetCount = Object.values(sets).flat().filter((r) => r.done && !r.warmup).length
+    const loggedCount = loggedSetCount + loggedCardio.length
+    if (loggedCount > 0) {
+      const setPart = loggedSetCount > 0 ? `${loggedSetCount} logged set${loggedSetCount === 1 ? '' : 's'}` : ''
+      const cardioPart = loggedCardio.length > 0 ? `${loggedCardio.length} cardio entr${loggedCardio.length === 1 ? 'y' : 'ies'}` : ''
+      const what = [setPart, cardioPart].filter(Boolean).join(' and ')
+      if (!window.confirm(`Discard ${what} and start this workout over?`)) return
+    }
     clearActiveSession()
     setExercises(session ? session.exercises : [])
     setSets(buildInitialSets(session, units))
@@ -493,9 +516,23 @@ export default function Workout() {
     setLoggedCardio((l) => [...l, withId])
     setCardioOpen(false)
   }
+  // Delete immediately, offer Undo via toast (mirrors Progress.jsx) — a mis-tap
+  // shouldn't force re-entering a cardio entry from memory.
   const removeLoggedCardio = (entry) => {
+    const idx = loggedCardio.indexOf(entry)
     if (entry.id) deleteCardio(entry.id)
     setLoggedCardio((l) => l.filter((e) => e !== entry))
+    toast.show('Cardio entry removed', {
+      actionLabel: 'Undo',
+      onAction: () => {
+        if (entry.id) insertCardioAt(entry, idx)
+        setLoggedCardio((l) => {
+          const next = [...l]
+          next.splice(idx, 0, entry)
+          return next
+        })
+      },
+    })
   }
 
   if (!program || !session) {
@@ -552,6 +589,14 @@ export default function Workout() {
       } else {
         setRest({ seconds: restSec, key })
       }
+    } else if (!nowDone) {
+      // Un-marking a set cancels whatever rest timer IT started — otherwise a
+      // stray countdown from a mis-tap keeps running and chimes/vibrates later.
+      // Timer keys are prefixed with `${exId}-${idx}-`, so match on that
+      // (covers both the single `rest` timer and superset `rests` list).
+      const prefix = `${exId}-${idx}-`
+      setRest((r) => (r && r.key.startsWith(prefix) ? null : r))
+      setRests((rs) => rs.filter((t) => !t.key.startsWith(prefix)))
     }
   }
 
@@ -624,6 +669,22 @@ export default function Workout() {
     setEditSnapshot(null)
   }
 
+  // Top-of-header edit pill: the natural "get me out of here" tap. It must
+  // never blind-save a destructive change — only confirm when exercises were
+  // actually removed since entering edit mode; a pure rest/set-count tweak
+  // saves straight away like before.
+  const finishEditPill = () => {
+    if (!editMode) { enterEdit(); return }
+    const removedCount = editSnapshot
+      ? editSnapshot.exercises.filter((e) => !exercises.some((x) => x.id === e.id)).length
+      : 0
+    if (removedCount > 0) {
+      const msg = `Save changes to your program? ${removedCount} exercise${removedCount === 1 ? '' : 's'} removed.`
+      if (!window.confirm(msg)) return
+    }
+    saveEdits()
+  }
+
   // Working sets only — warm-ups don't count toward the session's progress.
   const totalSets = exercises.reduce((n, ex) => n + (sets[ex.id]?.filter((r) => !r.warmup).length || ex.sets), 0)
   const doneSets = Object.values(sets).flat().filter((r) => r.done && !r.warmup).length
@@ -632,7 +693,7 @@ export default function Workout() {
     // C8: nothing logged — don't silently record an empty session and burn a
     // rotation slot. Match how Exit already confirms.
     if (doneSets === 0 && loggedCardio.length === 0) {
-      if (!window.confirm("You haven't logged any sets or cardio yet. Finish anyway? This will record an empty session and move the rotation forward.")) return
+      if (!window.confirm('Finish with nothing logged? This records an empty session and advances your rotation.')) return
     }
 
     const date = new Date().toISOString()
@@ -643,7 +704,18 @@ export default function Workout() {
 
     // Detect PRs and fresh 1RM estimates against the history *before* this session.
     const { prs: newPrs, oneRMUpdates } = sessionRecords(entries, loadHistory(), loadMaxes(), { bodyweight: currentBodyweight() })
-    appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries, prs: newPrs, durationSec: sessionDurationSec })
+
+    // Carry values forward + auto-apply deloads; collect optional increase suggestions.
+    // Ad-hoc adds aren't in the program, so they can't persist/progress — exclude them.
+    // Computed BEFORE appendWorkout so its autoNotes can be stored on the
+    // history record below (contract with the auto-deload-explanations UI:
+    // field name must be exactly `autoNotes`).
+    const programIds = new Set(program.days[dayIndex].exercises.map((e) => e.id))
+    const result = reviewSession({ ...session, exercises }, sets, goals, units, method)
+    result.persist = result.persist.filter((p) => programIds.has(p.exId))
+    result.suggestions = result.suggestions.filter((s) => programIds.has(s.exId))
+
+    appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries, prs: newPrs, durationSec: sessionDurationSec, autoNotes: result.autoNotes })
     clearActiveSession() // session is logged — no longer resumable
     setPrs(newPrs)
     setRmUpdates(oneRMUpdates)
@@ -652,12 +724,6 @@ export default function Workout() {
     setDurationSec(sessionDurationSec)
     setMuscleHeat(sessionMuscleHeat(entries))
 
-    // Carry values forward + auto-apply deloads; collect optional increase suggestions.
-    // Ad-hoc adds aren't in the program, so they can't persist/progress — exclude them.
-    const programIds = new Set(program.days[dayIndex].exercises.map((e) => e.id))
-    const result = reviewSession({ ...session, exercises }, sets, goals, units, method)
-    result.persist = result.persist.filter((p) => programIds.has(p.exId))
-    result.suggestions = result.suggestions.filter((s) => programIds.has(s.exId))
     const fresh = loadActiveProgram()
     if (fresh) updateProgram(applyPersist(fresh, dayIndex, result.persist, units))
     advanceRotation(program.id, dayIndex)
@@ -940,8 +1006,8 @@ export default function Workout() {
       <header className="page-header">
         <div className="workout-head-row">
           <p className="eyebrow">{session.dayLabel} · Workout</p>
-          <button type="button" className={'edit-toggle' + (editMode ? ' is-on' : '')} onClick={() => (editMode ? saveEdits() : enterEdit())}>
-            {editMode ? 'Done editing' : <><Icon name="edit" size={14} /> Edit</>}
+          <button type="button" className={'edit-toggle' + (editMode ? ' is-on' : '')} onClick={finishEditPill}>
+            {editMode ? 'Done' : <><Icon name="edit" size={14} /> Edit</>}
           </button>
         </div>
         <h1>{session.title}</h1>
@@ -1048,7 +1114,6 @@ export default function Workout() {
                   <p className="muted small">
                     {sets[ex.id]?.filter((r) => !r.warmup).length ?? ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)} · {ex.restSec}s rest
                     {sets[ex.id]?.some((r) => r.warmup) ? ' · + warm-ups' : ''}
-                    {ex.compound ? ' · compound' : ''}
                   </p>
                   {ex.swappedFrom && (
                     <p className="muted small swapped-note">↔ swapped from {ex.swappedFrom} for your gear</p>
@@ -1077,7 +1142,14 @@ export default function Workout() {
                   </span>
                   {sub
                     ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => swapExercise(ex.id, sub)}>Swap → {sub.name}</button>
-                    : <span className="muted small">No alternative with your current gear — swap gear or remove it.</span>}
+                    : (
+                      <>
+                        <span className="muted small">No alternative with your current gear.</span>
+                        {/* No substitute exists — give a direct way out instead of
+                            forcing a trip into edit mode + a long scroll. */}
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeExercise(ex.id)}>Remove</button>
+                      </>
+                    )}
                 </div>
               )}
 
@@ -1124,10 +1196,20 @@ export default function Workout() {
                   Bodyweight — leave the {units} blank, or add weight (a belt, dumbbells, or a vest) to load it.
                 </p>
               )}
+              {ex.amrap && (
+                // The sr-only span + title tooltip on the set number do nothing on
+                // touch, so AMRAP's meaning was invisible to sighted mobile users.
+                // A visible caption fixes that without needing to tap anything.
+                <p className="muted small">Last set: do as many reps as you can.</p>
+              )}
               <div className={'set-table' + (showWeight ? '' : ' no-load')}>
                 <div className="set-head">
                   <span>Set</span>
-                  {showWeight && <span title={optionalLoad ? 'Optional added weight' : undefined}>{optionalLoad ? `+${units}` : units}</span>}
+                  {showWeight && (
+                    <span title={optionalLoad ? 'Optional added weight' : undefined}>
+                      {optionalLoad ? `+${units}` : isTwoDumbbell(ex) ? `${units} (each)` : units}
+                    </span>
+                  )}
                   <span>{measureUnit(ex)}</span>
                   <span>done</span>
                 </div>
@@ -1334,7 +1416,7 @@ export default function Workout() {
         <button
           className="btn btn-ghost"
           onClick={() => {
-            if (doneSets > 0 && !window.confirm("You've logged sets but haven't finished. Exit without recording this workout? Your sets are saved — resume and tap Finish to record it and get your weight bumps.")) return
+            if (doneSets > 0 && !window.confirm('Exit without finishing? Your sets are saved — resume anytime and tap Finish to record it.')) return
             navigate('/today')
           }}
         >

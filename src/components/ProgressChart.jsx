@@ -79,7 +79,16 @@ export default function ProgressChart({ series, units = 'lbs', ariaLabel = 'Prog
               />
             )}
             {s.points.map((p, i) => (
-              <circle key={i} cx={x(p.t)} cy={y(p.weight)} r={dotR} fill={s.color} />
+              // The visible dot stays small so dense series don't turn into a
+              // blob, but a transparent halo on top gives hover/long-press a
+              // real tap target, and <title> supplies the "date: value"
+              // tooltip — otherwise points at 40+ sessions are unidentifiable.
+              <g key={i}>
+                <circle cx={x(p.t)} cy={y(p.weight)} r={dotR} fill={s.color} />
+                <circle cx={x(p.t)} cy={y(p.weight)} r={Math.max(dotR, 6)} fill="transparent">
+                  <title>{`${fmtDate(p.t)}: ${p.weight}${units ? ` ${units}` : ''}`}</title>
+                </circle>
+              </g>
             ))}
             {single && (
               <text x={x(last.t)} y={y(last.weight) - 7} className="chart-last" textAnchor="end" fill={s.color}>

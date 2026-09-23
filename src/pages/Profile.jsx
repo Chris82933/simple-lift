@@ -664,7 +664,12 @@ export default function Profile() {
               <p className="muted small">Notifications are blocked in your browser — turn them on for this site to use this.</p>
             )}
             {isIOS() && (
-              <p className="muted small">On iPhone/iPad this works best with the app installed to your home screen, and the system may still delay a notification while other apps are open.</p>
+              <>
+                <p className="muted small">On iPhone/iPad this works best with the app installed to your home screen, and the system may still delay a notification while other apps are open.</p>
+                {/* navigator.vibrate doesn't exist on iOS Safari/PWA at all, unlike Android —
+                    call that out here so a silent phone doesn't read as "the timer is broken". */}
+                <p className="muted small">On iPhone, background alerts aren&apos;t guaranteed — keep the screen on to hear the chime (iOS doesn&apos;t support vibration for web apps).</p>
+              </>
             )}
           </>
         )}

@@ -55,6 +55,11 @@ export default function Onboarding() {
     const existing = loadProfile()
     return existing ? { ...DEFAULT_DRAFT, ...existing } : DEFAULT_DRAFT
   })
+  // Strength step: a true beginner defaults to "just the bar" (no number
+  // required) with the numeric inputs tucked behind this toggle, rather than
+  // a blank-looking required field being the first thing they see. Declared
+  // up front with the other hooks — must never sit after the early return below.
+  const [knowStrength, setKnowStrength] = useState(false)
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
   // Functional toggle so rapid successive clicks don't read stale state.
@@ -110,6 +115,18 @@ export default function Onboarding() {
   const buildOwn = () => navigate('/builder')
   const useTemplate = () => navigate('/templates')
   const startGuided = () => { setStep(0); setStarted(true) }
+  // Leaving the guided flow abandons every answer given so far and drops the
+  // user in the blank expert Builder — confirm so a "skip this one question"
+  // tap can't accidentally land them there (see fix #1).
+  const confirmBuildOwn = () => {
+    if (window.confirm("Leave the guided setup and build your program from scratch? You'll pick every exercise yourself.")) {
+      buildOwn()
+    }
+  }
+
+  // Steps with no default answer — safe to skip outright without steering
+  // someone into re-answering something the app already defaulted for them.
+  const OPTIONAL_STEPS = new Set(['strength', 'bodyweight'])
 
   // One-tap "train everything" so users who don't want to choose can keep moving.
   const selectAllFocus = () => set({ focusAreas: REGIONS.map((r) => r.id) })
@@ -169,9 +186,11 @@ export default function Onboarding() {
       <header className="page-header">
         <div className="onb-head-row">
           <p className="eyebrow">Step {step + 1} of {STEPS.length}</p>
-          <button type="button" className="skip-link" onClick={buildOwn}>
-            Skip · build my own →
-          </button>
+          {OPTIONAL_STEPS.has(STEPS[step]) && (
+            <button type="button" className="skip-link" onClick={next}>
+              Skip this question →
+            </button>
+          )}
         </div>
         <div className="progress-track" aria-hidden="true">
           <div
@@ -185,7 +204,7 @@ export default function Onboarding() {
         {STEPS[step] === 'experience' && (
           <>
             <h1>How long have you been lifting?</h1>
-            <p className="muted">This tunes how much volume we start you with, whether warm-up ramps show up, and how your program progresses.</p>
+            <p className="muted">This sets how much work we start you with, whether we walk you through lighter warm-up sets, and how quickly the weights go up.</p>
             <div className="choice-list">
               {EXPERIENCE_LEVELS.map((lvl) => (
                 <button
@@ -380,41 +399,71 @@ export default function Onboarding() {
         {STEPS[step] === 'strength' && (
           <>
             <h1>Roughly what can you lift?</h1>
-            <p className="muted">
-              Optional, lift by lift — skip any you don&apos;t know. Without this, new barbell lifts
-              start with a blank weight box; with it, we set a real starting weight for you. Enter
-              what you can comfortably lift for about 5 reps.
-            </p>
-            <div className="choice-list">
-              {STRENGTH_LIFTS.map((lift) => (
-                <div className="strength-row" key={lift.key}>
-                  <label className="strength-label" htmlFor={`sw-${lift.key}`}>{lift.label}</label>
-                  <div className="strength-input-row">
-                    <input
-                      id={`sw-${lift.key}`}
-                      type="number"
-                      inputMode="decimal"
-                      className="text-input"
-                      placeholder={`${units}, ~5 reps`}
-                      value={draft.strength[lift.key]}
-                      onChange={(e) => set({ strength: { ...draft.strength, [lift.key]: e.target.value } })}
-                      aria-label={`${lift.label} weight in ${units}, for about 5 reps`}
-                    />
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() => set({ strength: { ...draft.strength, [lift.key]: String(units === 'kg' ? 20 : 45) } })}
-                    >
-                      Not sure? Just the bar
-                    </button>
-                  </div>
+            {draft.experienceLevel === 'new' && !knowStrength ? (
+              // A true beginner usually can't produce this number at all — lead
+              // with the safe default instead of a blank-looking required field
+              // (see fix #2). "I know my numbers" reveals the normal inputs below.
+              <>
+                <p className="muted">
+                  Most people just starting out don&apos;t know this yet — that&apos;s completely
+                  fine. We&apos;ll start every barbell lift at the empty bar ({units === 'kg' ? 20 : 45}{' '}
+                  {units}) and it&apos;ll feel light and easy on purpose. You add weight fast from there.
+                </p>
+                <div className="choice-list">
+                  <button type="button" className="choice-row is-selected" aria-pressed="true" onClick={next}>
+                    <span className="choice-title">Start at the bar</span>
+                    <span className="muted small">Recommended — safe, and the app builds your real numbers up from here.</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="choice-row"
+                    aria-pressed="false"
+                    onClick={() => setKnowStrength(true)}
+                  >
+                    <span className="choice-title">I know my numbers</span>
+                    <span className="muted small">Enter what you can comfortably lift for about 5 reps.</span>
+                  </button>
                 </div>
-              ))}
-            </div>
-            <p className="muted small">
-              Anything left blank starts light (near the empty bar) instead of blank — never a dead
-              end. Fine-tune anytime with the 1RM tool in Settings.
-            </p>
+              </>
+            ) : (
+              <>
+                <p className="muted">
+                  Optional, lift by lift — skip any you don&apos;t know. Without this, new barbell lifts
+                  start with a blank weight box; with it, we set a real starting weight for you. Enter
+                  what you can comfortably lift for about 5 reps.
+                </p>
+                <div className="choice-list">
+                  {STRENGTH_LIFTS.map((lift) => (
+                    <div className="strength-row" key={lift.key}>
+                      <label className="strength-label" htmlFor={`sw-${lift.key}`}>{lift.label}</label>
+                      <div className="strength-input-row">
+                        <input
+                          id={`sw-${lift.key}`}
+                          type="number"
+                          inputMode="decimal"
+                          className="text-input"
+                          placeholder={`${units}, ~5 reps`}
+                          value={draft.strength[lift.key]}
+                          onChange={(e) => set({ strength: { ...draft.strength, [lift.key]: e.target.value } })}
+                          aria-label={`${lift.label} weight in ${units}, for about 5 reps`}
+                        />
+                        <button
+                          type="button"
+                          className="link-btn"
+                          onClick={() => set({ strength: { ...draft.strength, [lift.key]: String(units === 'kg' ? 20 : 45) } })}
+                        >
+                          Not sure? Just the bar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="muted small">
+                  Anything left blank starts light (near the empty bar) instead of blank — never a dead
+                  end. Fine-tune anytime with the one-rep max (1RM) tool in Settings.
+                </p>
+              </>
+            )}
           </>
         )}
 
@@ -426,13 +475,13 @@ export default function Onboarding() {
               so you can decide:
             </p>
             <ul className="why-list">
+              <li><strong>Charts your weight over time</strong> next to your lifts on the Progress tab.</li>
+              <li><strong>Strength-to-weight</strong> — the number that decides most climbing and calisthenics moves.</li>
               <li>
                 <strong>Scores weighted pull-ups and dips properly.</strong> A 25 {units} belt on a
                 180 {units} lifter is a 205 {units} lift. Without your weight, the app can only see
                 the 25 and your progress there looks flat.
               </li>
-              <li><strong>Charts your weight over time</strong> next to your lifts on the Progress tab.</li>
-              <li><strong>Strength-to-weight</strong> — the number that decides most climbing and calisthenics moves.</li>
             </ul>
             <input
               type="number"
@@ -452,6 +501,17 @@ export default function Onboarding() {
         )}
       </div>
 
+      {/* Kept BEFORE .flow-actions, not after: .full-flow > .flow-actions:last-child
+          is how the Back/Next bar stays pinned to the thumb zone, so this can't
+          become flow-actions' next sibling without breaking that on every step. */}
+      <button
+        type="button"
+        className="link-btn"
+        style={{ alignSelf: 'center' }}
+        onClick={confirmBuildOwn}
+      >
+        Not for me — leave the guided setup and build my own program
+      </button>
       <div className="flow-actions">
         <button type="button" className="btn btn-ghost" onClick={back}>
           Back
