@@ -34,6 +34,7 @@ import { measureUnit, exMeasure, EXERCISE_BY_ID, isoHoldFor, tracksLoad, loadIsO
 import { warmupSets, incrementForUnits } from '../lib/oneRepMax.js'
 import { lastWeightFromHistory, fillDownRows } from '../lib/logging.js'
 import { sessionMuscleHeat, plannedMuscleHeat, describeHeat } from '../lib/muscleHeat.js'
+import { buildShareCard, shareImage, canShareImage } from '../lib/shareCard.js'
 import StretchPanel from '../components/StretchPanel.jsx'
 import Icon from '../components/Icon.jsx'
 
@@ -338,6 +339,12 @@ export default function Workout() {
   const [finished, setFinished] = useState(false)
   const [finishedAt, setFinishedAt] = useState(null)
   const [muscleHeat, setMuscleHeat] = useState({})
+  // Share card: rendered ahead of the user tapping Share, because Safari only
+  // allows navigator.share() from a user gesture — awaiting the PNG inside the
+  // click handler loses that gesture and throws NotAllowedError.
+  const shareMapRef = useRef(null)
+  const [shareBlob, setShareBlob] = useState(null)
+  const [shareNote, setShareNote] = useState('')
   const [review, setReview] = useState({ autoNotes: [], suggestions: [] })
   const [choices, setChoices] = useState({})
   // Which suggestions' choices the user has manually picked — re-seeding on a
@@ -534,6 +541,29 @@ export default function Workout() {
       },
     })
   }
+
+  // Build the shareable PNG as soon as the completion screen has painted, so
+  // the Share tap has a blob ready (see the note by shareBlob above). Must sit
+  // above the early return below so hook order is identical on every render.
+  useEffect(() => {
+    if (!finished || Object.keys(muscleHeat).length === 0) return
+    let cancelled = false
+    const svg = shareMapRef.current?.querySelector('svg')
+    if (!svg) return
+    const doneCount = Object.values(sets).flat().filter((r) => r.done && !r.warmup).length
+    const stats = [{ label: 'sets', value: doneCount }]
+    if (durationSec > 0) stats.push({ label: 'time', value: formatDuration(durationSec) })
+    buildShareCard({
+      svgEl: svg,
+      title: session?.title || 'Workout',
+      dateLabel: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+      stats,
+      muscles: describeHeat(muscleHeat).replace(/^Muscles worked, most to least:\s*/i, ''),
+    })
+      .then((blob) => { if (!cancelled) setShareBlob(blob) })
+      .catch(() => { /* card is a bonus — never block the summary on it */ })
+    return () => { cancelled = true }
+  }, [finished, muscleHeat, session, sets, durationSec])
 
   if (!program || !session) {
     return (
@@ -814,12 +844,35 @@ export default function Workout() {
           <div className="card muscles-worked">
             <p className="group-label">Muscles worked</p>
             <p className="sr-only">{describeHeat(muscleHeat)}</p>
-            <MuscleMap heat={muscleHeat} size={300} labels />
+            <div ref={shareMapRef}>
+              <MuscleMap heat={muscleHeat} size={300} labels />
+            </div>
             <div className="heat-legend">
               <span className="muted small">Less</span>
               <span className="heat-legend-bar" aria-hidden="true" />
               <span className="muted small">More</span>
             </div>
+            {shareBlob && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm share-map"
+                  onClick={async () => {
+                    // shareBlob is already built — this call stays inside the
+                    // user gesture, which Safari requires.
+                    const how = await shareImage(shareBlob, {
+                      filename: 'simple-lift-session.png',
+                      title: session.title,
+                      text: `${session.title} — ${doneSets} sets logged with Simple Lift`,
+                    })
+                    if (how === 'saved') setShareNote('Saved the image — post it from your photos.')
+                  }}
+                >
+                  <Icon name="share" size={14} /> {canShareImage(shareBlob) ? 'Share this' : 'Save image'}
+                </button>
+                {shareNote && <p className="muted small">{shareNote}</p>}
+              </>
+            )}
           </div>
         )}
 

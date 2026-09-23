@@ -17,6 +17,13 @@ const ICONS = {
     </g>
   ),
   play: <path d="M8 5v14l11-7z" fill="currentColor" />,
+  share: (
+    <g stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v13" />
+      <path d="M8 7l4-4 4 4" />
+      <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+    </g>
+  ),
   cardio: (
     <path
       d="M3 12h3.5l2-5 3.5 10 2.5-7 1.5 2H21"
