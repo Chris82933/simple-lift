@@ -915,10 +915,6 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 /* A low-frequency convenience: useful, but it was a full-width bar carrying the
    same visual weight as the set rows themselves. Compact right-aligned chip
    keeps it discoverable without competing for the column. */
-/* Share the session's muscle map as an image. Sits under the heat legend in
-   the completion card; centred so it reads as an offer, not a form control. */
-.share-map { align-self: center; width: auto; margin-top: 2px; }
-
 .fill-down {
   margin-top: 2px;
   align-self: flex-end;

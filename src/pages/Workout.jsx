@@ -344,7 +344,6 @@ export default function Workout() {
   // click handler loses that gesture and throws NotAllowedError.
   const shareMapRef = useRef(null)
   const [shareBlob, setShareBlob] = useState(null)
-  const [shareNote, setShareNote] = useState('')
   const [review, setReview] = useState({ autoNotes: [], suggestions: [] })
   const [choices, setChoices] = useState({})
   // Which suggestions' choices the user has manually picked — re-seeding on a
@@ -825,6 +824,30 @@ export default function Workout() {
     try { await navigator.clipboard.writeText(summaryText()); setShareStatus('copied') } catch { setShareStatus('error') }
   }
 
+  // Share the muscle-map image. The recap text is handed to navigator.share
+  // too, but photo targets (Strava, Instagram) drop `text` when a file is
+  // attached — only messaging/mail apps honour both. So the recap is ALSO
+  // copied to the clipboard first, while we're still inside the user gesture
+  // (afterwards the gesture is spent and clipboard writes can be refused),
+  // leaving it ready to paste into the post's description.
+  const shareImageAndRecap = async () => {
+    if (!shareBlob) return
+    let copied = false
+    try {
+      await navigator.clipboard.writeText(summaryText())
+      copied = true
+    } catch { /* clipboard blocked — the image still shares fine */ }
+    const how = await shareImage(shareBlob, {
+      filename: 'simple-lift-session.png',
+      title: session.title,
+      text: summaryText(),
+    })
+    if (how === 'cancelled') return
+    setShareStatus(how === 'saved'
+      ? (copied ? 'saved-copied' : 'saved')
+      : (copied ? 'shared-copied' : 'shared'))
+  }
+
   if (finished) {
     return (
       <section className="page full-flow">
@@ -852,27 +875,6 @@ export default function Workout() {
               <span className="heat-legend-bar" aria-hidden="true" />
               <span className="muted small">More</span>
             </div>
-            {shareBlob && (
-              <>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm share-map"
-                  onClick={async () => {
-                    // shareBlob is already built — this call stays inside the
-                    // user gesture, which Safari requires.
-                    const how = await shareImage(shareBlob, {
-                      filename: 'simple-lift-session.png',
-                      title: session.title,
-                      text: `${session.title} — ${doneSets} sets logged with Simple Lift`,
-                    })
-                    if (how === 'saved') setShareNote('Saved the image — post it from your photos.')
-                  }}
-                >
-                  <Icon name="share" size={14} /> {canShareImage(shareBlob) ? 'Share this' : 'Save image'}
-                </button>
-                {shareNote && <p className="muted small">{shareNote}</p>}
-              </>
-            )}
           </div>
         )}
 
@@ -1034,20 +1036,31 @@ export default function Workout() {
           </button>
         </div>
 
-        {/* ---- Share session (optional, after the primary finish action) ---- */}
+        {/* ---- Share session (optional, after the primary finish action) ----
+             One place for both the picture and the words. Strava/Instagram
+             ignore shared text when an image is attached, so sharing the image
+             copies the recap for pasting rather than pretending both travel. */}
         <div className="card share-card">
           <p className="group-label">Share this session</p>
-          <p className="muted small">Copy a text recap to paste into a Strava activity, your notes, or socials.</p>
+          <p className="muted small">Post the muscle map, or copy a text recap for a Strava activity, your notes, or socials.</p>
           <div className="share-actions">
+            {shareBlob && (
+              <button type="button" className="btn btn-ghost" onClick={shareImageAndRecap}>
+                <Icon name="share" size={14} /> {canShareImage(shareBlob) ? 'Share image' : 'Save image'}
+              </button>
+            )}
             <button type="button" className="btn btn-ghost" onClick={shareSummary}>
-              {canShare ? 'Share…' : 'Copy summary'}
+              {canShare ? 'Share text…' : 'Copy recap'}
             </button>
             {canShare && (
-              <button type="button" className="btn btn-ghost" onClick={copySummary}>Copy</button>
+              <button type="button" className="btn btn-ghost" onClick={copySummary}>Copy recap</button>
             )}
           </div>
           {shareStatus === 'copied' && <p className="muted small share-note"><span aria-hidden="true">✓</span> Copied to clipboard — paste it into Strava.</p>}
           {shareStatus === 'shared' && <p className="muted small share-note"><span aria-hidden="true">✓</span> Shared.</p>}
+          {shareStatus === 'shared-copied' && <p className="muted small share-note"><span aria-hidden="true">✓</span> Image shared — the text recap is on your clipboard, paste it into the description.</p>}
+          {shareStatus === 'saved' && <p className="muted small share-note"><span aria-hidden="true">✓</span> Image saved — post it from your photos.</p>}
+          {shareStatus === 'saved-copied' && <p className="muted small share-note"><span aria-hidden="true">✓</span> Image saved and the recap copied — post the photo, then paste the text.</p>}
           {shareStatus === 'error' && <p className="muted small share-note">Couldn’t copy — long-press to select instead.</p>}
         </div>
       </section>
