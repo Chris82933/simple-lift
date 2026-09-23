@@ -416,7 +416,14 @@ export default function Profile() {
                 ⚠️ The cloud copy couldn&apos;t be read — it doesn&apos;t look like valid Simple Lift data, so nothing on this device was changed. Your data here is untouched; keep a backup code below.
               </p>
             )}
-            {auth.status === 'error' && auth.syncError?.kind !== 'shape' && (
+            {/* A rules rejection reached the server and was refused — it will
+                never clear on its own, so it must not be worded like an outage. */}
+            {auth.status === 'error' && auth.syncError?.kind === 'permission' && (
+              <p className="muted small sync-warn">
+                ⚠️ The cloud rejected this device&apos;s request (permission denied). This won&apos;t fix itself by waiting — your Firestore security rules need to allow the <code>users/&#123;uid&#125;/history</code> subcollection where workout history is stored. See <code>firestore.rules</code> in the project and re-publish it. Your data on this device is safe and unchanged.
+              </p>
+            )}
+            {auth.status === 'error' && auth.syncError?.kind === 'network' && (
               <p className="muted small sync-warn">
                 Couldn&apos;t reach the cloud. Your data is still saved on this device and will sync when you&apos;re back online.
               </p>

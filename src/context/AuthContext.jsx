@@ -17,7 +17,16 @@ export const useAuth = () => useContext(AuthContext)
 // works), but they mean very different things to the user — one is "your
 // cloud data looks corrupted", the other is "couldn't reach the server, try
 // again". `syncError` carries that distinction for any UI that wants it.
-const shapeErrorKind = (e) => (e instanceof Error && e.message.startsWith('That data has an unexpected shape') ? 'shape' : 'network')
+// 'permission' is deliberately separate from 'network'. A Firestore rules
+// rejection (FirebaseError code 'permission-denied', message "Missing or
+// insufficient permissions.") means the request DID reach the server and was
+// refused — telling the user it'll "sync when you're back online" is wrong,
+// because waiting never fixes it. Only republishing the rules does.
+const shapeErrorKind = (e) => {
+  if (e instanceof Error && e.message.startsWith('That data has an unexpected shape')) return 'shape'
+  if (e?.code === 'permission-denied') return 'permission'
+  return 'network'
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -25,7 +34,7 @@ export function AuthProvider({ children }) {
   // is ready but held back because a workout is in progress — see R4 below)
   const [status, setStatus] = useState('idle')
   const [syncNote, setSyncNote] = useState(null) // { level:'warn'|'over', pct, bytes } | null
-  const [syncError, setSyncError] = useState(null) // { kind:'shape'|'network', message } | null
+  const [syncError, setSyncError] = useState(null) // { kind:'shape'|'permission'|'network', message } | null
   const [conflict, setConflict] = useState(null) // { cloud, local, cloudSummary } | null
   const [lastSyncedAt, setLastSyncedAt] = useState(() => getSyncMarker()?.at || 0)
   const pushTimer = useRef(null)
@@ -239,7 +248,7 @@ export function AuthProvider({ children }) {
     user,
     status,
     syncNote,
-    syncError, // { kind:'shape'|'network', message } | null — see shapeErrorKind above
+    syncError, // { kind:'shape'|'permission'|'network', message } | null — see shapeErrorKind above
     conflict,
     resolveConflict,
     lastSyncedAt,

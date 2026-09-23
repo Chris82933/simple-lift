@@ -52,10 +52,22 @@ The app works fully on local/offline storage. Turning on Google sign-in lets use
      match /databases/{database}/documents {
        match /users/{uid} {
          allow read, write: if request.auth != null && request.auth.uid == uid;
+
+         // Workout history lives in a users/{uid}/history/{chunkId}
+         // subcollection. `match /users/{uid}` alone does NOT cover
+         // subcollections, so this nested rule is required — without it
+         // sync fails with PERMISSION_DENIED once you have any history.
+         match /{document=**} {
+           allow read, write: if request.auth != null && request.auth.uid == uid;
+         }
        }
      }
    }
    ```
+
+   > **Already set this up before?** Re-publish the rules above. History moved
+   > into a subcollection, and the older one-line rule doesn't reach it — sync
+   > will report that it can't reach the cloud until you update this.
    (This is also saved in the repo as [`firestore.rules`](firestore.rules) — you can paste it or deploy it with `firebase deploy --only firestore:rules`.)
 5. Project **Settings (gear) → General → Your apps → Web app (`</>`)**. Register an app, then copy the `firebaseConfig` values.
 6. Add those six values **either way**:

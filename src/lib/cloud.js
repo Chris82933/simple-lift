@@ -182,7 +182,12 @@ export async function pushCloud(uid, blob) {
   const toDelete = existingChunks.filter((c) => !newIds.has(c.id))
 
   // One batch, atomic: the main doc and every changed/removed chunk land
-  // together, or none of them do. Firestore batches cap at 500 ops; that's
+  // together, or none of them do. THIS MUST STAY ONE BATCH. The main-doc write
+  // drops the legacy inline `history` field; if it could commit while the chunk
+  // writes failed (as they did when the security rules didn't cover the
+  // subcollection), the cloud copy would be left with no history at all.
+  // Batched together, a rejection leaves the previous cloud state untouched.
+  // Covered by cloud.test.js — 'leaves the cloud copy completely untouched'. Firestore batches cap at 500 ops; that's
   // effectively unreachable here (toWrite+toDelete+1 <= existing chunk count
   // + new chunk count + 1, i.e. hundreds of thousands of sessions before
   // this would ever need splitting into multiple batches).

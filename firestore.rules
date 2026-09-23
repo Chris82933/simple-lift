@@ -1,14 +1,28 @@
 rules_version = '2';
 
-// Simple Lift stores each signed-in user's entire data snapshot in a single
-// document at users/{uid}. These rules ensure a user can only read and write
-// their OWN document — never anyone else's. Paste this into the Firebase
-// console (Firestore Database → Rules → Publish), or deploy with the Firebase
-// CLI (`firebase deploy --only firestore:rules`).
+// Simple Lift stores each signed-in user's data under users/{uid}: the small
+// always-current state in the document itself, and their workout history in a
+// users/{uid}/history/{chunkId} subcollection (history is unbounded and would
+// eventually outgrow Firestore's 1 MiB per-document limit).
+//
+// IMPORTANT: `match /users/{uid}` on its own covers ONLY that document — it
+// does NOT grant access to its subcollections. The nested
+// `match /{document=**}` below is what allows the history chunks to be read
+// and written. Without it, sync fails with PERMISSION_DENIED as soon as there
+// is any history to store.
+//
+// Either way, a user can only ever reach their OWN data — never anyone else's.
+// Paste this into the Firebase console (Firestore Database → Rules → Publish),
+// or deploy with the Firebase CLI (`firebase deploy --only firestore:rules`).
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      // Workout-history chunks (and any future per-user subcollection).
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
     }
   }
 }
