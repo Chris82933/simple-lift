@@ -204,15 +204,37 @@ export function clampRotationPointer(pointer, len) {
 // new object rather than mutating its argument, mirroring the rest of the store.
 // Exported so callers (and tests) can normalize a program without going
 // through localStorage.
+// `supersetNext` means "alternate with the exercise after this one", so it is
+// meaningless on the LAST exercise of a day — and actively harmful: Workout
+// suppresses the rest timer for any exercise carrying the flag, so a trailing
+// one leaves that exercise with no rest for the life of the program, and draws
+// a superset bracket that never closes. The Builder can't create this (it
+// hides the toggle on the final row) but an imported share code can carry it,
+// so it's cleared centrally here rather than trusting every write path.
+function sanitizeSupersets(p) {
+  if (!Array.isArray(p.days)) return p
+  let changed = false
+  const days = p.days.map((d) => {
+    const list = d.exercises
+    if (!Array.isArray(list) || list.length === 0) return d
+    const last = list.length - 1
+    if (!list[last]?.supersetNext) return d
+    changed = true
+    return { ...d, exercises: list.map((e, i) => (i === last ? { ...e, supersetNext: undefined } : e)) }
+  })
+  return changed ? { ...p, days } : p
+}
+
 export function normalizeProgram(p) {
-  if (!p.schedule) return { ...p, schedule: { mode: 'fixed' } }
-  if (p.schedule.mode === 'rotation') {
-    const len = Array.isArray(p.days) ? p.days.length : 0
-    const pointer = clampRotationPointer(p.schedule.pointer ?? 0, len)
-    if (pointer === p.schedule.pointer) return p
-    return { ...p, schedule: { ...p.schedule, pointer } }
+  const q = sanitizeSupersets(p)
+  if (!q.schedule) return { ...q, schedule: { mode: 'fixed' } }
+  if (q.schedule.mode === 'rotation') {
+    const len = Array.isArray(q.days) ? q.days.length : 0
+    const pointer = clampRotationPointer(q.schedule.pointer ?? 0, len)
+    if (pointer === q.schedule.pointer) return q
+    return { ...q, schedule: { ...q.schedule, pointer } }
   }
-  return p
+  return q
 }
 
 // Read programs with the read-status flag, so mutators can bail on failure

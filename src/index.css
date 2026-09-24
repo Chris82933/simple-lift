@@ -337,7 +337,11 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .step-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  /* Exposed as a variable so joined blocks (superset members) can cancel it
+     out exactly rather than hard-coding a magic negative margin that silently
+     stops matching if this value ever changes. */
+  --stack-gap: 14px;
+  gap: var(--stack-gap);
   flex: 1;
 }
 .step-body h1 { font-size: 24px; margin: 4px 0 0; letter-spacing: -0.02em; }
@@ -507,13 +511,58 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .exercise-card { gap: 10px; }
 /* ---- Supersets ---- */
 /* Workout: a connected bracket over grouped exercises. */
-.superset-head { display: flex; align-items: baseline; gap: 8px; padding-left: 6px; margin-bottom: -6px; }
+/* Sits directly on top of the joined block, so header and members read as one
+   unit rather than a caption floating above two cards. */
+.superset-head { display: flex; align-items: baseline; gap: 8px; padding-left: 6px; margin-bottom: -8px; flex-wrap: wrap; }
+.superset-pos {
+  flex: none;
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
 .superset-badge {
   font-size: var(--fs-2xs); font-weight: 800; letter-spacing: 0.05em;
   text-transform: uppercase; color: var(--accent-text);
 }
-.exercise-card.superset-member { border-left: 3px solid color-mix(in srgb, var(--accent) 55%, var(--border)); }
-.exercise-card.superset-member:not(.superset-top) { margin-top: -8px; }
+/* Superset members render as SEGMENTS OF ONE BLOCK rather than separate cards.
+   Previously each kept its own radius and shadow and was pulled up 8px, which
+   just smeared two drop-shadows across the seam instead of joining them. Now
+   the inner edges are squared and de-shadowed so the group reads as a single
+   surface with an accent rail down its side, and only the outer corners round.
+   (.superset-bottom previously had no rules at all — the "connected bracket"
+   the group header promises was never actually built.) */
+.exercise-card.superset-member {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow: none;
+  margin-top: 0;
+  /* Tighter than a normal card: members belong to each other, not to the page. */
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+.exercise-card.superset-member:not(.superset-top) {
+  /* Close the parent's flex gap so the segments actually touch. */
+  margin-top: calc(var(--stack-gap, 14px) * -1);
+  border-top: 1px dashed color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.exercise-card.superset-member:not(.superset-bottom) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+/* The hairline is a top-of-card flourish; inside a joined block it draws a
+   stray line across every seam. */
+.exercise-card.superset-member:not(.superset-top)::before { content: none; }
+/* One shadow for the whole group, carried by its last segment. */
+.exercise-card.superset-member.superset-bottom { box-shadow: var(--shadow-sm); }
+/* Edit mode keeps the grouping visible (muted) instead of dropping every cue —
+   removing an exercise in edit mode is exactly when you need to see that a
+   pairing exists, because removal silently breaks it. */
+.exercise-card.superset-ghost { border-left: 3px dashed color-mix(in srgb, var(--accent) 35%, var(--border)); }
 /* Builder: the link toggle sitting between two exercises. */
 .superset-link {
   display: flex; align-items: center; gap: 6px;
@@ -995,25 +1044,37 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   padding: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
-/* One timer per row: name · countdown · its own controls. */
+/* One timer per row. The name sits on its OWN line above the countdown and
+   controls: sharing a line left it ~125px on a 375px phone, which ellipsised
+   a superset's second exercise straight back out of the label ("Bosu Squat +
+   Doorway Pec…"). Full width fits both names comfortably. */
 .mini-timer {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'label label' 'count actions';
   align-items: center;
-  gap: 10px;
+  column-gap: 10px;
+  row-gap: 2px;
   padding: 7px 6px 7px 12px;
   border-radius: 10px;
   min-height: 40px;
 }
+/* The "Go!" flash replaces count+actions, so keep it on that row. */
+.mini-timer.is-go { grid-template-areas: 'label label' 'go go'; }
+.mini-timer-go { grid-area: go; }
 .mini-timer + .mini-timer { border-top: 1px solid color-mix(in srgb, var(--accent-ink) 16%, transparent); }
 .mini-timer-label {
-  flex: 1;
+  grid-area: label;
   min-width: 0;
   font-weight: 700;
   font-size: var(--fs-sm);
+  /* Still one line — but now a full-width one, so truncation is a genuine
+     last resort rather than the normal case. */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.mini-timer-count { grid-area: count; }
 .mini-timer-count {
   font-size: var(--fs-lg);
   font-weight: 800;
@@ -1022,7 +1083,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   text-align: right;
 }
 .mini-timer-go { margin-left: auto; font-size: var(--fs-lg); font-weight: 800; }
-.mini-timer-actions { display: flex; gap: 4px; flex: none; }
+.mini-timer-actions { grid-area: actions; justify-self: end; display: flex; gap: 4px; }
 .mini-btn {
   border: none;
   background: color-mix(in srgb, var(--accent-ink) 15%, transparent);

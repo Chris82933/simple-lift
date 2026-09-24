@@ -342,6 +342,9 @@ export default function Workout() {
   // Share card: rendered ahead of the user tapping Share, because Safari only
   // allows navigator.share() from a user gesture — awaiting the PNG inside the
   // click handler loses that gesture and throws NotAllowedError.
+  // Which exercise closed the most recent set, used to tell alternating from
+  // straight sets inside a superset (see toggleDone).
+  const lastDoneExRef = useRef(null)
   const shareMapRef = useRef(null)
   const [shareBlob, setShareBlob] = useState(null)
   const [review, setReview] = useState({ autoNotes: [], suggestions: [] })
@@ -406,6 +409,9 @@ export default function Workout() {
   // real logged work — confirm first, with the real count, whenever there's
   // anything to lose.
   const startOver = () => {
+    // Forget which exercise closed the last set, or the first tap of the fresh
+    // session looks like a repeat of the old one and rests when it shouldn't.
+    lastDoneExRef.current = null
     const loggedSetCount = Object.values(sets).flat().filter((r) => r.done && !r.warmup).length
     const loggedCount = loggedSetCount + loggedCardio.length
     if (loggedCount > 0) {
@@ -598,9 +604,39 @@ export default function Workout() {
   const fillDown = (exId) =>
     setSets((s) => ({ ...s, [exId]: fillDownRows(s[exId] || []) }))
 
+  // Every exercise in the superset group that `exId` closes, in order. A group
+  // is a run of consecutive entries linked by `supersetNext`, so walk back from
+  // this one while the entry before it points at the one after.
+  const supersetMembersFor = (exId) => {
+    const i = exercises.findIndex((e) => e.id === exId)
+    if (i === -1) return []
+    let start = i
+    while (start > 0 && exercises[start - 1]?.supersetNext) start--
+    return start === i && !exercises[i]?.supersetNext ? [] : exercises.slice(start, i + 1)
+  }
+
+  // Timer copy for a superset round. The mini-timer label is an ellipsised
+  // ~130px row on a phone, so a "Superset: " prefix would cost roughly ten
+  // characters and truncate away the SECOND exercise's name — reintroducing
+  // the very "only one exercise named" problem this is meant to solve. The
+  // stacked accent pill already says superset, so the names go bare. Three or
+  // more never fit, so they're counted instead.
+  const supersetLabelFor = (exId) => {
+    const members = supersetMembersFor(exId)
+    if (members.length < 2) return exercises.find((e) => e.id === exId)?.name || 'Rest'
+    if (members.length === 2) return `${members[0].name} + ${members[1].name}`
+    return `Superset round (${members.length} exercises)`
+  }
+
   const toggleDone = (exId, idx, restSec) => {
     const rows = sets[exId] || []
     const nowDone = !rows[idx]?.done
+    // Suppressing rest for supersetted members assumes the lifter alternates.
+    // When they instead run straight sets of one member (partner's station is
+    // busy, or they just prefer it), that assumption left them with NO rest
+    // timer at all and no explanation. Two completions of the same exercise in
+    // a row means they aren't alternating, so rest normally.
+    const straightSets = lastDoneExRef.current === exId
     // No rest after the final set of an exercise — nothing left to rest for.
     const isLastSet = idx === rows.length - 1
     // C5: alternating a superset — move straight to the partner exercise and
@@ -610,13 +646,31 @@ export default function Workout() {
     setSets((s) => ({ ...s, [exId]: (s[exId] || []).map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }))
     // Start rest AFTER the state update (never inside the updater — StrictMode
     // double-invokes updaters, which would spawn duplicate timers).
-    if (nowDone && !isLastSet && !supersetted && restEnabled) {
+    if (nowDone) lastDoneExRef.current = exId
+    if (nowDone && !isLastSet && (!supersetted || straightSets) && restEnabled) {
       const key = `${exId}-${idx}-${Date.now()}`
-      if (supersetTimers) {
-        const label = exercises.find((e) => e.id === exId)?.name || 'Rest'
+      // A straight-set rest belongs to the one exercise, not the round.
+      if (straightSets) {
+        const name = exercises.find((e) => e.id === exId)?.name || 'Rest'
+        if (supersetTimers) setRests((rs) => [...rs, { key, seconds: restSec, label: name }].slice(-4))
+        else setRest({ seconds: restSec, key })
+      } else if (supersetTimers) {
+        // This rest covers the whole superset round, not the one exercise that
+        // happened to finish last, so name it for the group. Labelling it
+        // "Cable Fly" when the lifter just alternated three movements reads as
+        // if the other two were forgotten.
+        const label = supersetLabelFor(exId)
         setRests((rs) => [...rs, { key, seconds: restSec, label }].slice(-4))
       } else {
-        setRest({ seconds: restSec, key })
+        // Same reasoning as the multi-timer label: this rest belongs to the
+        // round, not to whichever member closed it.
+        const members = supersetMembersFor(exId)
+        // The single timer is a full-width pill with room to spare, so name a
+        // pair outright; 3+ still isn't worth the width.
+        const label = members.length === 2
+          ? `Superset rest: ${members[0].name} + ${members[1].name}`
+          : (members.length > 2 ? 'Superset rest' : undefined)
+        setRest({ seconds: restSec, key, label })
       }
     } else if (!nowDone) {
       // Un-marking a set cancels whatever rest timer IT started — otherwise a
@@ -626,6 +680,9 @@ export default function Workout() {
       const prefix = `${exId}-${idx}-`
       setRest((r) => (r && r.key.startsWith(prefix) ? null : r))
       setRests((rs) => rs.filter((t) => !t.key.startsWith(prefix)))
+      // That set is no longer the most recent completion, so it must not make
+      // the next tap look like a repeat.
+      if (lastDoneExRef.current === exId) lastDoneExRef.current = null
     }
   }
 
@@ -1149,10 +1206,22 @@ export default function Workout() {
           // Superset bracket: consecutive exercises carrying supersetNext form a
           // group. Draw a connecting frame and a "top" header on the first.
           const groupedWithPrev = !!exercises[exIdx - 1]?.supersetNext
-          const groupedWithNext = !!ex.supersetNext && !editMode
-          const inSuperset = (groupedWithPrev || groupedWithNext) && !editMode
+          const groupedWithNext = !!ex.supersetNext
+          const inSuperset = groupedWithPrev || groupedWithNext
           const ssTop = inSuperset && !groupedWithPrev
           const ssBottom = inSuperset && !groupedWithNext
+          // Position within the group, for the "2/3" chip and the screen-reader
+          // line. Walk back to the first member, then forward to the last.
+          let ssPos = 0
+          let ssSize = 0
+          if (inSuperset) {
+            let start = exIdx
+            while (start > 0 && exercises[start - 1]?.supersetNext) start--
+            let end = exIdx
+            while (exercises[end]?.supersetNext && exercises[end + 1]) end++
+            ssPos = exIdx - start + 1
+            ssSize = end - start + 1
+          }
           return (
             <Fragment key={ex.id}>
             {ssTop && (
@@ -1165,13 +1234,18 @@ export default function Workout() {
               + (doable ? '' : ' is-unavailable')
               + (dimmed ? ' is-complete' : '')
               + (inSuperset ? ' superset-member' : '')
+              + (inSuperset && editMode ? ' superset-ghost' : '')
               + (ssTop ? ' superset-top' : '')
               + (ssBottom ? ' superset-bottom' : '')}>
+              {inSuperset && <span className="sr-only">Exercise {ssPos} of {ssSize} in this superset.</span>}
               <div className="exercise-top">
                 <MuscleMap pattern={ex.pattern} exId={ex.id} size={104} />
                 <div className="exercise-headings">
                   <div className="ex-title-row">
                     <p className="ex-name big">{ex.name}{ex.adhoc ? <span aria-hidden="true"> ＋</span> : ''}</p>
+                    {/* Which link of the chain this is — only worth showing once
+                        there are enough members to lose your place in. */}
+                    {inSuperset && ssSize > 2 && <span className="superset-pos" aria-hidden="true">{ssPos}/{ssSize}</span>}
                     {dimmed && <span className="ex-done-chip"><span aria-hidden="true">✓</span> Done</span>}
                     {editMode
                       ? <button type="button" className="icon-btn" onClick={() => removeExercise(ex.id)} aria-label={`Remove ${ex.name}`}><span aria-hidden="true">✕</span></button>
@@ -1492,7 +1566,7 @@ export default function Workout() {
       </div>
 
       {hold && <RestTimer key={hold.key} seconds={hold.seconds} mode="hold" onDone={finishHold} />}
-      {!supersetTimers && rest && <RestTimer key={rest.key} seconds={rest.seconds} onDone={() => setRest(null)} />}
+      {!supersetTimers && rest && <RestTimer key={rest.key} seconds={rest.seconds} label={rest.label} onDone={() => setRest(null)} />}
       {supersetTimers && <RestTimers timers={rests} onDone={(key) => setRests((rs) => rs.filter((t) => t.key !== key))} />}
 
       {pickerOpen && (

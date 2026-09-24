@@ -15,7 +15,9 @@ const secsLeft = (endAt) => Math.max(0, Math.round((endAt - Date.now()) / 1000))
 // just recompute from the clock. When it reaches zero it flashes "Go!" with a
 // chime + vibration. If the user has enabled rest notifications, one is scheduled
 // while the app is backgrounded (and cancelled the moment they come back).
-export default function RestTimer({ seconds, onDone, mode = 'rest' }) {
+// `label` overrides the default word so a rest covering a whole superset round
+// can say so, instead of reading like a rest for one exercise.
+export default function RestTimer({ seconds, onDone, mode = 'rest', label }) {
   const isHold = mode === 'hold'
   const [endAt, setEndAt] = useState(() => Date.now() + seconds * 1000)
   const [remaining, setRemaining] = useState(seconds)
@@ -159,7 +161,7 @@ export default function RestTimer({ seconds, onDone, mode = 'rest' }) {
         </div>
       )}
       <div className="rest-timer-inner">
-        <span className="rest-label">{isHold ? 'Hold' : 'Rest'}</span>
+        <span className="rest-label">{isHold ? 'Hold' : (label || 'Rest')}</span>
         <span className="rest-count">{fmt(Math.max(0, remaining))}</span>
         <div className="rest-actions">
           <button

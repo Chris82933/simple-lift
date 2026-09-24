@@ -428,6 +428,37 @@ describe('rotation pointer safety (C1)', () => {
     expect(normalizeProgram(input)).toBe(input)
   })
 
+  // A `supersetNext` on the last exercise of a day has nothing to pair with,
+  // and Workout suppresses rest for ANY exercise carrying the flag — so a
+  // trailing one silently leaves that exercise with no rest timer ever. The
+  // Builder can't produce it, but an imported share code can.
+  it('normalizeProgram clears a dangling supersetNext on the last exercise of a day', () => {
+    const input = {
+      id: 'p1',
+      schedule: { mode: 'fixed' },
+      days: [{ exercises: [{ id: 'a', supersetNext: true }, { id: 'b', supersetNext: true }] }],
+    }
+    const out = normalizeProgram(input)
+    expect(out.days[0].exercises[0].supersetNext).toBe(true) // legitimate pairing kept
+    expect(out.days[0].exercises[1].supersetNext).toBeUndefined() // dangling one cleared
+    // and the input is not mutated
+    expect(input.days[0].exercises[1].supersetNext).toBe(true)
+  })
+
+  it('normalizeProgram leaves a valid superset chain untouched (same reference)', () => {
+    const input = {
+      id: 'p1',
+      schedule: { mode: 'fixed' },
+      days: [{ exercises: [{ id: 'a', supersetNext: true }, { id: 'b' }, { id: 'c' }] }],
+    }
+    expect(normalizeProgram(input)).toBe(input)
+  })
+
+  it('normalizeProgram handles days with no exercises without throwing', () => {
+    const input = { id: 'p1', schedule: { mode: 'fixed' }, days: [{ exercises: [] }, {}] }
+    expect(() => normalizeProgram(input)).not.toThrow()
+  })
+
   it('advanceRotation clamps into range', () => {
     savePrograms([rotationProgram()])
     advanceRotation('p1', 2) // completed the last day (index 2) of a 3-day rotation
