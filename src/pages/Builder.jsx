@@ -102,6 +102,11 @@ export default function Builder() {
             // Builder's weekday picker is a controlled input (not null).
             weekday: d.weekday ?? WEEKDAY_ORDER[i % 7],
             title: d.title,
+            // Carried through the edit so save() can preserve them — a rehab
+            // day's safety note and its "Recovery · Ankles" label would
+            // otherwise be replaced with generic custom-program text.
+            note: d.note,
+            dayLabel: d.dayLabel,
             exercises: d.exercises.map((e) => ({
               ...e,
               repLow: e.repLow ?? e.reps ?? 8,
@@ -322,9 +327,12 @@ export default function Builder() {
         .filter((d) => d.exercises.length > 0 || (d.cardio && d.cardio.length > 0))
         .map((d) => ({
           weekday: d.weekday,
-          dayLabel: WEEKDAY_LABELS[d.weekday],
+          dayLabel: d.dayLabel || WEEKDAY_LABELS[d.weekday],
           title: d.title.trim() || WEEKDAY_LABELS[d.weekday],
-          note: 'Your custom session.',
+          // Keep a day's existing note. Overwriting it unconditionally wiped
+          // the rehab safety note ("keep it pain-free, stop anything that
+          // hurts") the moment someone edited a Recovery program.
+          note: d.note || 'Your custom session.',
           regions: [...new Set(d.exercises.flatMap((e) => e.regions))],
           // Planned cardio for the day. Targets are optional; a bare machine is fine.
           cardio: (d.cardio || []).map((c) => ({

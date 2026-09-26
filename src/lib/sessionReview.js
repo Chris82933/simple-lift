@@ -29,6 +29,21 @@ export function reviewSession(session, setsMap, goals, units, method = 'manual')
   const suggestions = []
 
   for (const ex of session.exercises) {
+    // Rehab exercises must not be pushed by the app's ordinary progressive-
+    // overload logic. Two ways it went wrong before: several rehab moves sit on
+    // the app's bodyweight ladders, so finishing a gentle glute routine offered
+    // to "level up" a single-leg RDL to Nordic curl negatives; and the loaded
+    // tennis-elbow eccentrics collected a +2.5 lb suggestion every session.
+    // A rehab day advances by the routine's own written guidance, not by us.
+    if (ex.rehab) {
+      // Remember the weight used (so a loaded rehab move prefills next time)
+      // but emit no suggestion at all.
+      const kept = { exId: ex.id }
+      const lastWeight = maxEntered((setsMap[ex.id] || []).filter((r) => !r.warmup))
+      if (ex.load !== false && lastWeight > 0) kept.startWeight = lastWeight
+      persist.push(kept)
+      continue
+    }
     // Warm-up sets are priming only — never count toward progression or logging.
     const logged = (setsMap[ex.id] || []).filter((s) => !s.warmup)
     const tracksLoad = ex.load !== false

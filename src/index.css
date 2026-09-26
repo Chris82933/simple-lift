@@ -1405,6 +1405,46 @@ select.text-input { appearance: none; }
 .recovery-disclaimer { border-left: 3px solid var(--accent-4, var(--accent)); }
 .recovery-disclaimer p { margin: 0; }
 
+/* What a routine improves — a tight list, not prose. */
+.rehab-improves {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+/* "See someone instead if…" — deliberately the most visually distinct block
+   in the card. Uses --warn rather than the accent so it reads as caution, not
+   as another feature. */
+/* `.card.` here is load-bearing: the later `.notice` rule sets border-color on
+   all four sides, so a bare .rehab-redflags selector lost the caution colour. */
+.card.rehab-redflags {
+  border-left: 3px solid var(--warn);
+  gap: 6px;
+  padding: 14px 16px;
+}
+.rehab-redflags .group-label { color: var(--warn); }
+.rehab-redflag-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+.rehab-detail > summary {
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--muted);
+}
+.rehab-detail > summary:hover { color: var(--text); }
+.rehab-detail p { margin: 8px 0 0; }
+/* The rehab safety note, now shown mid-session too. */
+.card.session-note { border-left: 3px solid var(--warn); padding: 12px 14px; }
+.session-note p { margin: 0; }
+
 /* Light/dark switch shown to new users. */
 .theme-toggle { display: flex; flex-direction: column; gap: 6px; }
 .theme-toggle .seg { width: 100%; }

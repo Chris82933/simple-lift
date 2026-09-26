@@ -804,7 +804,11 @@ export default function Workout() {
     appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries, prs: newPrs, durationSec: sessionDurationSec, autoNotes: result.autoNotes })
     clearActiveSession() // session is logged — no longer resumable
     setPrs(newPrs)
-    setRmUpdates(oneRMUpdates)
+    // A rehab routine must not feed the strength maxes. A loaded glute bridge or
+    // wrist eccentric in a recovery session isn't a strength test, and letting it
+    // set a 1RM would skew every weight the app later recommends.
+    const rehabIds = new Set(exercises.filter((e) => e.rehab).map((e) => e.id))
+    setRmUpdates(oneRMUpdates.filter((u) => !rehabIds.has(u.exId)))
     setRmDone({})
     setFinishedAt(date)
     setDurationSec(sessionDurationSec)
@@ -1138,6 +1142,15 @@ export default function Workout() {
           <div className="progress-fill" style={{ width: `${(doneSets / Math.max(1, totalSets)) * 100}%` }} />
         </div>
         <p className="muted small">{doneSets} / {totalSets} sets done</p>
+        {/* A rehab day carries a note ("keep it pain-free, stop anything that
+            hurts"). It was only ever rendered on the Program overview page, so
+            the one place it actually matters — mid-session, with the exercise
+            in front of you — never showed it. */}
+        {session.note && (
+          <div className="card notice session-note">
+            <p className="muted small">{session.note}</p>
+          </div>
+        )}
         <div className="mode-row">
           <span className="muted small">Training at</span>
           <div className="seg seg-sm">

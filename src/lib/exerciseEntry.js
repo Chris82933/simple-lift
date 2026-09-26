@@ -28,6 +28,9 @@ const PROGRAM_FIELDS = [
   'sets', 'repLow', 'repHigh', 'restSec', 'startWeight', 'progression',
   'supersetNext', 'amrap', 'warmups', 'iso', 'adhoc', 'swappedFrom',
   'setWeights', 'setReps',
+  // Must survive a swap or a level change: dropping it would quietly re-enable
+  // progressive-overload suggestions on a rehab exercise.
+  'rehab',
 ]
 
 export function exerciseEntryFromLibrary(lib, overrides = {}) {
