@@ -68,6 +68,25 @@
     max-width: 68ch;
   }
 
+  /* Two columns ONLY while the session card is full-bleed, which is the 2-track
+     range below. Capping the list at 68ch stops the reps column drifting away
+     from the name, but in an 847px card that just parks 260px of empty card
+     beside it. Splitting the same rows into two 68ch-or-less columns fills the
+     card with the rows themselves, at the width they were designed for.
+     Multicol rather than grid: it flows column-major, so the session still
+     reads top-to-bottom in order, which a row-major grid would scramble. */
+  @media (max-width: 1399.98px) {
+    .page:not(.full-flow) > .card:has(> .mode-row) > .exercise-preview {
+      max-width: none;
+      display: block;
+      columns: 2;
+      column-gap: 28px;
+    }
+    .page:not(.full-flow) > .card:has(> .mode-row) > .exercise-preview li {
+      break-inside: avoid;
+    }
+  }
+
   /* A 1100px-wide "Start workout" button is not a more prominent button. */
   .page:not(.full-flow) > .card:has(> .mode-row) > .btn {
     align-self: start;
@@ -194,12 +213,39 @@
 }
 
 @media (min-width: 1024px) {
-  @media (min-width: 1600px) {
+  /* Three tracks the moment three card-width columns actually fit.
+     The sum: viewport - 250 (sidebar) - 15 (scrollbar gutter) - 48 (content
+     padding) - 40 (page padding). At 1400 that is ~1047, so three ~340px
+     columns — a card the same size as the one on the phone. Below it, two.
+     The old threshold was 1600, which never did anything useful: the content
+     column was capped at 860px at every viewport, so "three columns" meant
+     three 287px slivers. */
+  @media (min-width: 1400px) {
+    .page:not(.full-flow) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
     .page:has(> #backup-card) {
       columns: 3;
     }
-    .page:not(.full-flow):has(> .template-card) {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* At three columns the session card stops being full-bleed and becomes the
+     main panel of a dashboard: it takes two tracks, and the smaller cards
+     stack down the third. Full width was wrong here — the exercise list inside
+     it is capped at a readable 68ch, so spanning 1087px just parked 500px of
+     empty card next to it, which is exactly what makes a wide layout read as a
+     stretched phone.
+     `span 2` rows is what lets two cards stack alongside rather than one card
+     stretching to the session's full height. If the page ever renders fewer
+     small cards the spare cell is simply empty — it degrades, it doesn't
+     break. */
+  @media (min-width: 1400px) {
+    .page:not(.full-flow):has(> .card > .mode-row) {
+      align-items: start;
+    }
+    .page:not(.full-flow) > .card:has(> .mode-row) {
+      grid-column: span 2;
+      grid-row: span 3;
     }
   }
 }
