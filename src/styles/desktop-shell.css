@@ -29,19 +29,9 @@
     overflow: visible;
   }
 
-  /* The measure is sized around the CARD, not around prose. The phone card is
-     ~350px wide and every card in the app is designed at that width; three of
-     them side by side is what makes a desktop page read as a deliberate grid
-     of the same components rather than a stretched phone. So this cap is
-     "three mobile cards plus gutters", and the page grid below it divides into
-     columns that land back at roughly 350-400px.
-     860px (the old value) was a prose measure: it left ~160px of dead space on
-     either side at 1440 AND squeezed two columns down to 378px — narrower than
-     the 520px phone column, so cards came out smaller on a big screen than on
-     a phone. Long lines of text are capped individually where they occur. */
   .desktop-content {
     width: 100%;
-    max-width: 1260px;
+    max-width: 860px;
     margin: 0 auto;
     padding: 0 24px 72px;
   }
