@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt, loadBodyweight, updateWorkout, loadMaxes, currentBodyweight } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { exMeasure, musclesFor, matchesQuery, EXERCISE_BY_ID } from '../data/exercises.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
-import { prShort, sessionRecords } from '../lib/records.js'
+import { prShort, sessionRecords, buildSessionSummary } from '../lib/records.js'
 import { sessionsThisWeek, trainingStreakWeeks, weeklyCounts, volumeThisWeek, prTimeline } from '../lib/consistency.js'
 import ProgressChart from '../components/ProgressChart.jsx'
+import MuscleMap from '../components/MuscleMap.jsx'
+import { sessionMuscleHeat, describeHeat } from '../lib/muscleHeat.js'
+import { buildShareCard, shareImage, canShareImage } from '../lib/shareCard.js'
 import ExerciseDetail, { bestMarksForExercise } from '../components/ExerciseDetail.jsx'
 import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
@@ -113,6 +116,14 @@ const DIFF_LABELS = {
   easy: 'Easy', moderate: 'Moderate', hard: 'Hard', maxed: 'Maxed out',
 }
 const shortDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+// Same calendar day in LOCAL time. Workout and cardio records both store ISO
+// timestamps, so comparing the raw strings would split a late-evening session
+// from cardio logged minutes later on the other side of UTC midnight.
+const sameDay = (a, b) => {
+  const x = new Date(a)
+  const y = new Date(b)
+  return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate()
+}
 // U4: humane "48 min" / "1h 12m" formatting for a session's recorded
 // duration. Older history records won't have durationSec — callers only
 // render this when it's a positive number.
@@ -167,7 +178,7 @@ function CollapsibleCard({ title, subtitle, open, onToggle, children }) {
 // One session in the log. Collapsed it's a compact two-line summary; tapping it
 // opens the detail — per-exercise completion, PRs, rating, notes, and (opt-in)
 // every logged set.
-function SessionEntry({ workout, units, onDelete, onEditSaved }) {
+function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] }) {
   const [open, setOpen] = useState(false)
   const [showSets, setShowSets] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -184,6 +195,66 @@ function SessionEntry({ workout, units, onDelete, onEditSaved }) {
   // sessionReview.js's autoNotes) — may be absent on older records logged
   // before this existed, so it's always read defensively.
   const autoNotes = workout.autoNotes || []
+
+  // ---- Sharing a past session (same card the completion screen produces) ----
+  // The heatmap is rebuilt from the stored entries, so any logged session can be
+  // shared later, not just the one you've just finished.
+  const heat = useMemo(() => sessionMuscleHeat(entries), [entries])
+  const shareMapRef = useRef(null)
+  const [shareBlob, setShareBlob] = useState(null)
+  const [shareStatus, setShareStatus] = useState(null)
+
+  // Rendered only while the row is expanded, and built THEN rather than on the
+  // Share tap: Safari only allows navigator.share() inside a user gesture, so
+  // awaiting an async PNG inside the handler would lose it. Expanding a row is
+  // the natural moment to prepare. Building per-row on demand also avoids
+  // rendering a canvas for every session in a long log.
+  useEffect(() => {
+    if (!open || editing || Object.keys(heat).length === 0) return
+    const svg = shareMapRef.current?.querySelector('svg')
+    if (!svg) return
+    let cancelled = false
+    const doneSets = entries.reduce((n, e) => n + (e.sets || []).filter((r) => r.done && !r.warmup).length, 0)
+    const stats = [{ label: 'sets', value: doneSets }]
+    if (Number(workout.durationSec) > 0) stats.push({ label: 'time', value: formatDuration(workout.durationSec) })
+    if (volume > 0) stats.push({ label: units, value: Math.round(volume).toLocaleString() })
+    buildShareCard({
+      svgEl: svg,
+      title: workout.sessionTitle || 'Workout',
+      dateLabel: new Date(workout.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+      stats,
+      muscles: describeHeat(heat).replace(/^Muscles worked, most to least:\s*/i, ''),
+    })
+      .then((b) => { if (!cancelled) setShareBlob(b) })
+      .catch(() => { /* the card is a bonus — never break the log over it */ })
+    return () => { cancelled = true }
+  }, [open, editing, heat, entries, workout.durationSec, workout.sessionTitle, workout.date, volume, units])
+
+  const recapText = () => buildSessionSummary(
+    workout.sessionTitle || 'Workout',
+    entries,
+    { units, cardio: dayCardio },
+  )
+
+  // Mirrors the completion screen: photo targets (Strava, Instagram) drop shared
+  // text when a file is attached, so the recap is copied first — while still in
+  // the gesture — ready to paste into the post.
+  const shareSession = async () => {
+    if (!shareBlob) return
+    let copied = false
+    try { await navigator.clipboard.writeText(recapText()); copied = true } catch { /* clipboard blocked */ }
+    const how = await shareImage(shareBlob, {
+      filename: 'simple-lift-session.png',
+      title: workout.sessionTitle || 'Workout',
+      text: recapText(),
+    })
+    if (how === 'cancelled') return
+    setShareStatus(how === 'saved' ? (copied ? 'saved-copied' : 'saved') : (copied ? 'shared-copied' : 'shared'))
+  }
+
+  const copyRecap = async () => {
+    try { await navigator.clipboard.writeText(recapText()); setShareStatus('copied') } catch { setShareStatus('error') }
+  }
 
   // U4-1: there was previously no way to fix a mis-logged set short of
   // deleting the whole session (losing every other exercise logged that day).
@@ -321,6 +392,32 @@ function SessionEntry({ workout, units, onDelete, onEditSaved }) {
                 })}
               </div>
               {workout.notes && <p className="muted small log-note">{workout.notes}</p>}
+
+              {/* The heatmap doubles as what gets shared — the share card is
+                  rendered from this very SVG (see the effect above). */}
+              {Object.keys(heat).length > 0 && (
+                <div className="log-share">
+                  <div className="log-share-map" ref={shareMapRef}>
+                    <MuscleMap heat={heat} size={220} labels />
+                  </div>
+                  <p className="sr-only">{describeHeat(heat)}</p>
+                  <div className="log-share-actions">
+                    {shareBlob && (
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={shareSession}>
+                        <Icon name="share" size={13} /> {canShareImage(shareBlob) ? 'Share' : 'Save image'}
+                      </button>
+                    )}
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={copyRecap}>Copy recap</button>
+                  </div>
+                  {shareStatus === 'copied' && <p className="muted small"><span aria-hidden="true">✓</span> Recap copied — paste it wherever you like.</p>}
+                  {shareStatus === 'shared' && <p className="muted small"><span aria-hidden="true">✓</span> Shared.</p>}
+                  {shareStatus === 'shared-copied' && <p className="muted small"><span aria-hidden="true">✓</span> Image shared — the recap is on your clipboard, paste it into the description.</p>}
+                  {shareStatus === 'saved' && <p className="muted small"><span aria-hidden="true">✓</span> Image saved — post it from your photos.</p>}
+                  {shareStatus === 'saved-copied' && <p className="muted small"><span aria-hidden="true">✓</span> Image saved and the recap copied — post the photo, then paste the text.</p>}
+                  {shareStatus === 'error' && <p className="muted small">Couldn’t copy — long-press to select instead.</p>}
+                </div>
+              )}
+
               <div className="log-detail-actions">
                 <button type="button" className="log-toggle" onClick={() => setShowSets((s) => !s)}>
                   {showSets ? '▴ Hide every set' : '▾ Show every set'}
@@ -981,7 +1078,17 @@ export default function Progress() {
           onToggle={() => toggleCard('log')}
         >
           {history.slice(0, shownSessions).map((w, i) => (
-            <SessionEntry key={w.date || i} workout={w} units={units} onDelete={removeSession} onEditSaved={saveSessionEdit} />
+            <SessionEntry
+              key={w.date || i}
+              workout={w}
+              units={units}
+              onDelete={removeSession}
+              onEditSaved={saveSessionEdit}
+              /* History records don't store cardio (it lives in its own list),
+                 so match by calendar day to rebuild the same recap the
+                 completion screen produced on the day. */
+              dayCardio={cardio.filter((c) => sameDay(c.date, w.date))}
+            />
           ))}
           {history.length > shownSessions && (
             <button type="button" className="btn btn-ghost btn-sm show-more" onClick={() => setShownSessions((n) => n + PAGE)}>

@@ -2178,6 +2178,20 @@ select.text-input { appearance: none; }
 .log-summary-side { display: flex; align-items: center; gap: 8px; flex: none; }
 .log-detail { padding: 2px 0 12px; display: flex; flex-direction: column; gap: 8px; }
 .log-meta { display: flex; align-items: center; gap: 8px; }
+/* Sharing a past session from the log — the map here is the source the PNG is
+   rendered from, so it must stay on-screen while the row is expanded. */
+.log-share {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--border);
+}
+.log-share-map { line-height: 0; }
+.log-share-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.log-share > p { margin: 0; text-align: center; }
+
 .log-detail-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .show-more { width: 100%; margin-top: 8px; }
 
