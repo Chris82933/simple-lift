@@ -1,0 +1,418 @@
+/* Desktop: the ordinary pages.
+ *
+ * Every rule in this file lives inside `@media (min-width: 1024px)`. Below that
+ * the phone layout is the product and must not change by a single pixel.
+ *
+ * The shell agent owns the outer width/padding of .page and .app-main; this
+ * file only ever changes what happens INSIDE a page. Pages carry no route
+ * class, so the hooks here are either structural (`.page:not(.full-flow)` is
+ * exactly the six tabbed pages — every other screen is a full-screen flow) or
+ * a `:has()` on something only one page renders.
+ */
+
+/* ============================================================
+   Tabbed pages — two-column card grid
+   ============================================================
+   Today / Program / Programs / Templates / Progress are flat stacks of .card
+   siblings, which is why they read as a ribbon on a wide screen. Turning the
+   page itself into a grid is the only place the columns can come from: the
+   cards have no wrapper to grab.
+
+   `stretch` (the default) rather than `align-items: start` is deliberate —
+   these cards are bordered peers of similar weight, and equal-height rows read
+   as a deliberate grid where ragged bottoms read as a broken one. Profile,
+   whose cards are wildly uneven, opts out into multicol further down. */
+@media (min-width: 1024px) {
+  .page:not(.full-flow) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+  }
+
+  /* Anything that isn't a peer of the cards around it: page furniture, loose
+     prose, horizontal strips, and alerts (an alert squeezed into half a row
+     stops reading as an interruption). */
+  .page:not(.full-flow) > .page-header,
+  .page:not(.full-flow) > p,
+  .page:not(.full-flow) > .day-picker,
+  .page:not(.full-flow) > .filter-chips,
+  .page:not(.full-flow) > .focus-tabs,
+  .page:not(.full-flow) > .switch-row,
+  .page:not(.full-flow) > .placeholder-card,
+  .page:not(.full-flow) > .consistency-card,
+  .page:not(.full-flow) > .card.notice {
+    grid-column: 1 / -1;
+  }
+
+  /* The header's supporting line is prose; a 1100px measure is unreadable. */
+  .page:not(.full-flow) > .page-header .muted {
+    max-width: 62ch;
+  }
+}
+
+/* ============================================================
+   Today
+   ============================================================ */
+@media (min-width: 1024px) {
+  /* The session you're about to train is the hero — it keeps the full width
+     and the Tools / Trained / This-week cards pair off underneath it. The
+     `.mode-row` child is what identifies it; nothing else on Today has one. */
+  .page:not(.full-flow) > .card:has(> .mode-row) {
+    grid-column: 1 / -1;
+  }
+
+  /* Inside that full-width card the exercise list would otherwise stretch its
+     "3 × 8 reps" column a metre to the right of the exercise name. */
+  .page:not(.full-flow) > .card:has(> .mode-row) .exercise-preview,
+  .page:not(.full-flow) > .card:has(> .mode-row) > p {
+    max-width: 68ch;
+  }
+
+  /* A 1100px-wide "Start workout" button is not a more prominent button. */
+  .page:not(.full-flow) > .card:has(> .mode-row) > .btn {
+    align-self: start;
+    min-width: 260px;
+  }
+
+  /* The consistency strip pushes its link to the far right with margin-left:
+     auto; full-bleed that becomes two facts marooned from their own link. */
+  .consistency-card {
+    justify-content: start;
+  }
+  .consistency-card .consistency-link {
+    margin-left: 24px;
+  }
+}
+
+/* ============================================================
+   Programs / Program
+   ============================================================ */
+@media (min-width: 1024px) {
+  /* Program cards carry a head row plus an action row; side by side they need
+     the actions to stay on one line rather than wrapping at 3-across. */
+  .program-card-actions {
+    flex-wrap: wrap;
+  }
+
+  /* Program's three-button "manage" strip is a toolbar, not a stack — at half
+     width the 1 1 30% basis wrapped it into three rows. */
+  .switch-row .btn {
+    flex: 0 1 auto;
+    min-width: 150px;
+  }
+}
+
+/* ============================================================
+   Templates
+   ============================================================
+   Template cards are genuine peers and the single best 2-up candidate in the
+   app. They expand in place, so they get `start` alignment — a collapsed card
+   stretched to match an expanded neighbour looks like a rendering bug. */
+@media (min-width: 1024px) {
+  .page:not(.full-flow):has(> .template-card) {
+    align-items: start;
+  }
+
+  .template-card .proscons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 16px;
+  }
+}
+
+/* ============================================================
+   Progress
+   ============================================================
+   Charts want every pixel of width they can get, so the reorderable sections
+   stay full-bleed; only the dashboard summary cards above them pair off. The
+   inline `order` the layout editor writes works unchanged in a grid. */
+@media (min-width: 1024px) {
+  .page:has(> .progress-section) > .progress-section,
+  .page:has(> .progress-section) > .stat-tiles,
+  .page:has(> .progress-section) > .chart-range-card,
+  .page:has(> .progress-section) > .layout-editor {
+    grid-column: 1 / -1;
+  }
+
+  /* PR rows and session-log rows are short, uniform records — the densest
+     thing on the page and the worst served by one column. `:has(> .log-entry)`
+     keeps this off every other CollapsibleCard body in the app. */
+  .pr-timeline,
+  .collapse-body:has(> .log-entry),
+  .cardio-loglist {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 28px;
+    align-items: start;
+  }
+
+  /* "Show N more" is a footer for the whole list, not a list item. */
+  .collapse-body:has(> .log-entry) > .show-more {
+    grid-column: 1 / -1;
+  }
+
+  /* Four stat tiles across a full-width row leaves the numbers swimming. */
+  .stat-tiles {
+    max-width: 720px;
+  }
+}
+
+/* ============================================================
+   Profile / Settings
+   ============================================================
+   The longest page in the app, and the one case where a grid is the wrong
+   tool: its cards run from three lines (Units) to forty (During workouts), so
+   a grid row would be mostly empty card. Multicol packs them with no gaps and
+   the "read down one column, then the next" order is how a settings page is
+   scanned anyway.
+
+   `#backup-card` is the hook — it is unconditional, and Profile is the only
+   page with an id on a direct child. The id also wins the specificity contest
+   against the generic `.page:not(.full-flow)` grid above without !important. */
+@media (min-width: 1024px) {
+  .page:has(> #backup-card) {
+    display: block;
+    columns: 2;
+    column-gap: 20px;
+  }
+
+  .page:has(> #backup-card) > * {
+    /* Flex `gap` does not apply to a block container. */
+    margin-bottom: 16px;
+    break-inside: avoid;
+  }
+
+  .page:has(> #backup-card) > .page-header {
+    column-span: all;
+  }
+
+  /* Equipment and capacity lists are long enough to be worth splitting again
+     inside their own card. */
+  .cap-row {
+    max-width: 420px;
+  }
+}
+
+@media (min-width: 1024px) {
+  @media (min-width: 1600px) {
+    .page:has(> #backup-card) {
+      columns: 3;
+    }
+    .page:not(.full-flow):has(> .template-card) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+}
+
+/* ============================================================
+   Full-screen flows — inner grids
+   ============================================================
+   These pages (Onboarding, Schedule, Skills, CardioLog, 1RM, the wizards) keep
+   their single reading column; only the tile/choice groups inside them, which
+   were sized to two-across on a phone, get room to breathe. */
+@media (min-width: 1024px) {
+  .region-grid,
+  .machine-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .choice-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  /* Skills: the character sheet is a hero, the skill cards below it are peers. */
+  .step-body:has(> .char-sheet) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .step-body:has(> .char-sheet) > .char-sheet,
+  .step-body:has(> .char-sheet) > .notice,
+  .step-body:has(> .char-sheet) > .btn,
+  .step-body:has(> .char-sheet) > p {
+    grid-column: 1 / -1;
+  }
+  /* The "find my levels" button is the one action above the grid; full-bleed it
+     would be a 1000px target. */
+  .step-body:has(> .char-sheet) > .btn {
+    justify-self: start;
+    min-width: 260px;
+  }
+
+  /* 1RM: two-value rows ("85 kg · 5 reps") read as a table, and a table
+     stretched to the full flow width is all gutter. */
+  .result-card .weight-table,
+  .gz-lift-row,
+  .strength-row {
+    max-width: 460px;
+  }
+
+  /* Prose inside a flow that the shell has widened past a comfortable measure. */
+  .step-body > .card > p,
+  .step-body > .card > .muted {
+    max-width: 78ch;
+  }
+}
+
+/* ============================================================
+   Workout (live session)
+   ============================================================
+   Deliberately minimal: lifting at a desk is rare and the session screen is
+   tuned for one thumb. The only real desktop failure is width — a set row
+   stretched across 1000px puts the checkmark an eye-movement away from the
+   reps field it confirms. Cap the interactive strips; leave everything else. */
+@media (min-width: 1024px) {
+  .page.workout .set-table,
+  .page.workout .set-adjust,
+  .page.workout .rest-edit,
+  .page.workout .plate-line {
+    max-width: 520px;
+  }
+
+  .page.workout .cue,
+  .page.workout .suggestion,
+  .page.workout .last-time {
+    max-width: 72ch;
+  }
+
+  /* Session-complete screen: the heatmap is the one thing there worth more
+     pixels, but only a little — it is a silhouette, not a chart. */
+  .page.full-flow .muscles-worked .muscle-map {
+    max-width: 360px;
+  }
+}
+
+/* ============================================================
+   Dialogs
+   ============================================================
+   All of these are phone shapes: the picker is a top-anchored sheet with only
+   its bottom corners rounded (so it can sit under a notch and above a
+   keyboard), and the others are capped near 460px. On a desktop a sheet welded
+   to the top edge reads as a broken modal. */
+@media (min-width: 1024px) {
+  .picker-overlay {
+    align-items: center;
+    padding: 32px;
+  }
+
+  .picker-sheet {
+    max-width: 640px;
+    max-height: min(78dvh, 760px);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .info-sheet {
+    width: min(92vw, 520px);
+  }
+
+  .detail-sheet {
+    width: min(92vw, 580px);
+    max-height: 80vh;
+  }
+}
+
+/* ============================================================
+   Pointer affordances
+   ============================================================
+   The phone UI has no hover state at all, so on desktop every interactive
+   surface looks inert until it is clicked. Kept to a border/tint shift —
+   nothing moves, because half of these sit in dense lists where a transform
+   would make the whole page twitch. `(hover: hover)` keeps it away from
+   touchscreen laptops, where a sticky :hover outlives the tap. */
+@media (min-width: 1024px) {
+  @media (hover: hover) {
+    /* Clickable cards (Today's consistency link, the welcome choices, the
+       program/template cards). A plain .card is not clickable, so this is
+       matched on the element rather than the class. */
+    a.card:hover,
+    button.card:hover,
+    .template-card:has(> .template-summary:hover) {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    }
+
+    .chip:hover:not(.is-selected),
+    .check-pill:hover:not(.is-selected),
+    .focus-tab:hover:not(.is-selected),
+    .region-tile:hover:not(.is-selected),
+    .legend-item:not(.static):hover {
+      border-color: var(--accent);
+    }
+
+    .choice-row:hover:not(.is-selected),
+    .path-card:hover,
+    .picker-item:hover:not(.is-added):not(.create-custom),
+    .machine-chip:hover,
+    button.detail-stat:hover {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
+    }
+
+    .picker-item.create-custom:hover {
+      border-color: var(--accent);
+    }
+
+    /* Rows without a border of their own get a tint instead, bled slightly
+       past the row box so it reads as a highlight rather than a new element. */
+    .log-summary:hover,
+    .ex-history-row:hover {
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      border-radius: var(--radius-xs);
+    }
+
+    .seg-item:hover:not(.is-selected) {
+      color: var(--text);
+      background: var(--surface-2);
+    }
+
+    .icon-btn:hover:not(:disabled),
+    .set-check:hover,
+    .set-stepper-btn:hover,
+    .rep-stepper button:hover,
+    .stepper-controls button:hover,
+    .rest-stepper button:hover,
+    .set-adjust button:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .collapse-head:hover .collapse-title,
+    .template-summary:hover .day-title,
+    .log-summary:hover .log-summary-title {
+      color: var(--accent-text);
+    }
+
+    .btn.danger:hover:not(:disabled) {
+      border-color: var(--accent-2);
+      background: color-mix(in srgb, var(--accent-2) 10%, transparent);
+    }
+
+    .link-btn:hover,
+    .toast-action:hover,
+    .skill-remove:hover {
+      text-decoration: underline;
+    }
+
+    /* Everything above is a colour change, so one shared transition covers it
+       and nothing inherits a transition it never uses. */
+    .chip,
+    .check-pill,
+    .choice-row,
+    .focus-tab,
+    .region-tile,
+    .picker-item,
+    .machine-chip,
+    .log-summary,
+    .ex-history-row,
+    .path-card,
+    .icon-btn,
+    .legend-item,
+    a.card,
+    button.card {
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+  }
+}

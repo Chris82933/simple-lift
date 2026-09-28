@@ -1,0 +1,181 @@
+/* Desktop shell: persistent left sidebar + centered content column.
+ *
+ * Everything in this file is inside the single media block below. Nothing may
+ * be added outside it — see the note in desktop.css.
+ */
+
+@media (min-width: 1024px) {
+  /* Reserve the scrollbar track always, so moving between a short page (Profile)
+     and a long one (Progress) doesn't shift the whole layout sideways. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  /* The phone shell is a 520px column; the desktop shell is the whole window,
+     with the measure re-established further in on .desktop-content. */
+  .app-shell {
+    max-width: none;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .app-main {
+    flex: 1;
+    min-width: 0;
+    /* Mobile reserves 104px for the floating pill. There is no pill here. */
+    padding-bottom: 0;
+    /* Lets page-level sticky bars (.flow-actions) stick to the viewport rather
+       than to a scroll container that never actually scrolls. */
+    overflow: visible;
+  }
+
+  .desktop-content {
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px 72px;
+  }
+
+  /* ---- Sidebar ---- */
+  .desktop-nav {
+    flex: 0 0 250px;
+    align-self: flex-start;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 28px 16px 24px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+  }
+
+  .desktop-nav-wordmark {
+    margin: 0 0 20px;
+    padding: 0 10px;
+    font-size: var(--fs-lg);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+
+  .desktop-nav-heading {
+    margin: 22px 0 6px;
+    padding: 16px 10px 0;
+    border-top: 1px solid var(--hairline);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: var(--fs-2xs);
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .desktop-nav-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .desktop-nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 10px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    /* Not --muted. On the phone the nav pill's labels are 11px captions under
+       an icon, read at arm's length off a bright screen; here they are the
+       primary navigation of the whole app and the only thing labelling each
+       destination. --muted lands at 3.3:1 on --surface, under the 4.5:1 AA
+       floor for 15px text in BOTH themes. Mixing toward --text instead keeps
+       the quiet, unselected feel while clearing it comfortably. */
+    color: color-mix(in srgb, var(--text) 72%, var(--surface));
+    font-size: var(--fs-md);
+    font-weight: 650;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  /* The phone UI has no hover states at all, so the whole affordance is new
+     here — keep it quiet enough that it reads as feedback, not selection. */
+  .desktop-nav-link:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  /* Accent as a 3px rail plus a tint, not as the label colour: --accent-text on
+     --selected-tint is only ~3.6:1. The rail and the icon carry the colour
+     signal (non-text UI, which needs 3:1), and the label gets full --text. */
+  .desktop-nav-link.is-active {
+    background: var(--selected-tint);
+    color: var(--text);
+  }
+  .desktop-nav-link.is-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 18px;
+    transform: translateY(-50%);
+    border-radius: 0 2px 2px 0;
+    background: var(--accent);
+  }
+  .desktop-nav-link.is-active .nav-icon { color: var(--accent-text); }
+
+  /* Inset the ring: a 2px outline offset outward is clipped by the sidebar's
+     own overflow-y: auto. */
+  .desktop-nav-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .desktop-nav .nav-icon {
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+
+  .desktop-nav-label {
+    min-width: 0;
+  }
+
+  /* ---- Full-screen flows ---- */
+  /* Two shapes to match, and the scoping in both is load-bearing:
+       #root > .page.full-flow   — /workout and /onboarding, which render with
+                                   no shell at all
+       .flow-shell ...           — the tools FlowLayout wraps (/builder and co)
+     Neither may be loosened to a bare `.page.full-flow`: that class is also
+     used INSIDE AppLayout for in-shell empty states (Today with no program,
+     src/pages/Today.jsx), which must keep the measure set by .desktop-content. */
+  #root > .page.full-flow,
+  .flow-shell > .app-main > .page.full-flow {
+    width: 100%;
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 48px 32px 64px;
+  }
+
+  /* ---- Viewport-fixed overlays ---- */
+  /* The toast, the rest timer and the saved-flash are `left: 50%` — centred on
+     the window, which was the same thing as centred on the content until a
+     250px sidebar appeared to the left of it. Shift them by half the sidebar so
+     they line up with the column they belong to. `:has` keeps this honest: the
+     offset applies exactly on the pages that actually render a sidebar, which
+     is neither "all desktop pages" (/workout has none) nor a fixed list some
+     future route would silently fall off. */
+  body:has(.desktop-nav) {
+    --nav-offset: 250px;
+  }
+  .toast,
+  .saved-flash,
+  .rest-timer,
+  .rest-timers {
+    left: calc(50% + var(--nav-offset, 0px) / 2);
+  }
+}

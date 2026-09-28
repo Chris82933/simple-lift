@@ -1,0 +1,11 @@
+/* Desktop layer — loaded AFTER index.css so these rules win specificity ties.
+ *
+ * THE RULE FOR THIS DIRECTORY: every selector in src/styles/desktop-*.css must
+ * sit inside `@media (min-width: 1024px)`. The phone layout is the product;
+ * this layer is an addition to it, and a rule that leaks out of the media query
+ * changes the phone. The breakpoint is mirrored in src/lib/useMediaQuery.js as
+ * DESKTOP_QUERY — change one and you must change the other.
+ */
+@import './desktop-shell.css';
+@import './desktop-pages.css';
+@import './desktop-builder.css';

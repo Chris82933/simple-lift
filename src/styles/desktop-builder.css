@@ -1,0 +1,374 @@
+/* Desktop program workspace (/builder).
+ *
+ * EVERY rule in this file sits inside the one `@media (min-width: 1024px)`
+ * block below — no exceptions. The phone builder is the product; this layer
+ * only exists above 1024px, which is the same threshold BuilderDesktop is
+ * mounted at (DESKTOP_QUERY in src/lib/useMediaQuery.js). A selector that
+ * escapes the media query changes the phone, which is the one thing this
+ * feature is not allowed to do.
+ *
+ * All colour comes from the tokens at the top of src/index.css. There is a
+ * light theme; a hardcoded hex breaks it.
+ */
+@media (min-width: 1024px) {
+  /* ---- Page frame -------------------------------------------------------
+     The workspace owns the viewport: three panes that each scroll on their
+     own, with the action bar pinned below them. Scrolling the page as a whole
+     is exactly the phone problem this view exists to remove. */
+  /* Specificity, deliberately: desktop-shell.css gives every full-screen flow
+     (`#root > .page.full-flow`) a centred 820px measure, which is right for a
+     one-column flow like /one-rep-max and exactly wrong for a workspace that
+     wants the whole window. Matching that selector and adding our own class is
+     how this page opts out without editing a file it does not own. */
+  #root > .page.full-flow.dtb-page,
+  .flow-shell > .app-main > .page.full-flow.dtb-page {
+    max-width: none;
+    width: 100%;
+    height: 100dvh;
+    padding: 20px 24px 0;
+    display: grid;
+    /* Declared, not inherited: desktop-pages.css turns ordinary pages into a
+       two-column grid, and leaving the track list unset here let this page
+       pick that up and drop the workspace into half the window. `full-flow`
+       on the section is the other half of the opt-out. */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 14px;
+  }
+
+  .dtb-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .dtb-head h1 {
+    margin: 0;
+    font-size: var(--fs-xl);
+  }
+  .dtb-head .eyebrow { margin: 0; }
+
+  .dtb-grid {
+    display: grid;
+    /* Fixed rails, elastic middle: the day table is the thing that benefits
+       from extra pixels, the settings and the library do not. */
+    grid-template-columns: 260px minmax(0, 1fr) 330px;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .dtb-pane {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .dtb-pane-center {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ---- Left pane: program identity ---- */
+  .dtb-program .group-label { margin-top: 18px; }
+  .dtb-program .group-label:first-child { margin-top: 0; }
+  .dtb-field { display: block; }
+  .dtb-field .group-label { display: block; margin-top: 0; }
+  /* desktop-pages.css lays .choice-list out in columns, which is right for a
+     full-width page and too wide for a 260px rail — the progression cards end
+     up with their own horizontal scrollbar. Inside this pane they stack. */
+  .dtb-program .choice-list {
+    display: flex;
+    flex-direction: column;
+    /* Restated: the grid rule this overrides also sets `align-items: start`,
+       which in a flex column shrink-wraps each card to its text and pushes the
+       widest one past the rail. */
+    align-items: stretch;
+    gap: 8px;
+  }
+  .dtb-program .choice-row { text-align: left; min-width: 0; }
+  /* "Double progression" + the RECOMMENDED badge is wider than the rail on one
+     line, and an inline badge gives the browser nowhere to break. */
+  .dtb-program .choice-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+  .dtb-program .rec-badge { margin-left: 0; }
+  .dtb-program .proscons { min-width: 0; }
+  .dtb-program li { overflow-wrap: anywhere; }
+
+  /* ---- Week strip: every training day at a glance ---- */
+  .dtb-week-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 4px;
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+  }
+  .dtb-day-tile {
+    flex: 0 0 auto;
+    width: 138px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.12s ease, background 0.12s ease;
+  }
+  .dtb-day-tile.is-selected {
+    border-color: var(--accent);
+    background: var(--selected-tint);
+    box-shadow: var(--shadow-sm);
+  }
+  .dtb-day-tile.is-dragging { opacity: 0.45; }
+  /* The drop marker is a border, not a gap: reflowing the strip mid-drag makes
+     the tile you are aiming at move away from the cursor. */
+  .dtb-day-tile.is-drop-target { border-color: var(--accent); border-style: dashed; }
+
+  .dtb-day-tile-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 8px 6px;
+    background: none;
+    border: 0;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+  .dtb-day-tile-main:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .dtb-tile-weekday {
+    font-size: var(--fs-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .dtb-tile-name {
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  .dtb-tile-tools {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 4px;
+    border-top: 1px solid var(--border);
+  }
+  .dtb-day-add .dtb-day-tile-main { justify-content: center; color: var(--muted); }
+  .dtb-add-plus { font-size: var(--fs-2xl); line-height: 1; }
+
+  .dtb-grip {
+    cursor: grab;
+    color: var(--muted);
+    padding: 0 4px;
+    user-select: none;
+  }
+  .dtb-grip:active { cursor: grabbing; }
+
+  /* ---- Centre pane: the selected day ---- */
+  .dtb-day-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dtb-day-title { flex: 1; font-size: var(--fs-lg); font-weight: 600; }
+  .dtb-day-weekday { width: 130px; }
+  .dtb-warn { color: var(--warn); margin: 0; }
+  .dtb-empty, .dtb-empty-day { padding: 24px 4px; }
+
+  .dtb-table-wrap { overflow-x: auto; }
+  .dtb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-sm);
+  }
+  .dtb-table thead th {
+    text-align: left;
+    font-size: var(--fs-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 0 4px 6px;
+    border-bottom: 1px solid var(--border);
+    /* The header has to survive a long session scrolling past it — that is the
+       whole reason the numbers are in columns. */
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 1;
+  }
+  .dtb-rowgroup { border-bottom: 1px solid var(--border); }
+  .dtb-rowgroup.in-superset { background: var(--surface-2); }
+  .dtb-rowgroup.is-drop-target .dtb-row > td { box-shadow: inset 0 2px 0 var(--accent); }
+  .dtb-row.is-dragging { opacity: 0.45; }
+  .dtb-row > td { padding: 6px 4px; vertical-align: middle; }
+
+  .dtb-table input[type='number'] {
+    width: 100%;
+    min-width: 46px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    color: var(--text);
+    font: inherit;
+    padding: 6px;
+    text-align: center;
+  }
+  .dtb-rowgroup.in-superset input[type='number'] { background: var(--surface); }
+  .dtb-table input[type='number']:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+  }
+  /* Invalid numbers are marked, never corrected — exerciseErrors blocks Save
+     and the note row underneath says what is wrong. */
+  .dtb-table input.is-invalid { border-color: var(--accent-2); }
+
+  .dtb-c-grip { width: 24px; }
+  .dtb-c-name { min-width: 170px; }
+  /* The cell stays a real table-cell so the column keeps its width; the flex
+     row lives one level in. */
+  .dtb-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dtb-name-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .dtb-ladder { display: flex; align-items: center; gap: 4px; }
+  .dtb-c-wt { white-space: nowrap; }
+  .dtb-wt { display: flex; align-items: center; gap: 4px; }
+  .dtb-est {
+    background: none;
+    border: 0;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: var(--fs-md);
+    padding: 0 2px;
+  }
+  /* The options cell wraps rather than forcing the table wider than its pane:
+     a horizontal scrollbar under the numbers defeats the point of columns. */
+  .dtb-c-opts { width: 190px; white-space: normal; }
+  .dtb-c-move { width: 1%; white-space: nowrap; text-align: right; }
+
+  .dtb-chip {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: var(--fs-2xs);
+    padding: 3px 9px;
+    margin: 0 4px 3px 0;
+  }
+  .dtb-chip.is-on {
+    background: var(--selected-tint);
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .dtb-linkbtn {
+    background: none;
+    border: 0;
+    color: var(--accent-text);
+    cursor: pointer;
+    font-size: var(--fs-2xs);
+    padding: 3px 4px;
+    text-decoration: underline;
+  }
+
+  .dtb-row-note > td { padding: 0 6px 6px 38px; }
+  .dtb-row-note p { margin: 0; }
+  .dtb-row-link > td { padding: 0 6px 6px 38px; }
+
+  .dtb-day-muscles {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .dtb-cardio {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+  .dtb-cardio-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: var(--fs-2xs);
+    color: var(--muted);
+  }
+  .dtb-cardio-field input {
+    width: 90px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    color: var(--text);
+    font: inherit;
+    padding: 6px;
+  }
+  .dtb-cardio .cardio-machine-select { width: 180px; }
+  .dtb-day-actions { display: flex; gap: 8px; }
+
+  /* ---- Right pane: the always-open library ---- */
+  .dtb-library {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    min-height: 0;
+  }
+  .dtb-library .group-label { margin: 0; }
+  .dtb-library-target { margin: 0; }
+  /* Library rows are laid out for a full-width sheet on the phone, where the
+     name and the "compound · bodyweight" tag sit on one line with room to
+     spare. In a narrow rail they fight over the same ~180px and the name loses
+     — `overflow-wrap: anywhere` then breaks it mid-word ("Barbell Back Sq uat").
+     Stack them instead: the tag moves to its own line under the name, so the
+     name gets the full column and wraps at spaces like ordinary text. */
+  .dtb-library .picker-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 1px;
+  }
+  .dtb-library .picker-item > .muscle-map-compact { grid-area: 1 / 1 / span 2 / 2; }
+  .dtb-library .picker-item > .ex-name { grid-area: 1 / 2; min-width: 0; }
+  .dtb-library .picker-item > .muted { grid-area: 2 / 2; }
+  .dtb-library .picker-item > .add-plus { grid-area: 1 / 3 / span 2 / 4; }
+  .dtb-library-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* ---- Sticky action bar ---- */
+  .dtb-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0 16px;
+    border-top: 1px solid var(--border);
+  }
+  .dtb-status {
+    flex: 1;
+    font-size: var(--fs-sm);
+    color: var(--muted);
+  }
+  .dtb-status.is-blocked { color: var(--warn); }
+}

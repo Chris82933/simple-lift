@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import AppLayout from './components/AppLayout.jsx'
+import FlowLayout from './components/FlowLayout.jsx'
 import Today from './pages/Today.jsx'
 import Program from './pages/Program.jsx'
 import Programs from './pages/Programs.jsx'
@@ -20,17 +21,25 @@ import Workout from './pages/Workout.jsx'
 export default function App() {
   return (
     <Routes>
-      {/* Full-screen flows (no bottom nav) */}
+      {/* Genuinely modal: these two take over the screen on every size.
+          Onboarding is a one-way setup flow, and nav chrome mid-set is a
+          distraction you don't want during a workout. */}
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/workout" element={<Workout />} />
-      <Route path="/builder" element={<Builder />} />
-      <Route path="/schedule" element={<Schedule />} />
-      <Route path="/one-rep-max" element={<OneRepMax />} />
-      <Route path="/cardio" element={<CardioLog />} />
-      <Route path="/skills" element={<Skills />} />
-      <Route path="/gzclp" element={<GzclpWizard />} />
-      <Route path="/import-program" element={<ImportProgram />} />
-      <Route path="/recovery" element={<Recovery />} />
+
+      {/* Full-screen flows (no bottom nav on mobile). FlowLayout renders
+          nothing on a phone, so these stay exactly as they were; on a desktop
+          it puts the sidebar back so a tool isn't a dead end. */}
+      <Route element={<FlowLayout />}>
+        <Route path="/builder" element={<Builder />} />
+        <Route path="/schedule" element={<Schedule />} />
+        <Route path="/one-rep-max" element={<OneRepMax />} />
+        <Route path="/cardio" element={<CardioLog />} />
+        <Route path="/skills" element={<Skills />} />
+        <Route path="/gzclp" element={<GzclpWizard />} />
+        <Route path="/import-program" element={<ImportProgram />} />
+        <Route path="/recovery" element={<Recovery />} />
+      </Route>
 
       {/* Main app shell with bottom navigation */}
       <Route element={<AppLayout />}>
