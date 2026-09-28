@@ -1,4 +1,4 @@
-import { useIsDesktop } from '../lib/useMediaQuery.js'
+import { useIsWorkspace } from '../lib/useMediaQuery.js'
 import useProgramDraft from '../components/builder/useProgramDraft.js'
 import BuilderMobile from '../components/builder/BuilderMobile.jsx'
 import BuilderDesktop from '../components/builder/BuilderDesktop.jsx'
@@ -9,6 +9,8 @@ import BuilderDesktop from '../components/builder/BuilderDesktop.jsx'
 // the superset/validation/rotation-pointer rules to fall out of sync.
 export default function Builder() {
   const draft = useProgramDraft()
-  const isDesktop = useIsDesktop()
-  return isDesktop ? <BuilderDesktop d={draft} /> : <BuilderMobile d={draft} />
+  // Not useIsDesktop: the three-pane workspace needs more width than the rest
+  // of the desktop layout does. See WORKSPACE_QUERY.
+  const isWorkspace = useIsWorkspace()
+  return isWorkspace ? <BuilderDesktop d={draft} /> : <BuilderMobile d={draft} />
 }

@@ -1,16 +1,19 @@
 /* Desktop program workspace (/builder).
  *
- * EVERY rule in this file sits inside the one `@media (min-width: 1024px)`
+ * EVERY rule in this file sits inside the one `@media (min-width: 1440px)`
  * block below — no exceptions. The phone builder is the product; this layer
- * only exists above 1024px, which is the same threshold BuilderDesktop is
- * mounted at (DESKTOP_QUERY in src/lib/useMediaQuery.js). A selector that
- * escapes the media query changes the phone, which is the one thing this
- * feature is not allowed to do.
+ * only exists above 1440px, which is the same threshold BuilderDesktop is
+ * mounted at (WORKSPACE_QUERY in src/lib/useMediaQuery.js) — a HIGHER bar than
+ * the rest of the desktop layer, because three panes plus the sidebar need the
+ * room. Change one and you must change the other, or the workspace renders
+ * with column-editor styling at some window width. A selector that escapes the
+ * media query changes the phone, which is the one thing this feature is not
+ * allowed to do.
  *
  * All colour comes from the tokens at the top of src/index.css. There is a
  * light theme; a hardcoded hex breaks it.
  */
-@media (min-width: 1024px) {
+@media (min-width: 1440px) {
   /* ---- Page frame -------------------------------------------------------
      The workspace owns the viewport: three panes that each scroll on their
      own, with the action bar pinned below them. Scrolling the page as a whole
@@ -51,7 +54,13 @@
     display: grid;
     /* Fixed rails, elastic middle: the day table is the thing that benefits
        from extra pixels, the settings and the library do not. */
-    grid-template-columns: 260px minmax(0, 1fr) 330px;
+    /* Fixed rails, elastic middle. The numbers matter: the page also carries a
+       250px sidebar, and the middle has to clear the exercise table's ~520px
+       minimum. Measured: these rails put the table exactly at its minimum in a
+       1400px window, which is why WORKSPACE_QUERY sits at 1440. Widening
+       either rail moves that floor up and the table starts scrolling sideways
+       inside its own pane. */
+    grid-template-columns: 210px minmax(0, 1fr) 280px;
     gap: 14px;
     min-height: 0;
   }
@@ -101,13 +110,18 @@
   .dtb-program li { overflow-wrap: anywhere; }
 
   /* ---- Week strip: every training day at a glance ---- */
+  /* Wraps rather than scrolls. Seven 138px tiles need ~1030px and the centre
+     pane is ~409px at the 1280px floor, so a horizontal scroller here is not a
+     rare edge case — it is the normal seven-day program. A second row of tiles
+     still shows the whole week at a glance; a sideways scrollbar hides half of
+     it behind a gesture. */
   .dtb-week-list {
     list-style: none;
     margin: 0;
     padding: 0 0 4px;
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
-    overflow-x: auto;
   }
   .dtb-day-tile {
     flex: 0 0 auto;
@@ -186,10 +200,28 @@
   .dtb-warn { color: var(--warn); margin: 0; }
   .dtb-empty, .dtb-empty-day { padding: 24px 4px; }
 
-  .dtb-table-wrap { overflow-x: auto; }
+  /* No overflow-x here on purpose. It used to be a safety valve for a table
+     that could outgrow its pane, but `table-layout: fixed` below means the
+     table divides the width it is given and can never exceed it. With the
+     valve in place Chrome still reported the box as 2px over — enough for a
+     15px scrollbar under content that fits — and no descendant was actually
+     overflowing. Leaving it `visible` removes the last horizontal scrollbar in
+     the app. If a column ever does need to overflow, fix the column. */
+  .dtb-table-wrap { min-width: 0; }
   .dtb-table {
     width: 100%;
-    border-collapse: collapse;
+    /* `fixed`, and this is load-bearing. Under `auto` the columns are sized
+       from content and their rounded widths summed to 620.02px inside a 620px
+       box — two hundredths of a pixel, which the wrapper's overflow-x turned
+       into a full 15px scrollbar beneath a table that visually fit perfectly.
+       Fixed layout divides the declared width instead of measuring content, so
+       the columns always sum to exactly 100% and the table can never force a
+       horizontal scrollbar, whatever is typed into it.
+       The trade is that content no longer widens a column, which is why the
+       name column has an explicit share and its text is allowed to wrap. */
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: var(--fs-sm);
   }
   .dtb-table thead th {
@@ -216,7 +248,11 @@
 
   .dtb-table input[type='number'] {
     width: 100%;
-    min-width: 46px;
+    /* Five of these sit side by side, so every pixel here costs five in the
+       table's minimum width — which is what decides the window size the
+       workspace needs. 44px still shows a 3-digit rest value ("180") without
+       clipping. */
+    min-width: 44px;
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-xs);
@@ -234,8 +270,38 @@
      and the note row underneath says what is wrong. */
   .dtb-table input.is-invalid { border-color: var(--accent-2); }
 
-  .dtb-c-grip { width: 24px; }
-  .dtb-c-name { min-width: 170px; }
+  /* The per-exercise tools row: toggles left, row actions right. It sits under
+     the numbers rather than in two more table columns — see the note in
+     DesktopDayEditor for why that width mattered so much. */
+  .dtb-row-tools > td { padding: 0 4px 8px; }
+  .dtb-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .dtb-tools-opts {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .dtb-tools-move {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+  }
+
+  .dtb-c-grip { width: 26px; }
+  /* A share, not a floor — see table-layout: fixed above. 26% is about
+     "Barbell Row" on one line at the narrowest supported window; longer names
+     wrap onto a second line rather than widening the table. */
+  .dtb-c-name { width: 26%; }
+  /* A single long word (a custom exercise name with no spaces) would otherwise
+     be the one thing that can still push a fixed column. */
+  .dtb-table .ex-name { overflow-wrap: anywhere; }
   /* The cell stays a real table-cell so the column keeps its width; the flex
      row lives one level in. */
   .dtb-name-cell {

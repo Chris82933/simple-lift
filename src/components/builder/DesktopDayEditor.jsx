@@ -122,34 +122,48 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
             <span className="muted small">–</span>
           )}
         </td>
-        <td className="dtb-c-opts">
-          {ex.load && measure.type === 'reps' &&
-            chip(ex.warmups, 'Warm-up', () => d.updateExercise(di, ei, { warmups: ex.warmups ? undefined : true }), 'Ramp-up sets before the working sets')}
-          {measure.type === 'reps' &&
-            chip(ex.amrap, 'AMRAP', () => d.updateExercise(di, ei, { amrap: ex.amrap ? undefined : true }), 'Push the last set for max reps')}
-          {/* Uses the BASE exercise's measure so the chip stays visible to toggle
-              back off once the entry has become a timed hold. */}
-          {exMeasure({ id: ex.id }).type === 'reps' &&
-            chip(ex.iso, 'Iso', () => d.toggleIso(di, ei), 'Hold for time instead of reps')}
-          <button type="button" className="dtb-linkbtn" onClick={() => d.applyRecommended(di, ei)} title={`Reset to the recommended setup for this goal${ex.load ? ', weight from your 1RM' : ''}`}>
-            Recommended
-          </button>
-        </td>
-        <td className="dtb-c-move">
-          <button type="button" className="icon-btn" disabled={ei === 0} onClick={() => d.moveExercise(di, ei, -1)} aria-label={`Move ${ex.name} up`}>
-            <span aria-hidden="true">▲</span>
-          </button>
-          <button type="button" className="icon-btn" disabled={ei === count - 1} onClick={() => d.moveExercise(di, ei, 1)} aria-label={`Move ${ex.name} down`}>
-            <span aria-hidden="true">▼</span>
-          </button>
-          <button type="button" className="icon-btn" onClick={() => d.removeExercise(di, ei)} aria-label={`Remove ${ex.name}`}>
-            <span aria-hidden="true">✕</span>
-          </button>
+      </tr>
+      {/* Toggles and row actions live under the numbers, not beside them.
+          Two more columns cost ~195px of the table's minimum width, which is
+          what decides the window size the whole workspace needs — and they are
+          the two columns that do NOT want to line up down the table. The
+          numbers keep their grid; these keep their labels. */}
+      <tr className="dtb-row-tools">
+        <td colSpan={7}>
+          {/* The flex row is a wrapper INSIDE the cell, not the cell itself:
+              `display: flex` on a <td> drops it out of the table layout and the
+              column collapses, which stacks every chip vertically. */}
+          <span className="dtb-tools">
+          <span className="dtb-tools-opts">
+            {ex.load && measure.type === 'reps' &&
+              chip(ex.warmups, 'Warm-up', () => d.updateExercise(di, ei, { warmups: ex.warmups ? undefined : true }), 'Ramp-up sets before the working sets')}
+            {measure.type === 'reps' &&
+              chip(ex.amrap, 'AMRAP', () => d.updateExercise(di, ei, { amrap: ex.amrap ? undefined : true }), 'Push the last set for max reps')}
+            {/* Uses the BASE exercise's measure so the chip stays visible to toggle
+                back off once the entry has become a timed hold. */}
+            {exMeasure({ id: ex.id }).type === 'reps' &&
+              chip(ex.iso, 'Iso', () => d.toggleIso(di, ei), 'Hold for time instead of reps')}
+            <button type="button" className="dtb-linkbtn" onClick={() => d.applyRecommended(di, ei)} title={`Reset to the recommended setup for this goal${ex.load ? ', weight from your 1RM' : ''}`}>
+              Recommended
+            </button>
+          </span>
+          <span className="dtb-tools-move">
+            <button type="button" className="icon-btn" disabled={ei === 0} onClick={() => d.moveExercise(di, ei, -1)} aria-label={`Move ${ex.name} up`}>
+              <span aria-hidden="true">▲</span>
+            </button>
+            <button type="button" className="icon-btn" disabled={ei === count - 1} onClick={() => d.moveExercise(di, ei, 1)} aria-label={`Move ${ex.name} down`}>
+              <span aria-hidden="true">▼</span>
+            </button>
+            <button type="button" className="icon-btn" onClick={() => d.removeExercise(di, ei)} aria-label={`Remove ${ex.name}`}>
+              <span aria-hidden="true">✕</span>
+            </button>
+          </span>
+          </span>
         </td>
       </tr>
       {Object.keys(errs).length > 0 && (
         <tr className="dtb-row-note">
-          <td colSpan={9}>
+          <td colSpan={7}>
             {/* Inline validation, never a silent substitution — canSave stays
                 false while any of these are present (see exerciseErrors). */}
             <p className="muted small import-error">
@@ -164,7 +178,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
       )}
       {ex.iso && (
         <tr className="dtb-row-note">
-          <td colSpan={9}>
+          <td colSpan={7}>
             <p className="muted small">
               Held for time (in seconds){ex.load ? ' at a fixed weight' : ''} — default 4 × 30 sec, 3-min rest.
               {isoHoldFor(ex.id) && <> <strong>Where to hold:</strong> {isoHoldFor(ex.id)}</>}
@@ -174,7 +188,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
       )}
       {ei < count - 1 && (
         <tr className="dtb-row-link">
-          <td colSpan={9}>
+          <td colSpan={7}>
             <button
               type="button"
               className={'superset-link' + (ex.supersetNext ? ' is-on' : '')}
@@ -263,8 +277,6 @@ export default function DesktopDayEditor({ d, di, info }) {
                 <th>Max{allReps ? ' reps' : ''}</th>
                 <th>Rest s</th>
                 <th>Start wt</th>
-                <th className="dtb-c-opts">Options</th>
-                <th className="dtb-c-move"><span className="sr-only">Move or remove</span></th>
               </tr>
             </thead>
             {day.exercises.map((ex, ei) => (

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { act } from 'react'
-import { useIsDesktop, DESKTOP_QUERY } from './useMediaQuery.js'
+import { readFileSync } from 'node:fs'
+import { useIsDesktop, DESKTOP_QUERY, WORKSPACE_QUERY } from './useMediaQuery.js'
 
 // The desktop layout is chosen in two independent places: this hook picks the
 // React tree, and `@media (min-width: 1024px)` in src/styles/desktop-*.css
@@ -87,5 +88,37 @@ describe('useIsDesktop', () => {
     delete window.matchMedia
     act(() => root.render(createElement(Probe)))
     expect(container.textContent).toBe('mobile')
+  })
+})
+
+// The stylesheets are the other half of each threshold. A JS/CSS mismatch is
+// invisible everywhere except one band of window widths, where a component
+// renders its desktop markup against mobile rules (or the reverse) — so pin
+// both numbers to the files that have to agree with them.
+const px = (q) => Number(/min-width:\s*(\d+)px/.exec(q)[1])
+
+describe('breakpoints stay in lockstep with the stylesheets', () => {
+  it('gates desktop-shell.css and desktop-pages.css on DESKTOP_QUERY', () => {
+    for (const f of ['src/styles/desktop-shell.css', 'src/styles/desktop-pages.css']) {
+      const css = readFileSync(f, 'utf8')
+      const widths = [...css.matchAll(/@media[^{]*min-width:\s*(\d+)px/g)].map((m) => Number(m[1]))
+      expect(widths.length).toBeGreaterThan(0)
+      // Every top-level guard in these two files is the desktop threshold.
+      // (Nested queries may be narrower ranges INSIDE it, never below it.)
+      expect(Math.min(...widths)).toBe(px(DESKTOP_QUERY))
+    }
+  })
+
+  it('gates desktop-builder.css on WORKSPACE_QUERY', () => {
+    const css = readFileSync('src/styles/desktop-builder.css', 'utf8')
+    const widths = [...css.matchAll(/@media[^{]*min-width:\s*(\d+)px/g)].map((m) => Number(m[1]))
+    expect(widths).toHaveLength(1)
+    expect(widths[0]).toBe(px(WORKSPACE_QUERY))
+  })
+
+  it('needs more room for the workspace than for the desktop layout', () => {
+    // The workspace is three panes inside the sidebar; it cannot be the lower
+    // of the two or the builder renders its table into a pane too narrow for it.
+    expect(px(WORKSPACE_QUERY)).toBeGreaterThan(px(DESKTOP_QUERY))
   })
 })

@@ -8,6 +8,17 @@ import { useSyncExternalStore } from 'react'
 // layout that is broken at exactly one window width.
 export const DESKTOP_QUERY = '(min-width: 1024px)'
 
+// The program workspace needs more room than "this is a desktop" implies: it is
+// three panes side by side INSIDE the 250px sidebar, and the middle one holds a
+// table of number inputs whose columns have real minimums. Measured, not
+// guessed — the table bottoms out at ~520px and the centre pane reaches that at
+// a 1400px window, so 1400 is the floor and this sits above it so a long
+// exercise name or a 4-digit weight can't tip it into a sideways scroll.
+// Under this width the builder uses the column editor, which is a real editor
+// and the right shape for a narrow window — not a degraded fallback.
+// Keep in lockstep with the media query in src/styles/desktop-builder.css.
+export const WORKSPACE_QUERY = '(min-width: 1440px)'
+
 const EMPTY = () => () => {}
 
 // useSyncExternalStore rather than useState + useEffect: it reads the match
@@ -35,4 +46,8 @@ export function useMediaQuery(query) {
 
 export function useIsDesktop() {
   return useMediaQuery(DESKTOP_QUERY)
+}
+
+export function useIsWorkspace() {
+  return useMediaQuery(WORKSPACE_QUERY)
 }
