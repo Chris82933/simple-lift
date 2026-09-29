@@ -45,6 +45,15 @@ const PATTERN_STYLE = {
   triceps: { sets: 3, repLow: 10, repHigh: 15, rest: 60 },
 }
 
+// Small hip/glute isolation: trained for reps and a burn, not for heavy singles.
+// Keyed by exercise rather than by pattern because these share `hinge` with the
+// deadlift, which very much does want the low-rep, long-rest treatment.
+const EXERCISE_STYLE = {
+  hip_abduction: { sets: 3, repLow: 12, repHigh: 20, rest: 45 },
+  hip_adduction: { sets: 3, repLow: 12, repHigh: 20, rest: 45 },
+  cable_kickback: { sets: 3, repLow: 12, repHigh: 20, rest: 45 },
+}
+
 // Prescription for a single exercise given the blended scheme. Adapts to how the
 // exercise is measured (reps / timed hold / cardio) and to the muscle worked, so
 // the starting point makes sense before the user tweaks anything.
@@ -59,7 +68,12 @@ export function prescriptionFor(exercise, scheme) {
     const [lo, hi] = (EXERCISE_BY_ID[exercise.id] || exercise).holdSec || [20, 45]
     return { sets: 3, repLow: lo, repHigh: hi, restSec: 60 }
   }
-  const style = PATTERN_STYLE[exercise.pattern]
+  // Per-exercise style beats the pattern's. A few moves carry a pattern for the
+  // generator's benefit (hip abduction is hinge-ish posterior work, so it fills
+  // an accessory slot on a leg day) while being trained nothing like the rest of
+  // that pattern. The hinge accessory default is 6-8 reps at two minutes' rest,
+  // which is a squat's prescription applied to a glute-medius machine.
+  const style = EXERCISE_STYLE[exercise.id] || PATTERN_STYLE[exercise.pattern]
   if (style) return { sets: style.sets, repLow: style.repLow, repHigh: style.repHigh, restSec: style.rest }
   const tier = exercise.compound ? scheme.compound : scheme.accessory
   return { sets: tier.sets, repLow: tier.repLow, repHigh: tier.repHigh, restSec: tier.rest }

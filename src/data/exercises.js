@@ -176,6 +176,33 @@ const BASE_EXERCISES = [
   { id: 'single_leg_leg_press', name: 'Single-Leg Leg Press', pattern: 'squat', regions: ['legs'], requires: ['leg_press'], compound: true, tags: ['running'], cues: 'One foot centered on the platform; press without locking out hard and control the descent. Reps per leg — evens out imbalances.' },
   { id: 'side_plank', name: 'Side Plank', pattern: 'core', regions: ['core'], requires: [], compound: false, addLoad: true, load: false, hold: true, unit: 'sec', cues: 'On one forearm, body in a straight line, hips high and stacked. Hold for time, per side.' },
 
+  // ---- Commercial-gym machines ----
+  // The stations a big-box gym has a whole row of. Every one takes a weight
+  // stack or plates, so none of them need the bodyweight flags. Isolation
+  // machines are `compound: false` on purpose — the generator scores compounds
+  // higher, so these fill accessory slots rather than displacing a main lift.
+  { id: 'hip_abduction', name: 'Hip Abduction Machine', pattern: 'hinge', regions: ['legs'], requires: ['machines'], compound: false, tags: ['running', 'rehab'], cues: 'Sit tall with the pads on the OUTSIDE of your knees and press them apart, then let them close slowly — don’t let the stack drop. Leaning the torso forward slightly biases the glute medius, the muscle that keeps your pelvis level when you run or stand on one leg. A weak glute medius shows up as knees caving on squats and a hip drop when running.' },
+  { id: 'hip_adduction', name: 'Hip Adduction Machine', pattern: 'hinge', regions: ['legs'], requires: ['machines'], compound: false, tags: ['running'], cues: 'The mirror of the abduction machine: pads on the INSIDE of the knees, squeeze them together, then let them open slowly under control. Trains the adductors (inner thigh) through a longer range than most lifts reach — worth having if you play field sports or get groin niggles.' },
+  { id: 'chest_press_machine', name: 'Machine Chest Press', pattern: 'horiz_push', regions: ['chest', 'arms', 'shoulders'], requires: ['machines'], compound: true, cues: 'Set the seat so the handles line up with the middle of your chest. Press out without letting the shoulders roll forward, and stop just short of locking the elbows. The fixed path lets you push close to failure without a spotter.' },
+  { id: 'seated_row_machine', name: 'Machine Seated Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['machines'], compound: true, tags: ['climbing'], cues: 'Chest against the pad so the lower back does nothing. Drive the elbows back past your ribs and squeeze the mid-back, then let the arms straighten fully for the stretch.' },
+  { id: 'reverse_pec_deck', name: 'Reverse Pec Deck', pattern: 'horiz_pull', regions: ['shoulders', 'back'], requires: ['machines'], compound: false, cues: 'The pec deck turned around — chest on the pad, arms out in front, sweep them wide and back. Rear delts and mid-traps, the pair most bench-heavy programs under-train. Keep it light and lead with the elbows.' },
+  { id: 'preacher_curl_machine', name: 'Machine Preacher Curl', pattern: 'biceps', regions: ['arms'], requires: ['machines'], compound: false, cues: 'Upper arms flat on the pad, armpits into the top of it. Curl without lifting the elbows and lower all the way — the pad makes swinging impossible, which is the point.' },
+  { id: 'machine_triceps_extension', name: 'Machine Triceps Extension', pattern: 'triceps', regions: ['arms'], requires: ['machines'], compound: false, cues: 'Elbows pinned to the pad, extend to a straight arm and resist on the way back. A seated pushdown that takes the rest of your body out of it.' },
+  { id: 'ab_crunch_machine', name: 'Ab Crunch Machine', pattern: 'core', regions: ['core'], requires: ['machines'], compound: false, cues: 'Curl the ribs toward the hips rather than bowing at the waist — short range, hard squeeze. Being able to load the abs is the advantage over sit-ups.' },
+  { id: 'seated_calf_raise', name: 'Seated Calf Raise', pattern: 'calf', regions: ['legs'], requires: ['machines'], compound: false, tags: ['running'], cues: 'Knees bent under the pad, balls of the feet on the platform. The bent knee shifts the work to the soleus — the deep calf muscle a standing raise mostly misses, and the one that carries the load when you run. Pause stretched at the bottom.' },
+  { id: 'standing_calf_raise', name: 'Standing Calf Raise (Machine)', pattern: 'calf', regions: ['legs'], requires: ['machines'], compound: false, tags: ['running'], cues: 'Shoulders under the pads, legs straight. Rise all the way onto the toes, pause, then sink below the platform for a full stretch. A straight knee means the gastrocnemius does the work.' },
+  { id: 'calf_press', name: 'Calf Press (Leg Press)', pattern: 'calf', regions: ['legs'], requires: ['leg_press'], compound: false, tags: ['running'], cues: 'Balls of the feet on the bottom edge of the leg-press platform, legs straight but knees unlocked. Push the platform away with the toes and control it back. Handy when the calf machines are busy — keep the safeties engaged.' },
+  { id: 'cable_kickback', name: 'Cable Glute Kickback', pattern: 'hinge', regions: ['legs'], requires: ['cable'], compound: false, tags: ['rehab'], cues: 'Ankle strap on a low pulley, hinge forward slightly and hold the frame. Drive the leg straight back from the hip and squeeze — the movement is at the hip, not the lower back. Reps per leg.' },
+
+  // ---- Smith machine ----
+  // The Smith was offered in setup but had nothing to pick, so choosing it did
+  // nothing. These are the three lifts people actually use it for. The fixed bar
+  // path removes the balance demand, which is both the appeal and the reason it
+  // is not a straight swap for the barbell version if you have a rack.
+  { id: 'smith_squat', name: 'Smith Machine Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['smith'], compound: true, cues: 'Feet slightly ahead of the bar so the hips can travel back. Sit down between your hips and set the hooks just below depth as your safety, so you can push a hard set alone. Expect to handle more than a free squat — the machine is balancing for you.' },
+  { id: 'smith_bench', name: 'Smith Machine Bench Press', pattern: 'horiz_push', regions: ['chest', 'arms', 'shoulders'], requires: ['smith', 'flat_bench'], compound: true, cues: 'Set the bench so the bar comes down to your mid-chest. Shoulder blades pinned back, touch and press. The safeties mean you can train close to failure without a spotter.' },
+  { id: 'smith_row', name: 'Smith Machine Bent-Over Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['smith'], compound: true, tags: ['climbing'], cues: 'Hinge to about 45°, flat back, bar starting just below the knees. Row to the belly and squeeze the mid-back. The bar tracking for you makes it easier to hold position on the last few reps than a free barbell row.' },
+
   // ---- Cardio (time / heart-rate based — great as a warm-up before lifting) ----
   { id: 'running', name: 'Running', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, hold: true, unit: 'min', tags: ['running'], cues: 'Treadmill or outdoors, whatever suits you. For a warm-up keep it easy — an aerobic “zone 2” pace you can chat at. 10–15 min primes the body before lifting; go longer for a full session.' },
   { id: 'walking_incline', name: 'Incline Walk', pattern: 'conditioning', regions: ['legs'], requires: [], compound: false, load: false, hold: true, unit: 'min', tags: ['running'], cues: 'Brisk walk up a treadmill incline or a hill — low impact and joint-friendly. A gentle, effective warm-up.' },
@@ -502,6 +529,19 @@ const MUSCLE_OVERRIDES = {
   single_leg_glute_bridge: M_(['glutes'], ['hamstrings']),
   hip_thrust: M_(['glutes'], ['hamstrings', 'quads']), hip_thrust_hold: M_(['glutes'], ['hamstrings']),
   clamshell: M_(['glutes']), lateral_band_walk: M_(['glutes'], ['quads']),
+  // Hip abduction IS the glute medius/minimus, so the hinge default (hamstrings
+  // + lower back) would be wrong for it.
+  hip_abduction: M_(['glutes']), cable_kickback: M_(['glutes'], ['hamstrings']),
+  // The map has no inner-thigh region, so adduction is drawn on the upper leg it
+  // sits between. Not exact — the adductors are their own group — but much closer
+  // than the hinge default, which would light up the lower back, traps and grip.
+  hip_adduction: M_(['quads', 'hamstrings']),
+  // Rear delts + mid-traps, same as its cable cousin the face pull.
+  reverse_pec_deck: M_(['shoulders', 'traps'], ['lats']),
+  // Machine arm/ab isolation: the pattern defaults drag in movers that idle here.
+  preacher_curl_machine: M_(['biceps'], ['forearms']),
+  machine_triceps_extension: M_(['triceps']),
+  ab_crunch_machine: M_(['abs'], ['obliques']),
   // neck / posture
   chin_tuck: M_(['neck']), neck_isometric: M_(['neck']), upper_trap_stretch: M_(['neck', 'traps']),
   scap_wall_slide: M_(['shoulders', 'traps']),
@@ -644,6 +684,24 @@ const ALIASES = {
   pendlay_row: ['pendlay row', 'dead-stop row', 'dead stop row', 'dead stop barbell row'],
   meadows_row: ['meadows row', 'landmine meadows row', 'john meadows row'],
   seated_cable_row: ['cable row', 'seated row', 'low row'],
+  // Machines. People mostly search these by the body part they think the
+  // machine is for ("inner thigh", "outer thigh", "rear delt machine") or by
+  // gym slang, so those matter more here than the formal name.
+  hip_abduction: ['abductor machine', 'hip abductor', 'abduction machine', 'outer thigh machine', 'outer thigh', 'glute medius machine', 'hip abductor machine', 'good girl machine'],
+  hip_adduction: ['adductor machine', 'hip adductor', 'adduction machine', 'inner thigh machine', 'inner thigh', 'groin machine', 'hip adductor machine', 'bad girl machine'],
+  chest_press_machine: ['machine chest press', 'seated chest press', 'chest press', 'machine bench press', 'hammer strength chest press'],
+  seated_row_machine: ['machine row', 'machine seated row', 'hammer strength row', 'chest supported machine row'],
+  reverse_pec_deck: ['rear delt fly', 'rear delt machine', 'reverse fly machine', 'reverse fly', 'rear deltoid machine', 'reverse flye'],
+  preacher_curl_machine: ['preacher curl', 'machine curl', 'bicep curl machine', 'arm curl machine', 'scott curl'],
+  machine_triceps_extension: ['machine tricep extension', 'tricep machine', 'seated tricep extension', 'machine pushdown'],
+  ab_crunch_machine: ['crunch machine', 'ab machine', 'machine crunch', 'abdominal machine'],
+  seated_calf_raise: ['seated calf', 'soleus raise', 'calf machine', 'seated calf machine'],
+  standing_calf_raise: ['standing calf', 'calf raise machine', 'gastroc raise', 'standing calf machine'],
+  calf_press: ['leg press calf raise', 'calf press', 'calf raise on leg press', 'toe press'],
+  cable_kickback: ['glute kickback', 'cable glute kickback', 'donkey kick', 'hip extension cable', 'kickback'],
+  smith_squat: ['smith squat', 'smith machine squat'],
+  smith_bench: ['smith bench', 'smith machine bench', 'smith machine press'],
+  smith_row: ['smith row', 'smith machine row', 'smith bent over row'],
   inverted_row: ['bodyweight row', 'australian pull up', 'horizontal row'],
   db_shrug: ['dumbbell shrug', 'shrugs', 'traps'],
   barbell_shrug: ['barbell shrugs', 'shrugs', 'traps'],
