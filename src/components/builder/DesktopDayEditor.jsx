@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { exMeasure, isoHoldFor } from '../../data/exercises.js'
 import { WEEKDAY_LABELS } from '../../lib/generator.js'
 import { ladderInfo } from '../../lib/ladder.js'
@@ -17,6 +17,21 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
   const measure = exMeasure(ex)
   const lad = ladderInfo(ex.id)
   const inSuperset = ex.supersetNext || d.draft.days[di].exercises[ei - 1]?.supersetNext
+  const next = d.draft.days[di].exercises[ei + 1]
+  // "Recommended" rewrites up to six fields at once, so it has to say what it
+  // did — otherwise a click that changes sets from 5 to 3 is silent, and a
+  // click on an already-recommended row looks broken. The snapshot is compared
+  // with the row as it renders after the update.
+  const [recFrom, setRecFrom] = useState(null)
+  const recKey = `${ex.sets}|${ex.repLow}|${ex.repHigh}|${ex.restSec}|${ex.startWeight}|${!!ex.warmups}`
+  useEffect(() => {
+    if (recFrom === null) return undefined
+    const t = setTimeout(() => setRecFrom(null), 3000)
+    return () => clearTimeout(t)
+  }, [recFrom])
+  const recNote = recFrom === null ? ''
+    : recFrom === recKey ? 'Already at the recommended setup'
+      : `Set to ${ex.sets} × ${ex.repLow}–${ex.repHigh}${measure.type === 'reps' ? '' : ` ${measure.unit}`}, ${ex.restSec}s rest`
   // Toggling a chip is the same patch the phone card applies — the desktop
   // just spends a checkbox-sized chip on it instead of a full-width row.
   const chip = (on, label, onClick, hint) => (
@@ -61,9 +76,9 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
             <span className="ex-name">{ex.name}</span>
             {lad && lad.length > 1 && (
               <span className="dtb-ladder">
-                <button type="button" className="ladder-step-btn" disabled={!lad.prevId} onClick={() => d.changeLevel(di, ei, -1)} title={lad.prevName ? `Easier: ${lad.prevName}` : ''}>↓</button>
+                <button type="button" className="ladder-step-btn" disabled={!lad.prevId} onClick={() => d.changeLevel(di, ei, -1)} title={lad.prevName ? `Easier: ${lad.prevName}` : ''} aria-label={lad.prevName ? `Easier variation: ${lad.prevName}` : 'No easier variation'}>↓</button>
                 <span className="muted small">L{lad.index + 1}/{lad.length}</span>
-                <button type="button" className="ladder-step-btn" disabled={!lad.nextId} onClick={() => d.changeLevel(di, ei, 1)} title={lad.nextName ? `Harder: ${lad.nextName}` : ''}>↑</button>
+                <button type="button" className="ladder-step-btn" disabled={!lad.nextId} onClick={() => d.changeLevel(di, ei, 1)} title={lad.nextName ? `Harder: ${lad.nextName}` : ''} aria-label={lad.nextName ? `Harder variation: ${lad.nextName}` : 'No harder variation'}>↑</button>
               </span>
             )}
           </span>
@@ -115,7 +130,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
                 onChange={(e) => d.updateExercise(di, ei, { startWeight: e.target.value, startWeightEstimated: undefined })}
               />
               {ex.startWeightEstimated && (
-                <button type="button" className="dtb-est" onClick={info.show.startWt} title="Estimated from your other saved maxes — click to read how">≈</button>
+                <button type="button" className="dtb-est" onClick={info.show.startWt} title="Estimated from your other saved maxes — click to read how" aria-label="Estimated weight — how this was worked out">≈</button>
               )}
             </span>
           ) : (
@@ -143,11 +158,21 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
                 back off once the entry has become a timed hold. */}
             {exMeasure({ id: ex.id }).type === 'reps' &&
               chip(ex.iso, 'Iso', () => d.toggleIso(di, ei), 'Hold for time instead of reps')}
-            <button type="button" className="dtb-linkbtn" onClick={() => d.applyRecommended(di, ei)} title={`Reset to the recommended setup for this goal${ex.load ? ', weight from your 1RM' : ''}`}>
-              Recommended
-            </button>
+            <span className="dtb-rec-note" role="status" aria-live="polite">{recNote}</span>
           </span>
           <span className="dtb-tools-move">
+            {/* An action, not a toggle — so it sits with the other row actions
+                at a fixed spot on the right, not after chips that come and go. */}
+            <button
+              type="button"
+              className="dtb-action-btn"
+              onClick={() => { setRecFrom(recKey); d.applyRecommended(di, ei) }}
+              title={`Reset sets, reps and rest to the recommended setup for this goal${ex.load ? ', weight from your 1RM' : ''}`}
+              aria-label={`Use recommended for ${ex.name}`}
+            >
+              Recommended
+            </button>
+            <span className="dtb-tools-sep" aria-hidden="true" />
             <button type="button" className="icon-btn" disabled={ei === 0} onClick={() => d.moveExercise(di, ei, -1)} aria-label={`Move ${ex.name} up`}>
               <span aria-hidden="true">▲</span>
             </button>
@@ -193,6 +218,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
               type="button"
               className={'superset-link' + (ex.supersetNext ? ' is-on' : '')}
               aria-pressed={!!ex.supersetNext}
+              title={`Superset ${ex.name} with ${next?.name}`}
               onClick={() => d.toggleSuperset(di, ei)}
             >
               <span className="superset-link-icon" aria-hidden="true">⛓</span>
