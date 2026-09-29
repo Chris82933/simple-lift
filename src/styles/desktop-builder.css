@@ -22,11 +22,16 @@
      (`#root > .page.full-flow`) a centred 820px measure, which is right for a
      one-column flow like /one-rep-max and exactly wrong for a workspace that
      wants the whole window. Matching that selector and adding our own class is
-     how this page opts out without editing a file it does not own. */
+     how this page sets its own measure without editing a file it does not own.
+     It is still a measure, though. The workspace used to run edge to edge,
+     which on a wide monitor made it the only page in the app with no margin at
+     all. 1400px is where all three panes are comfortable; past that the extra
+     pixels only stretch the day table, which needs them least. */
   #root > .page.full-flow.dtb-page,
   .flow-shell > .app-main > .page.full-flow.dtb-page {
-    max-width: none;
     width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
     height: 100dvh;
     padding: 20px 24px 0;
     display: grid;
@@ -52,15 +57,17 @@
 
   .dtb-grid {
     display: grid;
-    /* Fixed rails, elastic middle: the day table is the thing that benefits
-       from extra pixels, the settings and the library do not. */
-    /* Fixed rails, elastic middle. The numbers matter: the page also carries a
-       250px sidebar, and the middle has to clear the exercise table's ~520px
-       minimum. Measured: these rails put the table exactly at its minimum in a
-       1400px window, which is why WORKSPACE_QUERY sits at 1440. Widening
-       either rail moves that floor up and the table starts scrolling sideways
-       inside its own pane. */
-    grid-template-columns: 210px minmax(0, 1fr) 280px;
+    /* Fixed rails, elastic middle. The rails used to be 210/280, squeezed that
+       far so the day table would fit; `table-layout: fixed` removed that
+       constraint, because the table now divides whatever width it is given
+       instead of demanding a minimum. What actually sets the floor now is the
+       number inputs' own `min-width: 44px` — under fixed layout the grip takes
+       26px, the name column 26%, and five numeric columns split the rest, so
+       the table needs ~387px and the centre pane ~421px before an input starts
+       to overflow its cell (and with no overflow-x it would spill, not scroll).
+       At the 1440px breakpoint these rails leave the centre 499px — 78px of
+       headroom. Widening them further eats into that. */
+    grid-template-columns: 260px minmax(0, 1fr) 340px;
     gap: 14px;
     min-height: 0;
   }
