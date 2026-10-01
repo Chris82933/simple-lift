@@ -693,6 +693,13 @@ export default function Workout() {
     const idx = rows.findIndex((r) => !r.done && !r.warmup)
     if (idx === -1) return
     const secs = Number(rows[idx].reps) || Number(ex.repHigh) || 30
+    // Starting a hold ends the rest: you are working again. This is not only
+    // tidiness — the rest timer(s) and the hold timer share one fixed slot at
+    // the bottom of the screen, and the rest was drawn on top. So from the
+    // second set on (iso rests default to 3 minutes) pressing this button
+    // started a hold countdown nobody could see.
+    setRest(null)
+    setRests([])
     setHold({ exId: ex.id, idx, seconds: secs, restSec: ex.restSec, key: `${ex.id}-${idx}-${Date.now()}` })
   }
   // The hold finished (or was skipped): log the seconds and mark the set done,
