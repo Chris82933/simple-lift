@@ -1857,6 +1857,30 @@ select.text-input { appearance: none; }
 /* Exercise title + form button row (workout cards) */
 .exercise-headings { flex: 1; min-width: 0; }
 .ex-title-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+/* Status tags for an exercise that is not part of the normal program. Two
+   distinct hues, neither used for anything else on the card (green = done,
+   amber = caution/hold, mint = accent), each mixed toward the text colour so
+   the small label stays readable in both themes. */
+.ex-status-chip {
+  flex: none;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.ex-status-chip.is-alternate {
+  color: color-mix(in srgb, var(--accent-6) 65%, var(--text));
+  background: color-mix(in srgb, var(--accent-6) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-6) 50%, var(--border));
+}
+.ex-status-chip.is-temporary {
+  color: color-mix(in srgb, var(--accent-3) 65%, var(--text));
+  background: color-mix(in srgb, var(--accent-3) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-3) 50%, var(--border));
+}
 .ex-title-row .ex-name { min-width: 0; flex: 1; }
 
 /* ---- End-of-session progression choices ---- */

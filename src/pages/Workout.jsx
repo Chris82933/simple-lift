@@ -471,6 +471,9 @@ export default function Workout() {
     const entry = exerciseEntryFromLibrary(sub, {
       sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec,
       startWeight: '', adhoc: true, supersetNext: old?.supersetNext,
+      // Records what this replaced, so the card says "Alternate" rather than
+      // looking like an unrelated exercise added on a whim.
+      swappedFrom: old?.name,
     })
     setExercises((list) => {
       if (list.some((e) => e.id === sub.id)) return list.filter((e) => e.id !== exId) // avoid dup id
@@ -788,7 +791,7 @@ export default function Workout() {
     }
 
     const date = new Date().toISOString()
-    const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, sets: sets[ex.id] || [] }))
+    const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, swappedFrom: ex.swappedFrom || undefined, sets: sets[ex.id] || [] }))
     // U4: session length, from first mount (or the resumed session's original
     // start) to now.
     const sessionDurationSec = Math.max(0, Math.round((Date.now() - startedAt) / 1000))
@@ -1260,7 +1263,14 @@ export default function Workout() {
                 <MuscleMap pattern={ex.pattern} exId={ex.id} size={104} />
                 <div className="exercise-headings">
                   <div className="ex-title-row">
-                    <p className="ex-name big">{ex.name}{ex.adhoc ? <span aria-hidden="true"> ＋</span> : ''}</p>
+                    <p className="ex-name big">{ex.name}</p>
+                    {/* Says in words why this isn't a normal program exercise.
+                        It used to be a bare "＋" after the name, which read as
+                        anything from "added" to "swapped" to "more reps". Most
+                        cards carry no tag, so the colour is what you notice. */}
+                    {ex.swappedFrom
+                      ? <span className="ex-status-chip is-alternate" title={`Standing in for ${ex.swappedFrom} — this session only`}>Alternate</span>
+                      : ex.adhoc && <span className="ex-status-chip is-temporary" title="Added for this session only — not part of your program">Temporary</span>}
                     {/* Which link of the chain this is — only worth showing once
                         there are enough members to lose your place in. */}
                     {inSuperset && ssSize > 2 && <span className="superset-pos" aria-hidden="true">{ssPos}/{ssSize}</span>}

@@ -371,7 +371,9 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
                       <div className="log-row">
                         <span className="log-ex-name">
                           <span className={'log-status' + (skipped ? '' : ' is-done')} aria-hidden="true">{skipped ? '○' : '✓'}</span>
-                          {e.name}{e.adhoc ? ' ＋' : ''}{prIds.has(e.exerciseId) ? <> <Icon name="trophy" size={12} /></> : null}
+                          {e.name}{e.swappedFrom
+                            ? <> <span className="ex-status-chip is-alternate" title={`Stood in for ${e.swappedFrom}`}>Alternate</span></>
+                            : e.adhoc ? <> <span className="ex-status-chip is-temporary" title="Added for that session only — not part of the program">Temporary</span></> : null}{prIds.has(e.exerciseId) ? <> <Icon name="trophy" size={12} /></> : null}
                         </span>
                         <span className="muted small">
                           {skipped ? 'not done' : `${done}/${rows.length} sets · ${topSet(e, units)}`}
