@@ -1027,6 +1027,30 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   100% { transform: scale(1); }
 }
 
+/* The workout page puts its timers in one fixed stack, so a hold timer and a
+   rest timer can run side by side (hold on top) instead of sharing one slot.
+   The stack takes over the positioning; each timer keeps its own width, so a
+   lone timer sits exactly where it always did. */
+.timer-stack {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-left: var(--nav-offset, 0px);
+  pointer-events: none;
+}
+.timer-stack > .rest-timer,
+.timer-stack > .rest-timers {
+  position: static;
+  transform: none;
+  pointer-events: auto;
+}
+
 /* ---- Superset rest timers: several merged into one stacked pill ---- */
 .rest-timers {
   position: fixed;

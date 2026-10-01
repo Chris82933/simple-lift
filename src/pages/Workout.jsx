@@ -693,13 +693,6 @@ export default function Workout() {
     const idx = rows.findIndex((r) => !r.done && !r.warmup)
     if (idx === -1) return
     const secs = Number(rows[idx].reps) || Number(ex.repHigh) || 30
-    // Starting a hold ends the rest: you are working again. This is not only
-    // tidiness — the rest timer(s) and the hold timer share one fixed slot at
-    // the bottom of the screen, and the rest was drawn on top. So from the
-    // second set on (iso rests default to 3 minutes) pressing this button
-    // started a hold countdown nobody could see.
-    setRest(null)
-    setRests([])
     setHold({ exId: ex.id, idx, seconds: secs, restSec: ex.restSec, key: `${ex.id}-${idx}-${Date.now()}` })
   }
   // The hold finished (or was skipped): log the seconds and mark the set done,
@@ -709,6 +702,11 @@ export default function Workout() {
     const { exId, idx, seconds, restSec } = hold
     updateSet(exId, idx, 'reps', String(seconds))
     toggleDone(exId, idx, restSec)
+    // A hold done DURING another exercise's rest must not restart that rest:
+    // toggleDone starts a fresh countdown for this set, which in single-timer
+    // mode would replace the one already running. Put the running one back
+    // (same key, so its countdown carries on untouched).
+    if (rest) setRest(rest)
     setHold(null)
   }
 
@@ -1585,9 +1583,15 @@ export default function Workout() {
         <button className="btn btn-primary" onClick={finish}>Finish workout</button>
       </div>
 
-      {hold && <RestTimer key={hold.key} seconds={hold.seconds} mode="hold" onDone={finishHold} />}
-      {!supersetTimers && rest && <RestTimer key={rest.key} seconds={rest.seconds} label={rest.label} onDone={() => setRest(null)} />}
-      {supersetTimers && <RestTimers timers={rests} onDone={(key) => setRests((rs) => rs.filter((t) => t.key !== key))} />}
+      {/* One stack for every running timer. A hold and a rest are often live
+          together — holding one move while resting from its superset partner —
+          so they must both be on screen. Each used to be position:fixed in the
+          SAME slot, which drew the rest on top of the hold and hid it. */}
+      <div className="timer-stack">
+        {hold && <RestTimer key={hold.key} seconds={hold.seconds} mode="hold" onDone={finishHold} />}
+        {!supersetTimers && rest && <RestTimer key={rest.key} seconds={rest.seconds} label={rest.label} onDone={() => setRest(null)} />}
+        {supersetTimers && <RestTimers timers={rests} onDone={(key) => setRests((rs) => rs.filter((t) => t.key !== key))} />}
+      </div>
 
       {pickerOpen && (
         <ExercisePicker onPick={addExercise} onClose={() => setPickerOpen(false)} />
