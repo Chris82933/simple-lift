@@ -1264,21 +1264,28 @@ export default function Workout() {
                 <div className="exercise-headings">
                   <div className="ex-title-row">
                     <p className="ex-name big">{ex.name}</p>
-                    {/* Says in words why this isn't a normal program exercise.
-                        It used to be a bare "＋" after the name, which read as
-                        anything from "added" to "swapped" to "more reps". Most
-                        cards carry no tag, so the colour is what you notice. */}
-                    {ex.swappedFrom
-                      ? <span className="ex-status-chip is-alternate" title={`Standing in for ${ex.swappedFrom} — this session only`}>Alternate</span>
-                      : ex.adhoc && <span className="ex-status-chip is-temporary" title="Added for this session only — not part of your program">Temporary</span>}
-                    {/* Which link of the chain this is — only worth showing once
-                        there are enough members to lose your place in. */}
-                    {inSuperset && ssSize > 2 && <span className="superset-pos" aria-hidden="true">{ssPos}/{ssSize}</span>}
-                    {dimmed && <span className="ex-done-chip"><span aria-hidden="true">✓</span> Done</span>}
                     {editMode
                       ? <button type="button" className="icon-btn" onClick={() => removeExercise(ex.id)} aria-label={`Remove ${ex.name}`}><span aria-hidden="true">✕</span></button>
                       : <FormCheckButton name={ex.name} />}
                   </div>
+                  {/* Every tag sits on its own line UNDER the name. Beside the
+                      name, a tag plus the Form button left the title no room:
+                      a finished exercise ("Done") was already wider than a
+                      375px phone, which made the whole page scroll sideways.
+                      The status tag says in words why an exercise isn't part of
+                      the normal program — it used to be a bare "＋". Most cards
+                      carry none, so the colour is what you notice. */}
+                  {(ex.swappedFrom || ex.adhoc || dimmed || (inSuperset && ssSize > 2)) && (
+                    <div className="ex-tags">
+                      {ex.swappedFrom
+                        ? <span className="ex-status-chip is-alternate" title={`Standing in for ${ex.swappedFrom} — this session only`}>Alternate</span>
+                        : ex.adhoc && <span className="ex-status-chip is-temporary" title="Added for this session only — not part of your program">Temporary</span>}
+                      {/* Which link of the chain this is — only worth showing once
+                          there are enough members to lose your place in. */}
+                      {inSuperset && ssSize > 2 && <span className="superset-pos" aria-hidden="true">{ssPos}/{ssSize}</span>}
+                      {dimmed && <span className="ex-done-chip"><span aria-hidden="true">✓</span> Done</span>}
+                    </div>
+                  )}
                   <p className="muted small">
                     {sets[ex.id]?.filter((r) => !r.warmup).length ?? ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)} · {ex.restSec}s rest
                     {sets[ex.id]?.some((r) => r.warmup) ? ' · + warm-ups' : ''}

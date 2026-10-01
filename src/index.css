@@ -1871,6 +1871,12 @@ select.text-input { appearance: none; }
   white-space: nowrap;
   vertical-align: middle;
 }
+/* In the workout card the tags are a line of their own under the name. */
+.ex-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }
+/* A long single word ("Chest-Supported") must break rather than set the
+   card's minimum width — next to the muscle map and the Form button there is
+   very little room on a narrow phone. Ordinary names are unaffected. */
+.exercise-card .ex-title-row .ex-name { overflow-wrap: anywhere; }
 .ex-status-chip.is-alternate {
   color: color-mix(in srgb, var(--accent-6) 65%, var(--text));
   background: color-mix(in srgb, var(--accent-6) 16%, transparent);
