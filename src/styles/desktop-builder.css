@@ -209,7 +209,7 @@
   }
   .dtb-day-title { flex: 1; font-size: var(--fs-lg); font-weight: 600; }
   .dtb-day-weekday { width: 130px; }
-  .dtb-warn { color: var(--warn); margin: 0; }
+  .dtb-warn { color: var(--warn-text, var(--warn)); margin: 0; }
   .dtb-empty, .dtb-empty-day { padding: 24px 4px; }
 
   /* No overflow-x here on purpose. It used to be a safety valve for a table
@@ -524,7 +524,7 @@
     font-size: var(--fs-sm);
     color: var(--muted);
   }
-  .dtb-status.is-blocked { color: var(--warn); }
+  .dtb-status.is-blocked { color: var(--warn-text, var(--warn)); }
 
   /* The action bar is first in the DOM (so Save is an early tab stop) and last
      on screen. */

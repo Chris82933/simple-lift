@@ -1262,7 +1262,7 @@ export default function Workout() {
           return n > 0 ? (
             <div className="card notice swap-banner">
               <p className="muted small">
-                <span aria-hidden="true">🏠</span> {n} move{n === 1 ? '' : 's'} need gear you don&apos;t have in {profileMeta(activeProfile).name} mode.
+                <span aria-hidden="true">🏠</span> {n} move{n === 1 ? ' needs' : 's need'} gear you don&apos;t have in {profileMeta(activeProfile).name} mode.
               </p>
               <button type="button" className="btn btn-ghost btn-sm" onClick={swapAllUnavailable}>
                 Swap all to what I can do

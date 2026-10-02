@@ -7,7 +7,7 @@ import {
   DAYS_OPTIONS,
   SESSION_OPTIONS,
 } from '../data/options.js'
-import { saveProfile, addProgram, loadProfile, logBodyweight, loadSettings, saveMax } from '../lib/storage.js'
+import { saveProfile, addProgram, loadProfile, logBodyweight, loadSettings, saveSettings, saveMax } from '../lib/storage.js'
 import { generateProgram, EXPERIENCE_LEVELS } from '../lib/generator.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
 import { saveProfileEquipment } from '../lib/equipment.js'
@@ -62,6 +62,8 @@ export default function Onboarding() {
   // a blank-looking required field being the first thing they see. Declared
   // up front with the other hooks — must never sit after the early return below.
   const [knowStrength, setKnowStrength] = useState(false)
+  // Declared up here with the other hooks: there is an early return below.
+  const [units, setUnitsState] = useState(() => (loadSettings().units === 'kg' ? 'kg' : 'lbs'))
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
   // Functional toggle so rapid successive clicks don't read stale state.
@@ -79,6 +81,19 @@ export default function Onboarding() {
     strength: true, // always skippable — "not sure" still yields a safely light program
     bodyweight: true, // always skippable — never block setup on a weight
   }[STEPS[step]]
+  // Said under a disabled Next, so it is never a dead button with no reason.
+  const needs = {
+    experience: 'Pick the option that fits you best to continue.',
+    focus: 'Pick at least one area to continue.',
+    schedule: 'Choose how many days and how long to continue.',
+    goals: 'Pick at least one goal to continue.',
+    progression: 'Pick how you want to progress to continue.',
+  }[STEPS[step]]
+  // The method that suits the level picked on step one. The badge follows the
+  // person, not a fixed method — a beginner was shown Linear preselected with
+  // "Recommended" sitting on a different card.
+  const recommendedMethod = draft.experienceLevel === 'new' ? 'linear' : DEFAULT_METHOD
+  const ALL_EQUIPMENT = EQUIPMENT_GROUPS.flatMap((g) => g.items.map((i) => i.id))
 
   const isLast = step === STEPS.length - 1
 
@@ -185,7 +200,24 @@ export default function Onboarding() {
   }
 
   const selectedMethod = PROGRESSION_METHODS.find((m) => m.id === draft.progressionMethod)
-  const units = loadSettings().units === 'kg' ? 'kg' : 'lbs'
+  // Asked here, where the first weights are typed. Before this the only way to
+  // use kilograms was to finish setup in pounds and find the setting later.
+  const setUnits = (u) => {
+    if (u === units) return
+    setUnitsState(u)
+    saveSettings({ ...loadSettings(), units: u })
+    // Numbers already typed were in the other unit; clear rather than relabel.
+    set({ strength: Object.fromEntries(Object.keys(draft.strength || {}).map((k) => [k, ''])), bodyweight: '' })
+  }
+  const unitToggle = (
+    <div className="seg seg-sm" role="group" aria-label="Weight units" style={{ alignSelf: 'flex-start' }}>
+      {['lbs', 'kg'].map((u) => (
+        <button key={u} type="button" className={'seg-item' + (units === u ? ' is-selected' : '')} aria-pressed={units === u} onClick={() => setUnits(u)} style={{ minWidth: 64 }}>
+          {u}
+        </button>
+      ))}
+    </div>
+  )
 
   return (
     <section className="page full-flow">
@@ -290,6 +322,14 @@ export default function Onboarding() {
           <>
             <h1>What equipment do you have?</h1>
             <p className="muted">Tick everything you can use. Nothing selected = bodyweight only.</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => set({ equipment: ALL_EQUIPMENT })}>
+                I train at a full gym — select everything
+              </button>
+              {draft.equipment.length > 0 && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => set({ equipment: [] })}>Clear</button>
+              )}
+            </div>
             {EQUIPMENT_GROUPS.map((g) => (
               <div className="equip-group" key={g.group}>
                 <p className="group-label">{g.group}</p>
@@ -383,7 +423,7 @@ export default function Onboarding() {
                   onClick={() => set({ progressionMethod: m.id })}
                 >
                   <span className="choice-title">
-                    {m.name}{m.recommended && <span className="rec-badge">Recommended</span>}
+                    {m.name}{m.id === recommendedMethod && <span className="rec-badge">Recommended for you</span>}
                   </span>
                   <span className="muted small">{m.tagline}</span>
                 </button>
@@ -405,6 +445,7 @@ export default function Onboarding() {
         {STEPS[step] === 'strength' && (
           <>
             <h1>Roughly what can you lift?</h1>
+            {unitToggle}
             {draft.experienceLevel === 'new' && !knowStrength ? (
               // A true beginner usually can't produce this number at all — lead
               // with the safe default instead of a blank-looking required field
@@ -520,6 +561,7 @@ export default function Onboarding() {
       >
         Not for me — leave the guided setup and build my own program
       </button>
+      {!isValid && needs && <p className="muted small" role="status" style={{ textAlign: 'center', margin: 0 }}>{needs}</p>}
       <div className="flow-actions">
         <button type="button" className="btn btn-ghost" onClick={back}>
           Back

@@ -173,7 +173,10 @@ export default function RestTimer({ seconds, onDone, mode = 'rest', label }) {
             type="button"
             className="rest-btn rest-mute"
             onClick={toggleSound}
-            aria-label={soundOn ? 'Mute rest-end sound' : 'Unmute rest-end sound'}
+            // One steady name plus a pressed state, so it reads "Rest-end sound,
+            // on/off" — the old label flipped while pressed stayed the same way
+            // round, announcing "Unmute, not pressed" for a muted timer.
+            aria-label="Rest-end sound"
             aria-pressed={soundOn}
             title={soundOn ? 'Chime on' : 'Chime off'}
           >

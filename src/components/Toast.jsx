@@ -36,6 +36,23 @@ export function ToastProvider({ children }) {
     }, opts.duration || (opts.actionLabel ? 10000 : 6000))
   }, [])
 
+  // Ctrl/Cmd+Z runs the toast's action. Undo is the last element in the page,
+  // so by keyboard it was a few hundred Tab presses away with seconds on the
+  // clock. Left alone inside a text field, where Ctrl+Z means "undo typing".
+  useEffect(() => {
+    if (!toast?.onAction) return undefined
+    const onKey = (e) => {
+      if (!(e.key === 'z' && (e.ctrlKey || e.metaKey)) || e.shiftKey) return
+      const t = e.target
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      e.preventDefault()
+      toast.onAction()
+      dismiss()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [toast, dismiss])
+
   return (
     <ToastCtx.Provider value={{ show, dismiss }}>
       {children}
@@ -47,6 +64,7 @@ export function ToastProvider({ children }) {
             <button
               type="button"
               className="toast-action"
+              title={toast.actionLabel === 'Undo' ? 'Undo (Ctrl/Cmd + Z)' : undefined}
               onClick={() => { toast.onAction?.(); dismiss() }}
             >
               {toast.actionLabel}

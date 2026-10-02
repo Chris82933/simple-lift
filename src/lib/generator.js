@@ -118,8 +118,18 @@ function availableFor(equipment) {
   return EXERCISES.filter((e) => !e.ladderOnly && e.requires.every((r) => have.has(r)))
 }
 
+// Specialist variations: good lifts, but not what a first program should be
+// built on. Someone who has never lifted was being handed a Jefferson
+// Deadlift and a Pendlay Row in week one because they tied on score with the
+// plain versions. They stay available to everyone in the library, and to the
+// generator for anyone past "new".
+const SPECIALIST = new Set([
+  'jefferson_deadlift', 'pendlay_row', 'zercher_squat', 'barbell_hack_squat', 'meadows_row',
+  'good_morning', 'paused_bench', 'iso_mid_thigh_pull',
+])
+
 // Pick the best exercise for a pattern, given focus/goals and prior usage.
-function pickExercise(pattern, pool, { focus, goals, trainOthers, usage, usedInSession }) {
+function pickExercise(pattern, pool, { focus, goals, trainOthers, usage, usedInSession, experienceLevel }) {
   const candidates = pool.filter((e) => e.pattern === pattern && !usedInSession.has(e.id))
   if (candidates.length === 0) return null
 
@@ -131,6 +141,7 @@ function pickExercise(pattern, pool, { focus, goals, trainOthers, usage, usedInS
     if (e.compound) score += 1.5
     if (hitsGoal) score += 1
     if (!trainOthers && !hitsFocus) score -= 5 // concentrate on focus areas
+    if (experienceLevel === 'new' && SPECIALIST.has(e.id)) score -= 3
     score -= (usage.get(e.id) || 0) * 2 // spread variety across the week
     return { e, score }
   })

@@ -37,7 +37,7 @@
   --go: #34e6a8;             /* green — "go" flash when rest ends */
   --border: #36363c;
   --text: #f4f4f5;
-  --muted: #898989;          /* palette gray */
+  --muted: #a0a0a0;          /* palette gray, lifted for AA on raised surfaces */
   --accent: #4dffbc;         /* mint */
   --accent-text: var(--accent); /* accent as small text — bright mint reads fine on dark */
   --accent-ink: #04140f;     /* near-black — text on bright accent fills */
@@ -72,6 +72,10 @@
   --accent: #0fb88a;         /* deeper mint — readable on white */
   --accent-text: #0a7357;    /* darker mint for small accent TEXT — AA on white/surface */
   --accent-ink: #04231a;
+  /* Text-strength versions of the status hues: the fills above are fine as
+     borders and backgrounds but fall under 4.5:1 as small text on white. */
+  --danger-text: #c0282a;
+  --warn-text: #8a6100;
   --accent-2: #ef3e3e;       /* coral */
   --accent-3: #e84393;       /* pink */
   --accent-4: #1f9d57;       /* green */
@@ -214,7 +218,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   letter-spacing: 0.08em;
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-text);
   margin: 0;
 }
 .muted { color: var(--muted); margin: 4px 0; line-height: 1.5; }
@@ -419,7 +423,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 
 /* ---- Buttons (small / danger) ---- */
 .btn-sm { padding: 8px 14px; font-size: var(--fs-sm); }
-.btn.danger { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 40%, var(--border)); }
+.btn.danger { color: var(--danger-text, var(--accent-2)); border-color: color-mix(in srgb, var(--accent-2) 40%, var(--border)); }
 
 /* ---- Week strip states ---- */
 .day-chip.is-training { color: var(--text); border-color: var(--accent); }
@@ -490,7 +494,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .stretch-row-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .stretch-muscle {
   flex: none; font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-  color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent-text); background: color-mix(in srgb, var(--accent) 14%, transparent);
   border-radius: 6px; padding: 2px 6px;
 }
 .stretch-name { font-weight: 600; font-size: var(--fs-md); }
@@ -589,7 +593,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .suggestion {
   font-size: var(--fs-sm);
   margin: 0;
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
   border-radius: 10px;
   padding: 8px 10px;
@@ -649,7 +653,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   flex: none;
   border: none;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
@@ -748,7 +752,7 @@ button, a, input, select, textarea { outline-color: var(--accent); }
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--selected-tint);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ---- 1RM update rows ---- */
@@ -1448,7 +1452,7 @@ select.text-input { appearance: none; }
   gap: 6px;
   padding: 14px 16px;
 }
-.rehab-redflags .group-label { color: var(--warn); }
+.rehab-redflags .group-label { color: var(--warn-text, var(--warn)); }
 .rehab-redflag-list {
   margin: 0;
   padding-left: 18px;
@@ -1496,9 +1500,9 @@ select.text-input { appearance: none; }
   width: 104px;
   line-height: 1;
   text-align: center;
-  color: var(--accent);
+  color: var(--accent-text);
 }
-.cardio-preview-icon { color: var(--accent); }
+.cardio-preview-icon { color: var(--accent-text); }
 .swap-note {
   display: flex;
   align-items: center;
@@ -1541,8 +1545,8 @@ select.text-input { appearance: none; }
 .code-actions .btn { flex: 1; min-width: 120px; }
 .code-status { margin-top: 6px; }
 .code-status.ok { color: var(--accent-4, #82ab7d); }
-.code-status.err { color: var(--accent-2); }
-.import-error { color: var(--accent-2); }
+.code-status.err { color: var(--danger-text, var(--accent-2)); }
+.import-error { color: var(--danger-text, var(--accent-2)); }
 .skill-remove { display: block; margin: 4px auto 0; color: var(--muted); }
 .skill-tree-card { border-left: 3px solid var(--accent-5, var(--accent)); }
 /* The manage row now holds three actions; let it wrap on narrow screens. */
@@ -1557,7 +1561,7 @@ select.text-input { appearance: none; }
 .program-card-actions { display: flex; gap: 8px; }
 .active-badge {
   background: var(--selected-tint);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--fs-xs);
   font-weight: 700;
   padding: 5px 10px;
@@ -1773,7 +1777,7 @@ select.text-input { appearance: none; }
 .link-btn {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -1823,7 +1827,7 @@ select.text-input { appearance: none; }
 .screenshot-hint {
   text-align: center;
   font-size: var(--fs-sm);
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
   border-radius: 10px;
   padding: 8px;
@@ -1991,7 +1995,7 @@ select.text-input { appearance: none; }
   cursor: pointer;
   font-weight: 600;
   font-size: var(--fs-md);
-  color: var(--accent);
+  color: var(--accent-text);
   list-style: none;
 }
 .guide summary::-webkit-details-marker { display: none; }

@@ -49,6 +49,11 @@ export default function Schedule() {
 
   const canSave = draft.mode === 'fixed' || draft.trainingDays.length > 0
 
+  // Weekdays that more than one workout is assigned to (fixed mode only).
+  const sharedDays = draft.mode === 'fixed'
+    ? [...new Set(draft.dayWeekdays.filter((wd, i, all) => all.indexOf(wd) !== i))]
+    : []
+
   const save = () => {
     let next
     if (draft.mode === 'fixed') {
@@ -122,11 +127,19 @@ export default function Schedule() {
         {draft.mode === 'fixed' ? (
           <div className="card">
             <p className="group-label">Assign each workout to a day</p>
+            {sharedDays.length > 0 && (
+              // Allowed (an AM/PM split is real), but it is far more often a
+              // slip — and Today can only offer one of them as "today's".
+              <p className="muted small rest-note" role="status">
+                {sharedDays.map((wd) => WEEKDAY_LABELS[wd]).join(' and ')} {sharedDays.length === 1 ? 'has' : 'have'} more than one workout. That&apos;s fine for a two-a-day split — otherwise give each workout its own day.
+              </p>
+            )}
             {program.days.map((d, i) => (
               <div className="assign-row" key={i}>
                 <span className="ex-name">{d.title}</span>
                 <select
                   className="text-input select"
+                  aria-label={`Day for ${d.title}`}
                   value={draft.dayWeekdays[i]}
                   onChange={(e) => {
                     const v = Number(e.target.value)
