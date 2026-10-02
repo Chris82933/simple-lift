@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   loadProfile, loadSettings, saveSettings, clearAll,
-  exportCode, importCode,
+  exportCode, importCode, readBackupCode,
   loadPrograms, savePrograms, loadMaxes, saveMax, loadBodyweight, logBodyweight,
   loadHistory, updateWorkout,
 } from '../lib/storage.js'
@@ -170,10 +170,21 @@ export default function Profile() {
     }
   }
 
-  const runImport = () => {
+  const runImport = async () => {
+    // Check the code first; only a code that can actually be imported earns
+    // the "this replaces everything" warning.
+    let incoming
+    try {
+      incoming = await readBackupCode(importText)
+    } catch (e) {
+      setCodeStatus({ ok: false, msg: e?.message || 'That code could not be read.' })
+      return
+    }
+    const nPrograms = Array.isArray(incoming.programs) ? incoming.programs.length : 0
+    const nSessions = Array.isArray(incoming.history) ? incoming.history.length : 0
     setConfirmModal({
       title: 'Import this code?',
-      message: 'This replaces the programs, history, and settings on this device with what’s in the code. Your current data on this device is not kept unless you’ve saved a backup code for it too.',
+      message: `The code holds ${nPrograms} program${nPrograms === 1 ? '' : 's'} and ${nSessions} logged session${nSessions === 1 ? '' : 's'}. ` + 'This replaces the programs, history, and settings on this device with what’s in the code. Your current data on this device is not kept unless you’ve saved a backup code for it too.',
       confirmLabel: 'Import & replace',
       danger: true,
       onConfirm: async () => {

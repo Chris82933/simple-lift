@@ -274,6 +274,13 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
       return next
     })
   }
+  // A set that was done but never logged, or logged twice by mistake.
+  const addSet = (exIdx) => setDraft((d) => d.map((arr, j) => {
+    if (j !== exIdx) return arr
+    const last = [...arr].reverse().find((s) => !s.warmup)
+    return [...arr, { weight: last?.weight ?? '', reps: last?.reps ?? '', done: true }]
+  }))
+  const removeSet = (exIdx, setIdx) => setDraft((d) => d.map((arr, j) => (j === exIdx ? arr.filter((_, k) => k !== setIdx) : arr)))
   const saveEdit = () => {
     const newEntries = entries.map((e, j) => ({
       ...e,
@@ -331,7 +338,7 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
                 <div key={j} className="log-ex">
                   <div className="log-row"><span className="log-ex-name">{e.name}</span></div>
                   <div className="log-sets">
-                    {(e.sets || []).map((s, k) => (
+                    {draft[j].map((s, k) => (
                       <div className="log-set-row log-set-edit" key={k}>
                         <span className="muted small">{s.warmup ? 'Warm-up' : `Set ${k + 1}`}</span>
                         <input
@@ -350,9 +357,13 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
                           onChange={(ev) => updateSet(j, k, 'reps', acceptNumber(ev.target.value, draft[j][k].reps, { max: Math.max(MAX_REPS, MAX_HOLD_SEC) }))}
                         />
                         <span className="muted small">{entryUnit(e)}</span>
+                        <button type="button" className="icon-btn log-set-remove" onClick={() => removeSet(j, k)} aria-label={`Remove ${e.name} set ${k + 1}`} title="Remove this set">
+                          <span aria-hidden="true">✕</span>
+                        </button>
                       </div>
                     ))}
-                    {(e.sets || []).length === 0 && <p className="muted small">No sets logged.</p>}
+                    {draft[j].length === 0 && <p className="muted small">No sets logged.</p>}
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => addSet(j)}>+ Add a set</button>
                   </div>
                 </div>
               ))}

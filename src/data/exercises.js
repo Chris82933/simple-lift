@@ -813,7 +813,54 @@ export function matchInfo(ex, query) {
   if (ex.name.toLowerCase().includes(q)) return { match: true, via: 'name' }
   const alias = (ex.aliases || []).find((a) => a.includes(q))
   if (alias) return { match: true, via: 'alias', term: alias }
+  if (fuzzyHit(ex, q)) return { match: true, via: 'fuzzy' }
   return { match: false, via: null }
+}
+
+// ---- Typo tolerance ----
+// "bech pres", "deadlfit": a search that returns nothing for a slip of the
+// thumb sends people to "create custom exercise" for a lift that exists.
+// Every word typed must be close to SOME word in the exercise's name or
+// aliases — one edit for short words, two for long ones — and at least one
+// typed word has to be 4+ letters, so "ro" or "db" never go fuzzy.
+function editDistance(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]
+    let best = i
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+      if (cur[j] < best) best = cur[j]
+    }
+    if (best > max) return max + 1
+    prev = cur
+  }
+  return prev[b.length]
+}
+const wordCache = new WeakMap()
+function wordsOf(ex) {
+  let w = wordCache.get(ex)
+  if (!w) {
+    w = [...new Set((ex.name + ' ' + (ex.aliases || []).join(' ')).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean))]
+    wordCache.set(ex, w)
+  }
+  return w
+}
+function fuzzyHit(ex, q) {
+  const typed = q.split(/[^a-z0-9]+/).filter(Boolean)
+  if (!typed.some((w) => w.length >= 4)) return false
+  const hay = wordsOf(ex)
+  return typed.every((w) => {
+    if (w.length < 4) return hay.some((h) => h.startsWith(w))
+    const tol = w.length >= 7 ? 2 : 1
+    return hay.some((h) => (
+      h.startsWith(w)
+      || editDistance(h, w, tol) <= tol
+      // still typing: "bech" against the start of "bench"
+      || (h.length > w.length && editDistance(h.slice(0, w.length + 1), w, tol) <= tol)
+    ))
+  })
 }
 
 // Search match: exercise name OR any hidden alias contains the query.

@@ -13,6 +13,10 @@ export default function CardioForm({ onSaved, units = 'lbs', initialMachine = 't
   const [avgHr, setAvgHr] = useState('')
   const [calories, setCalories] = useState('')
   const [notes, setNotes] = useState('')
+  // Yesterday's run, logged today. Local calendar date, not UTC — toISOString
+  // would roll an evening entry into tomorrow.
+  const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+  const [day, setDay] = useState(todayStr)
 
   const hasDistance = CARDIO_BY_ID[machine]?.distance
   // Any ONE meaningful metric is enough to save — someone logging "3 miles"
@@ -22,7 +26,9 @@ export default function CardioForm({ onSaved, units = 'lbs', initialMachine = 't
   const save = () => {
     if (!canSave) return
     onSaved({
-      date: new Date().toISOString(),
+      // Today keeps the real time; an earlier day is stamped at midday so it
+      // sorts sensibly within that day.
+      date: (!day || day === todayStr() ? new Date() : new Date(`${day}T12:00:00`)).toISOString(),
       machine,
       machineName: CARDIO_BY_ID[machine]?.name || 'Cardio',
       durationMin: Number(duration) || 0,
@@ -54,6 +60,9 @@ export default function CardioForm({ onSaved, units = 'lbs', initialMachine = 't
       </div>
 
       <div className="cardio-fields">
+        <label>Date
+          <input type="date" value={day} max={todayStr()} onChange={(e) => setDay(e.target.value)} />
+        </label>
         <label>Time (min)
           <input type="number" inputMode="numeric" value={duration} placeholder="30" min="0" onChange={(e) => setDuration(acceptNumber(e.target.value, duration, { max: 1440 }))} />
         </label>

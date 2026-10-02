@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  loadPrograms, getActiveProgramId, setActiveProgramId, deleteProgram, restoreProgram,
+  loadPrograms, getActiveProgramId, setActiveProgramId, deleteProgram, restoreProgram, addProgram,
   isSkillTreeAdded, setSkillTreeAdded, loadSkills,
 } from '../lib/storage.js'
 import { computeStats, powerLevel, rankFor } from '../data/skills.js'
 import { useToast } from '../components/Toast.jsx'
+import ConfirmModal from '../components/ConfirmModal.jsx'
 
 export default function Programs() {
   const navigate = useNavigate()
@@ -16,6 +17,22 @@ export default function Programs() {
   const skillTreeAdded = isSkillTreeAdded()
 
   const refresh = () => force((n) => n + 1)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+
+  // A copy to experiment on — the usual reason to duplicate is "same program,
+  // but I want to try a different Thursday" without touching the one in use.
+  const duplicate = (program) => {
+    const copy = JSON.parse(JSON.stringify(program))
+    delete copy.id
+    delete copy.createdAt
+    copy.name = `${program.name} (copy)`
+    if (copy.schedule?.mode === 'rotation') copy.schedule.pointer = 0
+    const made = addProgram(copy)
+    // addProgram makes the new one active; a copy shouldn't take over Today.
+    if (activeId) setActiveProgramId(activeId)
+    refresh()
+    toast.show(`Copied to "${made.name}"`, { actionLabel: 'Undo', onAction: () => { deleteProgram(made.id); if (activeId) setActiveProgramId(activeId); refresh() } })
+  }
 
   const makeActive = (id) => { setActiveProgramId(id); refresh() }
   const remove = (program) => {
@@ -50,44 +67,13 @@ export default function Programs() {
     <section className="page">
       <header className="page-header">
         <h1>Plans</h1>
-        <p className="muted">Create, switch, and manage your programs — plus extras and tools.</p>
+        <p className="muted">Your programs first — create a new one, or open the extras and tools, below.</p>
       </header>
-
-      <div className="card">
-        <p className="group-label">Create a program</p>
-        <button type="button" className="btn btn-primary" onClick={() => navigate('/templates')}>
-          Browse templates (GZCLP, bodyweight…)
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={() => navigate('/onboarding', { state: { guided: true } })}>
-          Generate one from a few questions
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={() => navigate('/builder')}>
-          Build a custom program
-        </button>
-      </div>
-
-      <div className="card">
-        <p className="group-label">Extras</p>
-        <button type="button" className="btn btn-ghost" onClick={() => navigate('/recovery')}>
-          Recovery &amp; Strength (rehab a joint)
-        </button>
-        {!skillTreeAdded && (
-          <button type="button" className="btn btn-ghost" onClick={addSkillTree}>
-            Add the Calisthenics Skill Tree
-          </button>
-        )}
-      </div>
-
-      <div className="card">
-        <p className="group-label">Tools</p>
-        <Link className="btn btn-ghost" to="/one-rep-max">Find your starting weights (1RM)</Link>
-        <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
-      </div>
 
       {programs.length === 0 && !skillTreeAdded && (
         <div className="card placeholder-card">
           <p className="placeholder-title">No programs yet</p>
-          <p className="muted">Pick one of the options above to create your first — a ready-made template is the quickest start.</p>
+          <p className="muted">Pick one of the options below to create your first — a ready-made template is the quickest start.</p>
         </div>
       )}
 
@@ -153,13 +139,60 @@ export default function Programs() {
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/builder', { state: { id: p.id } })}>
                 Edit
               </button>
-              <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => remove(p)}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => duplicate(p)}>
+                Duplicate
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => setConfirmDelete(p)}>
                 Delete
               </button>
             </div>
           </div>
         )
       })}
+      <div className="card">
+        <p className="group-label">Create a program</p>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/templates')}>
+          Browse templates (GZCLP, bodyweight…)
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/onboarding', { state: { guided: true } })}>
+          Generate one from a few questions
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/builder')}>
+          Build a custom program
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/import-program')}>
+          Import a program (share code or pasted text)
+        </button>
+      </div>
+
+      <div className="card">
+        <p className="group-label">Extras</p>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/recovery')}>
+          Recovery &amp; Strength (rehab a joint)
+        </button>
+        {!skillTreeAdded && (
+          <button type="button" className="btn btn-ghost" onClick={addSkillTree}>
+            Add the Calisthenics Skill Tree
+          </button>
+        )}
+      </div>
+
+      <div className="card">
+        <p className="group-label">Tools</p>
+        <Link className="btn btn-ghost" to="/one-rep-max">Find your starting weights (1RM)</Link>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
+      </div>
+
+      {confirmDelete && (
+        <ConfirmModal
+          title={`Delete "${confirmDelete.name}"?`}
+          message={`${confirmDelete.days.length} day${confirmDelete.days.length === 1 ? '' : 's'} of programming will be removed${confirmDelete.id === activeId ? ', and it is your active program' : ''}. Your logged workouts are kept. You can undo this for a few seconds afterwards.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => { const p = confirmDelete; setConfirmDelete(null); remove(p) }}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </section>
   )
 }

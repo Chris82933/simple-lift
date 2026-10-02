@@ -736,8 +736,11 @@ export async function exportCode() {
   return CODE_PREFIX + btoa(unescape(encodeURIComponent(json)))
 }
 
-// Returns true on success, rejects with a friendly message otherwise.
-export async function importCode(code) {
+// Decode and validate a backup code WITHOUT touching anything stored. Lets the
+// UI check a pasted code before it shows the "this replaces everything"
+// warning — garbage used to get the scary dialog first and the "that's not a
+// code" message only after you agreed to wipe the device.
+export async function readBackupCode(code) {
   if (!code || typeof code !== 'string') throw new Error('Paste your backup code first.')
   const trimmed = code.trim()
   const v2 = trimmed.startsWith(CODE_PREFIX_V2)
@@ -763,6 +766,16 @@ export async function importCode(code) {
   if (!blob || typeof blob !== 'object' || (blob.programs === undefined && blob.profile === undefined)) {
     throw new Error('That code doesn’t contain Simple Lift data.')
   }
+  const result = validateImportBlob(blob)
+  if (!result.ok) {
+    throw new Error(`That code has an unexpected shape (${result.errors.join(', ')}) — nothing was changed.`)
+  }
+  return blob
+}
+
+// Returns true on success, rejects with a friendly message otherwise.
+export async function importCode(code) {
+  const blob = await readBackupCode(code)
   importData(blob)
   // importData is silent; announce the change so the UI/sync layer refreshes.
   try { localStorage.setItem(UPDATED_KEY, JSON.stringify(Date.now())) } catch { /* ignore */ }

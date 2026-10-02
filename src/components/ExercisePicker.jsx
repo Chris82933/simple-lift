@@ -1,9 +1,17 @@
-import { useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { EXERCISES, matchInfo } from '../data/exercises.js'
 import MuscleMap from './MuscleMap.jsx'
 import CustomExerciseForm from './CustomExerciseForm.jsx'
 import { getEquipment, activeEquipmentIds, isDoable, profileMeta } from '../lib/equipment.js'
 import useModalA11y from '../lib/useModalA11y.js'
+
+const GROUP_LABEL = {
+  squat: 'Squat', lunge: 'Lunge & single-leg', hinge: 'Hinge, glutes & hamstrings',
+  horiz_push: 'Push — chest', vert_push: 'Push — shoulders', shoulder_iso: 'Shoulders — isolation',
+  horiz_pull: 'Pull — rows', vert_pull: 'Pull — pull-ups & pulldowns',
+  biceps: 'Biceps', triceps: 'Triceps', core: 'Core', calf: 'Calves', conditioning: 'Conditioning & cardio',
+}
+const groupOf = (e) => GROUP_LABEL[e.pattern] || 'Other'
 
 // Bottom-sheet exercise picker. Calls onPick(exercise) for each tap; stays open
 // so several can be added in a row. onClose dismisses it. Defaults to showing
@@ -35,6 +43,14 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
     seenNames.add(nameKey)
     filtered.push({ ex: e, info })
   }
+  // With nothing typed this is a 200-row list. Group it by movement so it can
+  // be scanned; once there is a query, relevance order matters more.
+  const grouped = !q
+  if (grouped) {
+    const order = Object.keys(GROUP_LABEL)
+    const rank = (e) => { const i = order.indexOf(e.pattern); return i === -1 ? order.length : i }
+    filtered.sort((a, b) => rank(a.ex) - rank(b.ex))
+  }
 
   return (
     <div className="picker-overlay" role="dialog" aria-modal="true" aria-label={title} ref={dialogRef} tabIndex={-1}>
@@ -56,8 +72,12 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
           <button type="button" className={'chip' + (showAll ? ' is-selected' : '')} aria-pressed={showAll} onClick={() => setShowAll(true)}>Show all</button>
         </div>
         <div className="picker-list">
-          {filtered.map(({ ex, info }) => (
-            <button key={ex.id} type="button" className="picker-item" onClick={() => onPick(ex)}>
+          {filtered.map(({ ex, info }, i) => (
+            <Fragment key={ex.id}>
+            {grouped && (i === 0 || groupOf(filtered[i - 1].ex) !== groupOf(ex)) && (
+              <p className="picker-group-label">{groupOf(ex)}</p>
+            )}
+            <button type="button" className="picker-item" onClick={() => onPick(ex)}>
               <MuscleMap pattern={ex.pattern} exId={ex.id} size={44} compact />
               <span className="ex-name">
                 {ex.name}{ex.custom ? ' ·' : ''}
@@ -68,6 +88,7 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
               </span>
               <span className="add-plus">+</span>
             </button>
+            </Fragment>
           ))}
           {filtered.length === 0 && <p className="muted">No matches.</p>}
           <button type="button" className="picker-item create-custom" onClick={() => setCreating(true)}>
@@ -79,6 +100,7 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
 
       {creating && (
         <CustomExerciseForm
+          initialName={search.trim()}
           onClose={() => setCreating(false)}
           onCreate={(ex) => { setCreating(false); onPick(ex) }}
         />

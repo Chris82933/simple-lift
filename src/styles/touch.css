@@ -113,3 +113,22 @@
 
 /* ---- Builder (phone): mark the box that is wrong ------------------------ */
 .builder-fields input.is-invalid { border-color: var(--accent-2); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-2) 25%, transparent); }
+
+/* ---- Exercise picker: movement headings in the unfiltered list ---------- */
+.picker-group-label {
+  margin: 10px 2px 2px;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.picker-group-label:first-child { margin-top: 0; }
+/* The "matched via alias" tag sits under a long name, not on top of the
+   compound/accessory label beside it. */
+.picker-item .ex-name { min-width: 0; overflow-wrap: anywhere; }
+.picker-item .match-tag { display: inline-block; }
+
+/* ---- Session log edit: per-set remove ----------------------------------- */
+.log-set-remove { width: 28px; height: 28px; font-size: var(--fs-2xs); margin-left: auto; }
+.cardio-fields input[type='date'] { min-width: 0; }

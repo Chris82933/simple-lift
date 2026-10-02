@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { addProgram, loadPrograms } from '../lib/storage.js'
 import {
-  decodeProgramCode, buildImportedProgram, summarizeProgram, IMPORT_DEFAULTS,
+  decodeProgramCode, buildImportedProgram, summarizeProgram, IMPORT_DEFAULTS, isProgramCode,
 } from '../lib/programShare.js'
+import { parseTextProgram } from '../lib/textImport.js'
 
 const SCHEME_LABEL = {
   t1: 'GZCLP', t2: 'GZCLP', t3: 'GZCLP', 531: '5/3/1', lp: 'Linear', gslp: 'Greyskull',
@@ -17,11 +18,22 @@ export default function ImportProgram() {
   const [shared, setShared] = useState(null) // decoded program
   const [error, setError] = useState(null)
   const [opts, setOpts] = useState(IMPORT_DEFAULTS)
+  // true when the preview came from pasted plain text rather than a share code
+  const [fromText, setFromText] = useState(false)
 
   const summary = shared ? summarizeProgram(shared) : null
 
   const preview = async () => {
     setError(null)
+    // Not a share code? Read it as a program written out in plain text.
+    if (!isProgramCode(text)) {
+      const { program } = parseTextProgram(text)
+      if (program) { setFromText(true); setShared(program); return }
+      setShared(null)
+      setError('Couldn’t find any exercises in that. Put each one on its own line with sets × reps — for example “Bench Press 3x8” — and a line with just a name (“Upper A”) to start each day.')
+      return
+    }
+    setFromText(false)
     try {
       setShared(await decodeProgramCode(text))
     } catch (e) {
@@ -32,7 +44,9 @@ export default function ImportProgram() {
 
   const doImport = () => {
     const existingNames = loadPrograms().map((p) => p.name)
-    const program = buildImportedProgram(shared, opts, existingNames)
+    // Typed-out programs have no one else's weights, progress or schedule to
+    // choose about — keep exactly what was written.
+    const program = buildImportedProgram(shared, fromText ? { weights: 'theirs', progress: 'keep', schedule: 'theirs' } : opts, existingNames)
     addProgram(program) // appends + becomes active; never overwrites
     navigate('/today')
   }
@@ -67,16 +81,16 @@ export default function ImportProgram() {
       <div className="step-body">
         {!shared ? (
           <>
-            <h1>Paste a program code</h1>
+            <h1>Paste a program</h1>
             <p className="muted">
-              Someone shared a program with you? Paste their code below. It adds a new program —
-              nothing you already have is changed.
+              Paste a share code someone sent you — or a program written out as text, one exercise
+              per line. It adds a new program; nothing you already have is changed.
             </p>
             <textarea
               className="text-input code-box"
-              rows={4}
-              aria-label="Program code"
-              placeholder="Paste a program code here…"
+              rows={8}
+              aria-label="Program code or text"
+              placeholder={'Paste a share code, or type it out:\n\nUpper A\nBench Press 4x6-8\nBarbell Row 4x8\n\nLower A\nSquat 3x5'}
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
@@ -110,6 +124,17 @@ export default function ImportProgram() {
               </div>
             )}
 
+            <div className="card">
+              <p className="group-label">What will be added</p>
+              {shared.days.map((d, i) => (
+                <p className="muted small" key={i} style={{ margin: '2px 0' }}>
+                  <strong style={{ color: 'var(--text)' }}>{d.title || d.dayLabel || `Day ${i + 1}`}</strong>
+                  {' — '}{(d.exercises || []).map((e) => `${e.name} ${e.sets}×${e.repLow === e.repHigh ? e.repLow : `${e.repLow}–${e.repHigh}`}`).join(', ')}
+                </p>
+              ))}
+            </div>
+
+            {!fromText && (<>
             <div className="card">
               <p className="group-label">Starting weights</p>
               <p className="muted small">Their weights are set for their body — start blank and enter your own as you go.</p>
@@ -156,6 +181,7 @@ export default function ImportProgram() {
                 ]}
               />
             </div>
+            </>)}
 
             <p className="muted small">
               Sets, reps and rest come across as written — that&apos;s the program. You can tweak
