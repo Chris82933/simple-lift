@@ -28,6 +28,7 @@ export default function DesktopProgramPane({ d }) {
             key={g.id}
             type="button"
             className={'check-pill' + (d.draft.goals.includes(g.id) ? ' is-selected' : '')}
+            aria-pressed={d.draft.goals.includes(g.id)}
             onClick={() => d.update({ goals: toggle(d.draft.goals, g.id) })}
           >
             {g.label}
@@ -46,6 +47,7 @@ export default function DesktopProgramPane({ d }) {
             key={m.id}
             type="button"
             className={'choice-row' + ((d.draft.progressionMethod || DEFAULT_METHOD) === m.id ? ' is-selected' : '')}
+            aria-pressed={(d.draft.progressionMethod || DEFAULT_METHOD) === m.id}
             onClick={() => d.update({ progressionMethod: m.id })}
           >
             <span className="choice-title">

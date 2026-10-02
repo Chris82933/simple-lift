@@ -1,8 +1,8 @@
 /* Desktop program workspace (/builder).
  *
- * EVERY rule in this file sits inside the one `@media (min-width: 1440px)`
+ * EVERY rule in this file sits inside the one `@media (min-width: 1280px)`
  * block below — no exceptions. The phone builder is the product; this layer
- * only exists above 1440px, which is the same threshold BuilderDesktop is
+ * only exists above 1280px, which is the same threshold BuilderDesktop is
  * mounted at (WORKSPACE_QUERY in src/lib/useMediaQuery.js) — a HIGHER bar than
  * the rest of the desktop layer, because three panes plus the sidebar need the
  * room. Change one and you must change the other, or the workspace renders
@@ -13,7 +13,7 @@
  * All colour comes from the tokens at the top of src/index.css. There is a
  * light theme; a hardcoded hex breaks it.
  */
-@media (min-width: 1440px) {
+@media (min-width: 1280px) {
   /* ---- Page frame -------------------------------------------------------
      The workspace owns the viewport: three panes that each scroll on their
      own, with the action bar pinned below them. Scrolling the page as a whole
@@ -67,7 +67,12 @@
        to overflow its cell (and with no overflow-x it would spill, not scroll).
        At the 1440px breakpoint these rails leave the centre 499px — 78px of
        headroom. Widening them further eats into that. */
-    grid-template-columns: 260px minmax(0, 1fr) 340px;
+    /* The rails scale with the window: 230/282px at a 1280px laptop, the full
+       260/340px from ~1545px up. That is what lets the workspace exist at
+       laptop widths at all — with fixed rails the centre pane was under the
+       table's minimum until 1440px. */
+    grid-template-columns: clamp(200px, 18vw, 260px) minmax(0, 1fr) clamp(250px, 22vw, 340px);
+    grid-row: 2;
     gap: 14px;
     min-height: 0;
   }
@@ -520,4 +525,99 @@
     color: var(--muted);
   }
   .dtb-status.is-blocked { color: var(--warn); }
+
+  /* The action bar is first in the DOM (so Save is an early tab stop) and last
+     on screen. */
+  .dtb-actions { grid-row: 3; }
+
+  /* ---- Centre pane: the week stays, the day scrolls --------------------- */
+  .dtb-pane-center { overflow: hidden; container-type: inline-size; }
+  .dtb-week { flex: none; }
+  .dtb-day-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Room for focus rings and the superset rail, which sit at the edge. */
+    padding: 0 8px 4px;
+    margin: 0 -8px;
+  }
+
+  /* Compact day tiles: one row of text beside a small figure. The tall tiles
+     took nearly half the pane, leaving room for about one and a half
+     exercises underneath. */
+  .dtb-week-list { gap: 8px; padding: 0; }
+  .dtb-day-tile { width: auto; flex: 1 1 150px; max-width: 230px; }
+  .dtb-day-tile:not(.is-selected):hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .dtb-day-tile-main {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 4px;
+    text-align: left;
+  }
+  .dtb-day-tile-main > .muscle-map { flex: none; }
+  .dtb-tile-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; line-height: 1.25; }
+  .dtb-tile-name { text-align: left; }
+  .dtb-tile-tools { justify-content: flex-end; padding: 2px 4px; }
+  .dtb-tile-tools .icon-btn { width: 24px; height: 24px; font-size: 10px; }
+  .dtb-tile-tools .icon-btn::after { inset: -3px; }
+  .dtb-tile-tools .dtb-grip { margin-right: auto; }
+  .dtb-day-add { flex: 0 1 150px; }
+  .dtb-day-add .dtb-day-tile-main { justify-content: center; }
+  .dtb-add-plus { font-size: var(--fs-xl); }
+
+  /* ---- Start weight: the "estimated" mark sits INSIDE the box -----------
+     Beside the input it took the width the number needed: at 1440px an
+     estimated weight was left 13px to draw "200" in and looked empty. */
+  .dtb-wt { position: relative; display: block; }
+  .dtb-wt input[type='number'] { flex: none; margin-inline: auto; min-width: 44px; }
+  .dtb-wt.has-est input[type='number'] { padding-left: 14px; }
+  .dtb-est {
+    position: absolute;
+    left: max(0px, calc(50% - 32px));
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: 16px;
+    min-height: 24px;
+    font-size: var(--fs-sm);
+    color: var(--accent-text);
+  }
+  .dtb-est:hover { color: var(--text); }
+
+  /* "Recommended" shows its result in place; a steady width means the icons
+     beside it don't shuffle when the label changes. */
+  .dtb-action-btn { min-width: 112px; justify-content: center; }
+  .dtb-action-btn.is-done { border-color: var(--accent); color: var(--accent-text); }
+
+  .dtb-table thead th { white-space: nowrap; }
+  .superset-link:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); color: var(--text); }
+
+  /* ---- A narrow centre pane (laptops) -----------------------------------
+     A container query, not another media query: what matters is the width
+     this pane actually got, which depends on the rails as well as the window. */
+  @container (max-width: 560px) {
+    /* The row figure goes first — the name needs the room more, and the day's
+       muscles are still on the week tile and under the table. */
+    .dtb-name-cell > .muscle-map { display: none; }
+    .dtb-c-name { width: 30%; }
+    .dtb-table thead th { letter-spacing: 0.02em; }
+    .dtb-row-tools > td, .dtb-row-note > td { padding-left: 4px; padding-right: 4px; }
+    .dtb-tools, .dtb-tools-opts { gap: 4px; }
+    .dtb-chip { padding: 0 8px; }
+    .dtb-chip.is-on::before { margin-right: 3px; }
+    .dtb-tools-sep { display: none; }
+    .dtb-action-btn { padding: 0 8px; min-width: 98px; }
+    .dtb-tools-move { gap: 2px; }
+    .dtb-tools-move .icon-btn { width: 26px; height: 26px; }
+
+    /* Week strip: name-only tiles, four to a row, and only the selected day
+       shows its move/remove controls (select a day to get them). */
+    .dtb-day-tile { flex: 1 1 84px; }
+    .dtb-day-tile-main > .muscle-map,
+    .dtb-tile-text > .muted { display: none; }
+    .dtb-day-tile:not(.is-selected) .dtb-tile-tools { display: none; }
+    .dtb-day-add { flex: 0 1 84px; }
+    .dtb-day-add .dtb-add-plus { display: none; }
+  }
 }

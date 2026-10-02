@@ -1635,6 +1635,18 @@ export default function Workout() {
         )}
       </div>
 
+      {/* One stack for every running timer. A hold and a rest are often live
+          together — holding one move while resting from its superset partner —
+          so they must both be on screen. Each used to be position:fixed in the
+          SAME slot, which drew the rest on top of the hold and hid it.
+          It sits before the action bar in the DOM on purpose: that bar is
+          only sticky while it is the last child. */}
+      <div className="timer-stack">
+        {hold && <RestTimer key={hold.key} seconds={hold.seconds} mode="hold" onDone={finishHold} />}
+        {!supersetTimers && rest && <RestTimer key={rest.key} seconds={rest.seconds} label={rest.label} onDone={() => setRest(null)} />}
+        {supersetTimers && <RestTimers timers={rests} onDone={(key) => setRests((rs) => rs.filter((t) => t.key !== key))} />}
+      </div>
+
       <div className="flow-actions">
         <button
           className="btn btn-ghost"
@@ -1648,15 +1660,6 @@ export default function Workout() {
         <button className="btn btn-primary" onClick={finish}>Finish workout</button>
       </div>
 
-      {/* One stack for every running timer. A hold and a rest are often live
-          together — holding one move while resting from its superset partner —
-          so they must both be on screen. Each used to be position:fixed in the
-          SAME slot, which drew the rest on top of the hold and hid it. */}
-      <div className="timer-stack">
-        {hold && <RestTimer key={hold.key} seconds={hold.seconds} mode="hold" onDone={finishHold} />}
-        {!supersetTimers && rest && <RestTimer key={rest.key} seconds={rest.seconds} label={rest.label} onDone={() => setRest(null)} />}
-        {supersetTimers && <RestTimers timers={rests} onDone={(key) => setRests((rs) => rs.filter((t) => t.key !== key))} />}
-      </div>
 
       {pickerOpen && (
         <ExercisePicker onPick={addExercise} onClose={() => setPickerOpen(false)} />

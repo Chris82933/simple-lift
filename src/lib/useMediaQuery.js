@@ -10,14 +10,12 @@ export const DESKTOP_QUERY = '(min-width: 1024px)'
 
 // The program workspace needs more room than "this is a desktop" implies: it is
 // three panes side by side INSIDE the 250px sidebar, and the middle one holds a
-// table of number inputs whose columns have real minimums. Measured, not
-// guessed — the table bottoms out at ~520px and the centre pane reaches that at
-// a 1400px window, so 1400 is the floor and this sits above it so a long
-// exercise name or a 4-digit weight can't tip it into a sideways scroll.
-// Under this width the builder uses the column editor, which is a real editor
-// and the right shape for a narrow window — not a degraded fallback.
+// table of number inputs whose columns have real minimums (~387px of table).
+// The rails flex with the window (see .dtb-grid), which is what lets this start
+// at 1280 — the common laptop width — where the centre pane is ~440px. Below
+// that the three panes genuinely do not fit and the column editor is used.
 // Keep in lockstep with the media query in src/styles/desktop-builder.css.
-export const WORKSPACE_QUERY = '(min-width: 1440px)'
+export const WORKSPACE_QUERY = '(min-width: 1280px)'
 
 const EMPTY = () => () => {}
 

@@ -14,11 +14,20 @@ export default function DesktopLibraryPane({ d, di }) {
   const exIds = d.exIdsForDay(di)
   const addable = d.filtered.filter(({ ex }) => !exIds.has(ex.id))
 
+  // The query the last Enter was pressed on. A second Enter on the SAME text
+  // used to add the next match down — "row" ×3 added three different rows.
+  const lastEnter = useRef(null)
   const add = (ex) => {
     d.addExerciseToDay(di, ex)
-    // Keep the caret where it was: the next thing a user does is type the next
-    // exercise's name, not reach for the mouse.
+    // Keep the caret in the search box with its text selected: the next thing
+    // a user does is type the next exercise's name, which now replaces this one.
     searchRef.current?.focus()
+    searchRef.current?.select()
+    // The new row is appended at the bottom of the day, usually below the fold.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const rows = document.querySelectorAll('.dtb-day-scroll .dtb-rowgroup')
+      rows[rows.length - 1]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }))
   }
 
   return (
@@ -28,15 +37,17 @@ export default function DesktopLibraryPane({ d, di }) {
         ref={searchRef}
         className="text-input"
         aria-label="Search exercises"
-        placeholder="Search exercises…  (Enter adds the top match)"
+        placeholder="Search — Enter adds the top match"
         value={d.search}
-        onChange={(e) => d.setSearch(e.target.value)}
+        onChange={(e) => { lastEnter.current = null; d.setSearch(e.target.value) }}
         onKeyDown={(e) => {
           // Enter adds the first result that isn't already in the day. Typing a
           // name and hitting Enter is the fastest way to fill a session, and it
           // is the keyboard equivalent of clicking the row at the top.
           if (e.key !== 'Enter') return
           e.preventDefault()
+          if (lastEnter.current === d.search) return
+          lastEnter.current = d.search
           if (day && addable.length > 0) add(addable[0].ex)
         }}
       />
@@ -80,6 +91,7 @@ export default function DesktopLibraryPane({ d, di }) {
 
       {d.creating && (
         <CustomExerciseForm
+          initialName={d.search.trim()}
           onClose={() => d.setCreating(false)}
           onCreate={(ex) => { d.setCreating(false); if (day) d.addExerciseToDay(di, ex) }}
         />

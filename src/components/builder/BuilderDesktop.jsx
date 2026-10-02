@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import DesktopProgramPane from './DesktopProgramPane.jsx'
 import DesktopWeekStrip from './DesktopWeekStrip.jsx'
 import DesktopDayEditor from './DesktopDayEditor.jsx'
@@ -30,10 +30,19 @@ function blockers(draft) {
 // other.
 export default function BuilderDesktop({ d }) {
   const info = useInfoDialogs()
-  const [selected, setSelected] = useState(0)
-  // Days can be removed (or undone) from under us; a stale index would render
-  // an empty editor next to a week strip that clearly has days in it.
-  const di = Math.min(selected, Math.max(0, d.draft.days.length - 1))
+  // Selection is a day, not a slot: reordering the selected day must keep you
+  // editing it, where an index would silently switch you to its neighbour.
+  const [selectedUid, setSelectedUid] = useState(() => d.draft.days[0]?.uid)
+  const found = d.draft.days.findIndex((x) => x.uid === selectedUid)
+  const di = found >= 0 ? found : 0
+  // The selected day can be removed (or a draft replaced) from under us; fall
+  // to the day now sitting where it was rather than jumping back to day one.
+  const lastIndex = useRef(0)
+  useEffect(() => {
+    if (found >= 0) { lastIndex.current = found; return }
+    const days = d.draft.days
+    if (days.length) setSelectedUid(days[Math.min(lastIndex.current, days.length - 1)].uid)
+  }, [found, d.draft.days])
 
   useEffect(() => {
     // Ctrl/Cmd+S is muscle memory for anyone who builds anything on a computer,
@@ -57,28 +66,9 @@ export default function BuilderDesktop({ d }) {
         <span className="muted small">{d.draft.days.length} day(s) · {d.totalExercises} exercise(s)</span>
       </header>
 
-      <div className="dtb-grid">
-        <aside className="dtb-pane dtb-pane-left" aria-label="Program settings">
-          <DesktopProgramPane d={d} />
-        </aside>
-
-        <main className="dtb-pane dtb-pane-center" aria-label="Training days">
-          <DesktopWeekStrip
-            d={d}
-            selected={di}
-            onSelect={setSelected}
-            // Land on the day you just made — otherwise the library pane is
-            // still pointed at whatever was selected before.
-            onAddDay={() => { d.addDay(); setSelected(d.draft.days.length) }}
-          />
-          <DesktopDayEditor d={d} di={d.draft.days[di] ? di : null} info={info} />
-        </main>
-
-        <aside className="dtb-pane dtb-pane-right" aria-label="Exercise library">
-          <DesktopLibraryPane d={d} di={d.draft.days[di] ? di : null} />
-        </aside>
-      </div>
-
+      {/* First in the DOM, last on screen (grid-row in the stylesheet). Tab order
+          follows the DOM, and Save used to sit behind every button in the
+          library — 300-odd tab stops away. */}
       <div className="dtb-actions">
         <span className={'dtb-status' + (reasons.length ? ' is-blocked' : '')}>
           {reasons.length
@@ -89,6 +79,31 @@ export default function BuilderDesktop({ d }) {
         <button type="button" className="btn btn-primary" onClick={d.save} disabled={!d.canSave} title="Ctrl/Cmd + S">
           {d.editId ? 'Save changes' : 'Save program'}
         </button>
+      </div>
+
+      <div className="dtb-grid">
+        <aside className="dtb-pane dtb-pane-left" aria-label="Program settings">
+          <DesktopProgramPane d={d} />
+        </aside>
+
+        <main className="dtb-pane dtb-pane-center" aria-label="Training days">
+          <DesktopWeekStrip
+            d={d}
+            selected={di}
+            onSelect={(i) => setSelectedUid(d.draft.days[i]?.uid)}
+            // Land on the day you just made — otherwise the library pane is
+            // still pointed at whatever was selected before.
+            onAddDay={() => setSelectedUid(d.addDay())}
+          />
+          {/* The week stays put; only the day underneath it scrolls. */}
+          <div className="dtb-day-scroll">
+            <DesktopDayEditor d={d} di={d.draft.days[di] ? di : null} info={info} />
+          </div>
+        </main>
+
+        <aside className="dtb-pane dtb-pane-right" aria-label="Exercise library">
+          <DesktopLibraryPane d={d} di={d.draft.days[di] ? di : null} />
+        </aside>
       </div>
 
       {info.dialogs}

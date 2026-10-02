@@ -416,3 +416,9 @@
     }
   }
 }
+
+/* Today: with a "Trained this week" card present, Tools and Trained pair off
+   and "This week" would be left alone in a half-width row. Give it the row. */
+@media (min-width: 1024px) {
+  .page:not(.full-flow) > .trained-card + .week-card { grid-column: 1 / -1; }
+}

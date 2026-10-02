@@ -59,7 +59,10 @@
   min-height: 44px;
   padding: 0 12px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  /* The toast is inverted (light on a dark theme), so the accent washes out
+     on it. A solid inverse button reads as the thing to press. */
+  background: var(--bg);
+  color: var(--text);
   white-space: nowrap;
 }
 .toast-close { min-width: 44px; min-height: 44px; font-size: var(--fs-md); }
@@ -102,3 +105,8 @@
      not zoom back out. */
   input, select, textarea { font-size: 16px; }
 }
+
+/* ---- Today: what's already done ---------------------------------------- */
+.day-chip.is-done { border-color: var(--go); }
+.day-chip-done { display: block; font-size: var(--fs-2xs); line-height: 1; color: var(--go); margin-top: 2px; }
+.done-today { margin: 0; font-weight: 600; color: color-mix(in srgb, var(--go) 70%, var(--text)); }

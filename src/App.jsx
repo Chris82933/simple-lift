@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom'
 import AppLayout from './components/AppLayout.jsx'
 import FlowLayout from './components/FlowLayout.jsx'
 import Today from './pages/Today.jsx'
@@ -18,8 +19,21 @@ import Recovery from './pages/Recovery.jsx'
 import Profile from './pages/Profile.jsx'
 import Workout from './pages/Workout.jsx'
 
+// A new page starts at its top. Without this a page opened from halfway down
+// another (Start workout, from the bottom of Today) appeared already scrolled,
+// with its heading off-screen. Back/forward (POP) keeps whatever the browser
+// restores.
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  const type = useNavigationType()
+  useEffect(() => { if (type !== 'POP') window.scrollTo(0, 0) }, [pathname, type])
+  return null
+}
+
 export default function App() {
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       {/* Genuinely modal: these two take over the screen on every size.
           Onboarding is a one-way setup flow, and nav chrome mid-set is a
@@ -53,5 +67,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/today" replace />} />
     </Routes>
+    </>
   )
 }

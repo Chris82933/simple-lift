@@ -29,6 +29,12 @@ const readSavedDraft = (editId) => {
     return v && (v.editId || null) === (editId || null) && Array.isArray(v.draft?.days) ? v.draft : null
   } catch { return null }
 }
+// Days have no identity of their own in a saved program, but the workspace
+// needs one: React keys, and "which day is selected", must follow a day when
+// it is reordered rather than stay with its old slot. Draft-only; save() builds
+// each stored day field by field, so this never reaches storage.
+const newUid = () => Math.random().toString(36).slice(2, 10)
+const withUids = (dr) => ({ ...dr, days: dr.days.map((d) => (d.uid ? d : { ...d, uid: newUid() })) })
 const clearSavedDraft = () => { try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ } }
 
 // The single source of truth for a program draft. Both the phone column and the
@@ -52,6 +58,7 @@ export default function useProgramDraft() {
           goals: existing.goals || [],
           progressionMethod: existing.progressionMethod || DEFAULT_METHOD,
           days: existing.days.map((d, i) => ({
+            uid: newUid(),
             // Rotation/template days have no fixed weekday — assign one so the
             // Builder's weekday picker is a controlled input (not null).
             weekday: d.weekday ?? WEEKDAY_ORDER[i % 7],
@@ -75,10 +82,10 @@ export default function useProgramDraft() {
       name: '',
       goals: profile?.goals?.length ? profile.goals : ['general'],
       progressionMethod: DEFAULT_METHOD,
-      days: [{ weekday: 1, title: 'Day 1', exercises: [], cardio: [] }],
+      days: [{ uid: newUid(), weekday: 1, title: 'Day 1', exercises: [], cardio: [] }],
     }
   })
-  const [recovered] = useState(() => readSavedDraft(editId))
+  const [recovered] = useState(() => { const r = readSavedDraft(editId); return r ? withUids(r) : null })
   const [draft, setDraft] = useState(recovered || baseline)
   const baselineJson = useMemo(() => JSON.stringify(baseline), [baseline])
   const dirty = useMemo(() => JSON.stringify(draft) !== baselineJson, [draft, baselineJson])
@@ -125,10 +132,14 @@ export default function useProgramDraft() {
       exercises: draft.days[di].exercises.map((e, j) => (j === ei ? { ...e, ...patch } : e)),
     })
 
-  const addDay = () =>
+  // Returns the new day's uid so the caller can select it.
+  const addDay = () => {
+    const uid = newUid()
     update({
-      days: [...draft.days, { weekday: WEEKDAY_ORDER[draft.days.length % 7], title: `Day ${draft.days.length + 1}`, exercises: [], cardio: [] }],
+      days: [...draft.days, { uid, weekday: WEEKDAY_ORDER[draft.days.length % 7], title: `Day ${draft.days.length + 1}`, exercises: [], cardio: [] }],
     })
+    return uid
+  }
 
   // ---- Cardio blocks on a day (targets are optional reminders) ----
   const addCardioToDay = (di) =>

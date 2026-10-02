@@ -2182,10 +2182,8 @@ select.text-input { appearance: none; }
 .region-grid .region-tile:nth-child(4).is-selected { border-color: var(--accent-4); background: color-mix(in srgb, var(--accent-4) 18%, var(--surface)); }
 .region-grid .region-tile:nth-child(5).is-selected { border-color: var(--accent-5); background: color-mix(in srgb, var(--accent-5) 18%, var(--surface)); }
 .region-grid .region-tile:nth-child(6).is-selected { border-color: var(--accent-6); background: color-mix(in srgb, var(--accent-6) 18%, var(--surface)); }
-/* Goal pills cycle hues when selected */
-.choice-list .choice-row:nth-child(3n+1).is-selected { border-color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 13%, var(--surface)); }
-.choice-list .choice-row:nth-child(3n+2).is-selected { border-color: var(--accent-3); background: color-mix(in srgb, var(--accent-3) 13%, var(--surface)); }
-.choice-list .choice-row:nth-child(3n).is-selected   { border-color: var(--accent-4); background: color-mix(in srgb, var(--accent-4) 13%, var(--surface)); }
+/* A selected choice is always the accent. These used to cycle hues, and the
+   first one in every list was coral — the same colour as an error. */
 /* Warm accent for the day-card balance note bar */
 .balance-note { border-left: 3px solid var(--accent-2); }
 .suggestion { border-left: 3px solid var(--accent-4); }

@@ -48,6 +48,22 @@ export default function Today() {
       .flatMap((w) => w.entries || [])
     return sessionMuscleHeat(recentEntries)
   }, [history])
+  // Which weekdays of THIS calendar week (Sun–Sat) have a logged workout, and
+  // what was finished today — so the page can say "done" instead of offering
+  // the same session again as if nothing had happened.
+  const { doneWds, doneTodayTitles } = useMemo(() => {
+    const now = new Date()
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime()
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const wds = new Set()
+    const titles = new Set()
+    for (const w of history) {
+      const t = new Date(w.date).getTime()
+      if (t >= weekStart) wds.add(new Date(w.date).getDay())
+      if (t >= dayStart) titles.add(w.sessionTitle)
+    }
+    return { doneWds: wds, doneTodayTitles: titles }
+  }, [history])
 
   // iOS quietly deletes local app data after ~7 days of no use. Nudge iOS users
   // with no cloud backup to save a backup — once, until they dismiss or sign in.
@@ -267,12 +283,17 @@ export default function Today() {
             )
           })}
         </ul>
+        {doneTodayTitles.has(session.title) && !resumingThisDay && (
+          <p className="done-today"><span aria-hidden="true">✓</span> You finished {session.title} today.</p>
+        )}
         <button
           type="button"
-          className="btn btn-primary"
+          className={'btn ' + (doneTodayTitles.has(session.title) && !resumingThisDay ? 'btn-ghost' : 'btn-primary')}
           onClick={() => navigate('/workout', { state: { dayIndex } })}
         >
-          {resumingThisDay ? 'Continue workout' : isScheduledToday ? 'Start workout' : `Start ${session.title} now`}
+          {resumingThisDay ? 'Continue workout'
+            : doneTodayTitles.has(session.title) ? `Do ${session.title} again`
+              : isScheduledToday ? 'Start workout' : `Start ${session.title} now`}
         </button>
         {resumingThisDay && (
           <p className="muted small"><Icon name="play" size={12} /> Picking up where you left off · {timeAgo(inProgress.savedAt)}</p>
@@ -315,7 +336,7 @@ export default function Today() {
         // legs this week?" — a beginner three months in asked exactly that.
         // Built from real history, not the schedule; simply absent (no
         // placeholder) when there's nothing logged in the last 7 days.
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="card trained-card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <MuscleMap heat={weekHeat} size={84} />
           <div>
             <p className="group-label" style={{ margin: 0 }}>Trained this week</p>
@@ -324,7 +345,7 @@ export default function Today() {
         </div>
       )}
 
-      <div className="card">
+      <div className="card week-card">
         <div className="week-head">
           <p className="group-label" style={{ margin: 0 }}>This week</p>
           <Link className="link-sm" to="/schedule">Edit days</Link>
@@ -336,10 +357,12 @@ export default function Today() {
               className={
                 'day-chip' +
                 (trainWds.has(wd) ? ' is-training' : '') +
-                (wd === todayWeekday ? ' is-today' : '')
+                (wd === todayWeekday ? ' is-today' : '') +
+                (doneWds.has(wd) ? ' is-done' : '')
               }
             >
               {label}
+              {doneWds.has(wd) && <span className="day-chip-done"><span aria-hidden="true">✓</span><span className="sr-only"> trained</span></span>}
             </div>
           ))}
         </div>

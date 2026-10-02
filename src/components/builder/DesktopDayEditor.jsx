@@ -7,12 +7,13 @@ import { plannedMuscleHeat } from '../../lib/muscleHeat.js'
 import { CARDIO_MACHINES, CARDIO_BY_ID } from '../../data/cardio.js'
 import Icon from '../Icon.jsx'
 import { WEEKDAY_ORDER, exerciseErrors, sameEquip } from './draftLogic.js'
+import useClickGuard from './useClickGuard.js'
 
 // One row per exercise instead of one card per exercise. The whole point of the
 // desktop view is that a session's numbers line up in columns you can read down
 // and tab across — "is every accessory at 3 sets?" is a glance here and a scroll
 // on a phone.
-function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
+function ExerciseRow({ d, di, ex, ei, count, info, drag, guard }) {
   const errs = exerciseErrors(ex)
   const measure = exMeasure(ex)
   const lad = ladderInfo(ex.id)
@@ -32,6 +33,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
   const recNote = recFrom === null ? ''
     : recFrom === recKey ? 'Already at the recommended setup'
       : `Set to ${ex.sets} × ${ex.repLow}–${ex.repHigh}${measure.type === 'reps' ? '' : ` ${measure.unit}`}, ${ex.restSec}s rest`
+  const recShort = recFrom === recKey ? '✓ Already set' : `✓ ${ex.sets} × ${ex.repLow}–${ex.repHigh}`
   // Toggling a chip is the same patch the phone card applies — the desktop
   // just spends a checkbox-sized chip on it instead of a full-width row.
   const chip = (on, label, onClick, hint) => (
@@ -86,7 +88,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
         </td>
         <td>
           <input
-            type="number" inputMode="numeric" className={errs.sets ? 'is-invalid' : ''}
+            type="number" min="1" inputMode="numeric" className={errs.sets ? 'is-invalid' : ''}
             aria-label={`Sets for ${ex.name}`} aria-invalid={!!errs.sets}
             value={ex.sets}
             onChange={(e) => d.updateExercise(di, ei, { sets: e.target.value })}
@@ -94,7 +96,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
         </td>
         <td>
           <input
-            type="number" inputMode="numeric" className={errs.repLow || errs.repRange ? 'is-invalid' : ''}
+            type="number" min="1" inputMode="numeric" className={errs.repLow || errs.repRange ? 'is-invalid' : ''}
             aria-label={`Minimum ${measure.type === 'reps' ? 'reps' : measure.unit} for ${ex.name}`}
             aria-invalid={!!(errs.repLow || errs.repRange)}
             value={ex.repLow}
@@ -103,7 +105,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
         </td>
         <td>
           <input
-            type="number" inputMode="numeric" className={errs.repHigh || errs.repRange ? 'is-invalid' : ''}
+            type="number" min="1" inputMode="numeric" className={errs.repHigh || errs.repRange ? 'is-invalid' : ''}
             aria-label={`Maximum ${measure.type === 'reps' ? 'reps' : measure.unit} for ${ex.name}`}
             aria-invalid={!!(errs.repHigh || errs.repRange)}
             value={ex.repHigh}
@@ -112,7 +114,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
         </td>
         <td>
           <input
-            type="number" inputMode="numeric" className={errs.restSec ? 'is-invalid' : ''}
+            type="number" min="0" step="5" inputMode="numeric" className={errs.restSec ? 'is-invalid' : ''}
             aria-label={`Rest seconds for ${ex.name}`} aria-invalid={!!errs.restSec}
             value={ex.restSec}
             onChange={(e) => d.updateExercise(di, ei, { restSec: e.target.value })}
@@ -120,9 +122,9 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
         </td>
         <td className="dtb-c-wt">
           {ex.load ? (
-            <span className="dtb-wt">
+            <span className={'dtb-wt' + (ex.startWeightEstimated ? ' has-est' : '')}>
               <input
-                type="number" inputMode="decimal" placeholder="–"
+                type="number" min="0" inputMode="decimal" placeholder="–"
                 aria-label={`Starting weight for ${ex.name}`}
                 value={ex.startWeight}
                 // A manual edit means this is now the user's own number, not a
@@ -158,28 +160,31 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag }) {
                 back off once the entry has become a timed hold. */}
             {exMeasure({ id: ex.id }).type === 'reps' &&
               chip(ex.iso, 'Iso', () => d.toggleIso(di, ei), 'Hold for time instead of reps')}
-            <span className="dtb-rec-note" role="status" aria-live="polite">{recNote}</span>
           </span>
           <span className="dtb-tools-move">
             {/* An action, not a toggle — so it sits with the other row actions
                 at a fixed spot on the right, not after chips that come and go. */}
             <button
               type="button"
-              className="dtb-action-btn"
+              className={'dtb-action-btn' + (recFrom !== null ? ' is-done' : '')}
               onClick={() => { setRecFrom(recKey); d.applyRecommended(di, ei) }}
               title={`Reset sets, reps and rest to the recommended setup for this goal${ex.load ? ', weight from your 1RM' : ''}`}
               aria-label={`Use recommended for ${ex.name}`}
             >
-              Recommended
+              {/* The result shows IN the button for a few seconds. As a separate
+                  note it wrapped the row and pushed this button — and everything
+                  under it — out from under the cursor. */}
+              {recFrom === null ? 'Recommended' : recShort}
             </button>
+            <span className="sr-only" role="status" aria-live="polite">{recNote}</span>
             <span className="dtb-tools-sep" aria-hidden="true" />
-            <button type="button" className="icon-btn" disabled={ei === 0} onClick={() => d.moveExercise(di, ei, -1)} aria-label={`Move ${ex.name} up`}>
+            <button type="button" className="icon-btn" disabled={ei === 0} onClick={guard(() => d.moveExercise(di, ei, -1))} aria-label={`Move ${ex.name} up`} title="Move up">
               <span aria-hidden="true">▲</span>
             </button>
-            <button type="button" className="icon-btn" disabled={ei === count - 1} onClick={() => d.moveExercise(di, ei, 1)} aria-label={`Move ${ex.name} down`}>
+            <button type="button" className="icon-btn" disabled={ei === count - 1} onClick={guard(() => d.moveExercise(di, ei, 1))} aria-label={`Move ${ex.name} down`} title="Move down">
               <span aria-hidden="true">▼</span>
             </button>
-            <button type="button" className="icon-btn" onClick={() => d.removeExercise(di, ei)} aria-label={`Remove ${ex.name}`}>
+            <button type="button" className="icon-btn" onClick={guard(() => d.removeExercise(di, ei))} aria-label={`Remove ${ex.name}`} title="Remove exercise">
               <span aria-hidden="true">✕</span>
             </button>
           </span>
@@ -239,6 +244,7 @@ export default function DesktopDayEditor({ d, di, info }) {
   const [armed, setArmed] = useState(null)
   const [dragIndex, setDragIndex] = useState(null)
   const [overIndex, setOverIndex] = useState(null)
+  const guard = useClickGuard()
 
   if (!day) {
     return (
@@ -307,9 +313,12 @@ export default function DesktopDayEditor({ d, di, info }) {
             </thead>
             {day.exercises.map((ex, ei) => (
               <ExerciseRow
-                key={ei}
+                // Keyed by exercise, not slot: after a reorder the row — and
+                // the button that has focus — is the same DOM node, so focus
+                // follows the exercise instead of landing on its neighbour.
+                key={ex.id}
                 d={d} di={di} ex={ex} ei={ei} count={day.exercises.length}
-                info={info} drag={drag}
+                info={info} drag={drag} guard={guard}
               />
             ))}
           </table>

@@ -13,8 +13,9 @@ const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...a
 // movement type is all that's required; everything else has a sensible default.
 // On save it persists, registers into the live library, and hands the finished
 // exercise back so the caller can drop it straight into the program/workout.
-export default function CustomExerciseForm({ onCreate, onClose }) {
-  const [name, setName] = useState('')
+export default function CustomExerciseForm({ onCreate, onClose, initialName = '' }) {
+  // Seeded with whatever was typed in the search box that led here.
+  const [name, setName] = useState(initialName)
   const [pattern, setPattern] = useState('horiz_push')
   const [measure, setMeasure] = useState('reps')
   const [requires, setRequires] = useState([])

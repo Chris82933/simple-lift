@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 
 // Simple, minimal line icons (stroke uses currentColor so they match the tab).
 // These live here rather than in AppLayout.jsx because the dependency has to
@@ -88,11 +88,21 @@ export function NavIcon({ name }) {
   )
 }
 
-function navClass({ isActive }) {
-  return 'desktop-nav-link' + (isActive ? ' is-active' : '')
+// Pages that have no sidebar entry of their own light up the section they are
+// reached from, so the sidebar always says where you are.
+const PARENT_OF = {
+  '/program': '/programs',
+  '/import-program': '/programs',
+  '/recovery': '/programs',
+  '/skills': '/programs',
+  '/gzclp': '/templates',
+  '/cardio': '/today',
 }
 
 export default function DesktopNav() {
+  const { pathname } = useLocation()
+  const navClass = (to) => ({ isActive }) =>
+    'desktop-nav-link' + (isActive || PARENT_OF[pathname] === to ? ' is-active' : '')
   return (
     <nav className="desktop-nav" aria-label="Primary">
       <p className="desktop-nav-wordmark">Simple Lift</p>
@@ -100,7 +110,7 @@ export default function DesktopNav() {
       <ul className="desktop-nav-list">
         {PRIMARY_TABS.map((tab) => (
           <li key={tab.to}>
-            <NavLink to={tab.to} className={navClass}>
+            <NavLink to={tab.to} className={navClass(tab.to)}>
               <NavIcon name={tab.icon} />
               <span className="desktop-nav-label">{tab.label}</span>
             </NavLink>
@@ -112,7 +122,7 @@ export default function DesktopNav() {
       <ul className="desktop-nav-list">
         {SECONDARY_LINKS.map((link) => (
           <li key={link.to}>
-            <NavLink to={link.to} className={navClass}>
+            <NavLink to={link.to} className={navClass(link.to)}>
               <NavIcon name={link.icon} />
               <span className="desktop-nav-label">{link.label}</span>
             </NavLink>
