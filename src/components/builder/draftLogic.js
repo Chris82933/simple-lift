@@ -6,6 +6,7 @@ import { prescriptionFor } from '../../data/schemes.js'
 import { getMax, loadMaxes } from '../../lib/storage.js'
 import { weightForReps, interpolate1RM } from '../../lib/oneRepMax.js'
 import { exerciseEntryFromLibrary } from '../../lib/exerciseEntry.js'
+import { maxWeight, MAX_SETS, MAX_REPS, MAX_HOLD_SEC, MAX_REST_SEC } from '../../lib/limits.js'
 
 export const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon … Sun
 
@@ -66,7 +67,33 @@ export function exerciseErrors(ex) {
   if (Number.isNaN(repLow) || repLow < 1) errs.repLow = 'Must be 1 or more'
   if (Number.isNaN(repHigh) || repHigh < 1) errs.repHigh = 'Must be 1 or more'
   if (!errs.repLow && !errs.repHigh && repLow > repHigh) errs.repRange = "Min can't exceed max"
+  // Ceilings: past these a value is a typo, not a plan.
+  if (!errs.sets && sets > MAX_SETS) errs.sets = `Sets can't be more than ${MAX_SETS}`
+  if (!errs.restSec && restSec > MAX_REST_SEC) errs.restSec = 'Rest is over an hour'
+  const repCeil = Math.max(MAX_REPS, MAX_HOLD_SEC)
+  if (!errs.repHigh && repHigh > repCeil) errs.repHigh = 'Too high'
+  if (ex.startWeight !== '' && ex.startWeight != null) {
+    const w = Number(ex.startWeight)
+    if (Number.isNaN(w) || w < 0) errs.startWeight = "Start weight can't be negative"
+    else if (w > maxWeight()) errs.startWeight = `Start weight is over ${maxWeight()} — check the number`
+  }
   return errs
+}
+
+// Why Save is off, in words — shared by the phone footer and the desktop
+// status line, so neither has to make someone guess which of three things is
+// wrong.
+export function saveBlockers(draft) {
+  const out = []
+  if (!draft.name.trim()) out.push('give the program a name')
+  if (!draft.days.some((d) => d.exercises.length > 0 || (d.cardio && d.cardio.length > 0))) {
+    out.push('add at least one exercise or cardio block')
+  }
+  const bad = draft.days
+    .map((d, i) => ({ d, i }))
+    .filter(({ d }) => d.exercises.some((e) => Object.keys(exerciseErrors(e)).length > 0))
+  if (bad.length) out.push(`fix the highlighted numbers in ${bad.map(({ d, i }) => d.title.trim() || `day ${i + 1}`).join(', ')}`)
+  return out
 }
 
 // Move `from` to `to` inside a day's exercise list, clearing the superset links

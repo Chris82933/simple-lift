@@ -125,6 +125,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag, guard }) {
             <span className={'dtb-wt' + (ex.startWeightEstimated ? ' has-est' : '')}>
               <input
                 type="number" min="0" inputMode="decimal" placeholder="–"
+                className={errs.startWeight ? 'is-invalid' : ''} aria-invalid={!!errs.startWeight}
                 aria-label={`Starting weight for ${ex.name}`}
                 value={ex.startWeight}
                 // A manual edit means this is now the user's own number, not a
@@ -201,7 +202,8 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag, guard }) {
               {errs.repLow && <>{measure.type === 'reps' ? 'Min reps' : 'Min'}: {errs.repLow}. </>}
               {errs.repHigh && <>{measure.type === 'reps' ? 'Max reps' : 'Max'}: {errs.repHigh}. </>}
               {errs.repRange && <>{errs.repRange}. </>}
-              {errs.restSec && <>{errs.restSec}.</>}
+              {errs.restSec && <>{errs.restSec}. </>}
+              {errs.startWeight && <>{errs.startWeight}.</>}
             </p>
           </td>
         </tr>

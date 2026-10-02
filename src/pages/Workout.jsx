@@ -37,6 +37,7 @@ import { sessionMuscleHeat, plannedMuscleHeat, describeHeat } from '../lib/muscl
 import { buildShareCard, shareImage, canShareImage } from '../lib/shareCard.js'
 import StretchPanel from '../components/StretchPanel.jsx'
 import Icon from '../components/Icon.jsx'
+import { acceptNumber, maxWeightFor, MAX_REPS, MAX_HOLD_SEC } from '../lib/limits.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
 // i.e. the first one not yet marked done (or the last, once all are done). This
@@ -262,6 +263,9 @@ function buildLastTimeMap() {
   return map
 }
 
+
+const setCountLabel = (n) => `${n} set${Number(n) === 1 ? '' : 's'}`
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export default function Workout() {
   const navigate = useNavigate()
@@ -621,10 +625,14 @@ export default function Workout() {
     )
   }
 
+  // Negative or absurd numbers are refused at the keystroke (see limits.js).
+  const fieldMax = (field) => (field === 'weight' ? maxWeightFor(units) : Math.max(MAX_REPS, MAX_HOLD_SEC))
   const updateSet = (exId, idx, field, value) =>
     setSets((s) => ({
       ...s,
-      [exId]: (s[exId] || []).map((row, i) => (i === idx ? { ...row, [field]: value } : row)),
+      [exId]: (s[exId] || []).map((row, i) => (
+        i === idx ? { ...row, [field]: acceptNumber(value, row[field], { max: fieldMax(field) }) } : row
+      )),
     }))
 
   // U2: nudge a set's weight or reps by a step (± steppers) — never below 0.
@@ -633,7 +641,7 @@ export default function Workout() {
       ...s,
       [exId]: (s[exId] || []).map((row, i) => {
         if (i !== idx) return row
-        const next = Math.max(0, (Number(row[field]) || 0) + delta)
+        const next = Math.min(fieldMax(field), Math.max(0, (Number(row[field]) || 0) + delta))
         return { ...row, [field]: String(Math.round(next * 100) / 100) }
       }),
     }))
@@ -667,9 +675,16 @@ export default function Workout() {
     return `Superset round (${members.length} exercises)`
   }
 
-  const toggleDone = (exId, idx, restSec) => {
+  const toggleDone = (exId, idx, restSec, opts = {}) => {
     const rows = sets[exId] || []
     const nowDone = !rows[idx]?.done
+    // A set with no reps (or seconds) isn't a set. Marking it done used to
+    // count it, start the rest timer and log a zero.
+    if (nowDone && !opts.force && !(Number(rows[idx]?.reps) > 0)) {
+      const unit = measureUnit(exercises.find((e) => e.id === exId) || {})
+      toast.show(`Enter the ${unit} you did before marking the set done`)
+      return
+    }
     // Suppressing rest for supersetted members assumes the lifter alternates.
     // When they instead run straight sets of one member (partner's station is
     // busy, or they just prefer it), that assumption left them with NO rest
@@ -736,11 +751,18 @@ export default function Workout() {
   }
   // The hold finished (or was skipped): log the seconds and mark the set done,
   // which starts the normal rest countdown.
-  const finishHold = () => {
+  const finishHold = (info) => {
     if (!hold) return
     const { exId, idx, seconds, restSec } = hold
-    updateSet(exId, idx, 'reps', String(seconds))
-    toggleDone(exId, idx, restSec)
+    // Log what was actually held. Stopping early (or shortening the timer)
+    // used to record the full target — "Time a 45s hold", Stop after 3
+    // seconds, logged 45. A stop inside the first couple of seconds is a
+    // false start: cancel it and log nothing.
+    const held = info?.elapsed ?? seconds
+    if (info?.stopped && held < 3) { setHold(null); return }
+    const secs = String(Math.max(1, held))
+    setSets((s) => ({ ...s, [exId]: (s[exId] || []).map((row, i) => (i === idx ? { ...row, reps: secs } : row)) }))
+    toggleDone(exId, idx, restSec, { force: true })
     // A hold done DURING another exercise's rest must not restart that rest:
     // toggleDone starts a fresh countdown for this set, which in single-timer
     // mode would replace the one already running. Put the running one back
@@ -1188,7 +1210,10 @@ export default function Workout() {
     <section className="page full-flow workout">
       <header className="page-header">
         <div className="workout-head-row">
-          <p className="eyebrow">{session.dayLabel} · Workout</p>
+          {/* dayLabel is the day the PROGRAM puts this session on. Doing
+              Monday's session on a Friday showed "MONDAY · WORKOUT". Show
+              today; keep non-weekday labels ("Recovery · Ankles") as they are. */}
+          <p className="eyebrow">{WEEKDAY_NAMES.includes(session.dayLabel) ? WEEKDAY_NAMES[new Date().getDay()] : session.dayLabel} · Workout</p>
           <button type="button" className={'edit-toggle' + (editMode ? ' is-on' : '')} onClick={finishEditPill}>
             {editMode ? 'Done' : <><Icon name="edit" size={14} /> Edit</>}
           </button>
@@ -1335,7 +1360,7 @@ export default function Workout() {
                     </div>
                   )}
                   <p className="muted small">
-                    {sets[ex.id]?.filter((r) => !r.warmup).length ?? ex.sets} sets × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)} · {ex.restSec}s rest
+                    {setCountLabel(sets[ex.id]?.filter((r) => !r.warmup).length ?? ex.sets)} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)} · {ex.restSec}s rest
                     {sets[ex.id]?.some((r) => r.warmup) ? ' · + warm-ups' : ''}
                   </p>
                   {ex.swappedFrom && (
@@ -1483,7 +1508,7 @@ export default function Workout() {
                         <button
                           type="button"
                           className="set-stepper-btn"
-                          aria-label={`Subtract 1 rep from ${setLabel}`}
+                          aria-label={`Subtract 1 ${measureUnit(ex) === 'reps' ? 'rep' : measureUnit(ex)} from ${setLabel}`}
                           onClick={() => bumpSet(ex.id, idx, 'reps', -1)}
                         >
                           –
@@ -1492,7 +1517,7 @@ export default function Workout() {
                           className="set-input"
                           type="number"
                           inputMode="numeric"
-                          aria-label={`${setLabel} reps`}
+                          aria-label={`${setLabel} ${measureUnit(ex)}`}
                           value={row.reps}
                           placeholder="–"
                           onChange={(e) => updateSet(ex.id, idx, 'reps', e.target.value)}
@@ -1500,7 +1525,7 @@ export default function Workout() {
                         <button
                           type="button"
                           className="set-stepper-btn"
-                          aria-label={`Add 1 rep to ${setLabel}`}
+                          aria-label={`Add 1 ${measureUnit(ex) === 'reps' ? 'rep' : measureUnit(ex)} to ${setLabel}`}
                           onClick={() => bumpSet(ex.id, idx, 'reps', 1)}
                         >
                           +
@@ -1509,7 +1534,7 @@ export default function Workout() {
                       <button
                         type="button"
                         className={'set-check' + (row.done ? ' is-on' : '')}
-                        aria-label={row.done ? 'Mark set incomplete' : 'Mark set complete'}
+                        aria-label={`${ex.name}, ${setLabel}: ${row.done ? 'mark incomplete' : 'mark complete'}`}
                         aria-pressed={row.done}
                         onClick={() => toggleDone(ex.id, idx, ex.restSec)}
                       >

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CARDIO_MACHINES, CARDIO_BY_ID } from '../data/cardio.js'
 import Icon from './Icon.jsx'
+import { acceptNumber } from '../lib/limits.js'
 
 // Fields for logging a cardio session. Calls onSaved(entry) with the data.
 // `initialMachine` preselects a machine (e.g. when logging a planned program block).
@@ -54,21 +55,21 @@ export default function CardioForm({ onSaved, units = 'lbs', initialMachine = 't
 
       <div className="cardio-fields">
         <label>Time (min)
-          <input type="number" inputMode="numeric" value={duration} placeholder="30" onChange={(e) => setDuration(e.target.value)} />
+          <input type="number" inputMode="numeric" value={duration} placeholder="30" min="0" onChange={(e) => setDuration(acceptNumber(e.target.value, duration, { max: 1440 }))} />
         </label>
         {hasDistance && (
           <label>Distance
             <div className="dist-row">
-              <input type="number" inputMode="decimal" value={distance} placeholder="3.0" onChange={(e) => setDistance(e.target.value)} />
+              <input type="number" inputMode="decimal" value={distance} placeholder="3.0" min="0" onChange={(e) => setDistance(acceptNumber(e.target.value, distance, { max: 1000 }))} />
               <button type="button" className="unit-toggle" onClick={() => setDistUnit((u) => (u === 'mi' ? 'km' : 'mi'))}>{distUnit}</button>
             </div>
           </label>
         )}
         <label>Avg HR (bpm)
-          <input type="number" inputMode="numeric" value={avgHr} placeholder="140" onChange={(e) => setAvgHr(e.target.value)} />
+          <input type="number" inputMode="numeric" value={avgHr} placeholder="140" min="0" onChange={(e) => setAvgHr(acceptNumber(e.target.value, avgHr, { max: 250 }))} />
         </label>
         <label>Calories
-          <input type="number" inputMode="numeric" value={calories} placeholder="320" onChange={(e) => setCalories(e.target.value)} />
+          <input type="number" inputMode="numeric" value={calories} placeholder="320" min="0" onChange={(e) => setCalories(acceptNumber(e.target.value, calories, { max: 20000 }))} />
         </label>
       </div>
 

@@ -11,7 +11,7 @@ import CustomExerciseForm from '../CustomExerciseForm.jsx'
 import { CARDIO_MACHINES, CARDIO_BY_ID } from '../../data/cardio.js'
 import Icon from '../Icon.jsx'
 import { profileMeta } from '../../lib/equipment.js'
-import { WEEKDAY_ORDER, exerciseErrors, sameEquip, toggle } from './draftLogic.js'
+import { WEEKDAY_ORDER, exerciseErrors, sameEquip, toggle, saveBlockers } from './draftLogic.js'
 import useInfoDialogs from './InfoDialogs.jsx'
 
 // The phone program builder: one column, one card per training day, the
@@ -36,6 +36,7 @@ export default function BuilderMobile({ d }) {
   // Suspend the picker's trap while its nested custom-exercise form is open.
   useModalA11y(pickerRef, () => setPicker(null), picker !== null && !creating)
   const info = useInfoDialogs()
+  const reasons = saveBlockers(draft)
 
   return (
     <section className="page full-flow">
@@ -181,25 +182,28 @@ export default function BuilderMobile({ d }) {
                   </button>
                 </div>
                 <div className="builder-fields">
-                  <label>Sets<input type="number" inputMode="numeric" value={ex.sets} onChange={(e) => updateExercise(di, ei, { sets: e.target.value })} /></label>
+                  <label>Sets<input type="number" min="1" inputMode="numeric" className={errs.sets ? 'is-invalid' : undefined} aria-invalid={!!(errs.sets)} value={ex.sets} onChange={(e) => updateExercise(di, ei, { sets: e.target.value })} /></label>
                   {exMeasure(ex).type === 'reps' ? (
                     <>
-                      <label>Min reps<input type="number" inputMode="numeric" value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
-                      <label>Max reps<input type="number" inputMode="numeric" value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
+                      <label>Min reps<input type="number" min="1" inputMode="numeric" className={errs.repLow || errs.repRange ? 'is-invalid' : undefined} aria-invalid={!!(errs.repLow || errs.repRange)} value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
+                      <label>Max reps<input type="number" min="1" inputMode="numeric" className={errs.repHigh || errs.repRange ? 'is-invalid' : undefined} aria-invalid={!!(errs.repHigh || errs.repRange)} value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
                     </>
                   ) : (
                     <>
-                      <label>Min ({exMeasure(ex).unit})<input type="number" inputMode="numeric" value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
-                      <label>Max ({exMeasure(ex).unit})<input type="number" inputMode="numeric" value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
+                      <label>Min ({exMeasure(ex).unit})<input type="number" min="1" inputMode="numeric" className={errs.repLow || errs.repRange ? 'is-invalid' : undefined} aria-invalid={!!(errs.repLow || errs.repRange)} value={ex.repLow} onChange={(e) => updateExercise(di, ei, { repLow: e.target.value })} /></label>
+                      <label>Max ({exMeasure(ex).unit})<input type="number" min="1" inputMode="numeric" className={errs.repHigh || errs.repRange ? 'is-invalid' : undefined} aria-invalid={!!(errs.repHigh || errs.repRange)} value={ex.repHigh} onChange={(e) => updateExercise(di, ei, { repHigh: e.target.value })} /></label>
                     </>
                   )}
-                  <label>Rest s<input type="number" inputMode="numeric" value={ex.restSec} onChange={(e) => updateExercise(di, ei, { restSec: e.target.value })} /></label>
+                  <label>Rest s<input type="number" min="0" inputMode="numeric" className={errs.restSec ? 'is-invalid' : undefined} aria-invalid={!!(errs.restSec)} value={ex.restSec} onChange={(e) => updateExercise(di, ei, { restSec: e.target.value })} /></label>
                   {ex.load && (
                     <label>
                       Start wt{ex.startWeightEstimated && <span className="muted small"> · ≈ est.</span>}
                       <input
                         type="number"
+                        min="0"
                         inputMode="decimal"
+                        className={errs.startWeight ? 'is-invalid' : undefined}
+                        aria-invalid={!!errs.startWeight}
                         value={ex.startWeight}
                         placeholder="–"
                         // A manual edit means this is now the user's own number, not a
@@ -217,7 +221,8 @@ export default function BuilderMobile({ d }) {
                     {errs.repLow && <>{exMeasure(ex).type === 'reps' ? 'Min reps' : 'Min'}: {errs.repLow}. </>}
                     {errs.repHigh && <>{exMeasure(ex).type === 'reps' ? 'Max reps' : 'Max'}: {errs.repHigh}. </>}
                     {errs.repRange && <>{errs.repRange}. </>}
-                    {errs.restSec && <>{errs.restSec}.</>}
+                    {errs.restSec && <>{errs.restSec}. </>}
+                    {errs.startWeight && <>{errs.startWeight}.</>}
                   </p>
                 )}
                 {ex.load && (
@@ -355,8 +360,12 @@ export default function BuilderMobile({ d }) {
 
         <button type="button" className="btn btn-ghost" onClick={addDay}>+ Add training day</button>
         <p className="muted small">{draft.days.length} day(s) · {totalExercises} exercise(s)</p>
-        {hasInvalidExercise && (
-          <p className="muted small import-error">Fix the highlighted sets/reps/rest values above before saving.</p>
+        {/* Save is disabled until these are sorted — say which, instead of a
+            greyed-out button with no explanation. */}
+        {reasons.length > 0 && (
+          <p className={'muted small' + (hasInvalidExercise ? ' import-error' : '')} role="status">
+            Before saving: {reasons.join('; ')}.
+          </p>
         )}
       </div>
 
@@ -417,6 +426,7 @@ export default function BuilderMobile({ d }) {
 
           {creating && (
             <CustomExerciseForm
+              initialName={search.trim()}
               onClose={() => setCreating(false)}
               onCreate={(ex) => { setCreating(false); addExerciseToDay(picker, ex) }}
             />

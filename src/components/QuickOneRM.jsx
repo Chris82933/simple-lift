@@ -3,6 +3,7 @@ import { EXERCISES, EXERCISE_BY_ID } from '../data/exercises.js'
 import { estimate1RM, roundTo, weightForReps, incrementForUnits } from '../lib/oneRepMax.js'
 import { saveMax } from '../lib/storage.js'
 import useModalA11y from '../lib/useModalA11y.js'
+import { acceptNumber, maxWeight } from '../lib/limits.js'
 
 // Compact 1RM estimator for use mid-workout (in a modal). Does NOT touch the
 // live session — it only reads inputs and can optionally save the estimate so
@@ -70,11 +71,11 @@ export default function QuickOneRM({ units = 'lbs', onClose }) {
           <div className="quick-1rm-row">
             <label>
               <span className="group-label">Weight ({units})</span>
-              <input className="text-input" type="number" inputMode="decimal" placeholder="e.g. 95" value={weight} onChange={(e) => { setWeight(e.target.value); setSaved(false) }} />
+              <input className="text-input" type="number" inputMode="decimal" placeholder="e.g. 95" value={weight} min="0" onChange={(e) => { setWeight(acceptNumber(e.target.value, weight, { max: maxWeight() })); setSaved(false) }} />
             </label>
             <label>
               <span className="group-label">Reps</span>
-              <input className="text-input" type="number" inputMode="numeric" placeholder="5" value={reps} onChange={(e) => { setReps(e.target.value); setSaved(false) }} />
+              <input className="text-input" type="number" inputMode="numeric" placeholder="5" value={reps} min="1" onChange={(e) => { setReps(acceptNumber(e.target.value, reps, { max: 100 })); setSaved(false) }} />
             </label>
           </div>
 

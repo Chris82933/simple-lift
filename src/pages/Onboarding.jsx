@@ -13,6 +13,7 @@ import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.j
 import { saveProfileEquipment } from '../lib/equipment.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
 import ThemeToggle from '../components/ThemeToggle.jsx'
+import { acceptNumber, maxWeight, maxBodyweight } from '../lib/limits.js'
 
 const toggle = (arr, val) =>
   arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]
@@ -449,7 +450,8 @@ export default function Onboarding() {
                           className="text-input"
                           placeholder={`${units}, ~5 reps`}
                           value={draft.strength[lift.key]}
-                          onChange={(e) => set({ strength: { ...draft.strength, [lift.key]: e.target.value } })}
+                          min="0"
+                          onChange={(e) => set({ strength: { ...draft.strength, [lift.key]: acceptNumber(e.target.value, draft.strength[lift.key], { max: maxWeight() }) } })}
                           aria-label={`${lift.label} weight in ${units}, for about 5 reps`}
                         />
                         <button
@@ -494,7 +496,8 @@ export default function Onboarding() {
               className="text-input"
               placeholder={`Your weight in ${units}`}
               value={draft.bodyweight}
-              onChange={(e) => set({ bodyweight: e.target.value })}
+              min="0"
+              onChange={(e) => set({ bodyweight: acceptNumber(e.target.value, draft.bodyweight, { max: maxBodyweight() }) })}
               aria-label={`Bodyweight in ${units}`}
             />
             <p className="muted small">

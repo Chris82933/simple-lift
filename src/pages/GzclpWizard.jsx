@@ -7,6 +7,7 @@ import {
   GZCLP_LIFTS, SEED_MODES, T3_CHOICES, T3_EXTRAS, DAY_FORMATS,
   buildGzclpProgram, previewRotation, oneRMFrom, startWeights, firstDoable,
 } from '../lib/gzclpBuild.js'
+import { acceptNumber, maxWeight } from '../lib/limits.js'
 
 const STEPS = ['start', 'maxes', 'schedule', 'accessories', 'review']
 
@@ -129,7 +130,8 @@ export default function GzclpWizard() {
                       inputMode="decimal"
                       className="text-input gz-input"
                       value={draft.maxes[l.id]}
-                      onChange={(e) => setMax(l.id, e.target.value)}
+                      min="0"
+                      onChange={(e) => setMax(l.id, acceptNumber(e.target.value, draft.maxes[l.id], { max: maxWeight() }))}
                       placeholder={draft.seedMode === 'fiveRM' ? 'weight × 5' : '1RM'}
                     />
                   </label>

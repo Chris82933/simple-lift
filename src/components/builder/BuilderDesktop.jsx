@@ -4,23 +4,7 @@ import DesktopWeekStrip from './DesktopWeekStrip.jsx'
 import DesktopDayEditor from './DesktopDayEditor.jsx'
 import DesktopLibraryPane from './DesktopLibraryPane.jsx'
 import useInfoDialogs from './InfoDialogs.jsx'
-import { exerciseErrors } from './draftLogic.js'
-
-// Why Save is off, in words. The phone just greys the button out because there
-// is no room for anything else; with a whole action bar to play with there is
-// no excuse for making someone guess which of three things is wrong.
-function blockers(draft) {
-  const out = []
-  if (!draft.name.trim()) out.push('give the program a name')
-  if (!draft.days.some((d) => d.exercises.length > 0 || (d.cardio && d.cardio.length > 0))) {
-    out.push('add at least one exercise or cardio block')
-  }
-  const bad = draft.days
-    .map((d, i) => ({ d, i }))
-    .filter(({ d }) => d.exercises.some((e) => Object.keys(exerciseErrors(e)).length > 0))
-  if (bad.length) out.push(`fix the highlighted numbers in ${bad.map(({ d, i }) => d.title.trim() || `day ${i + 1}`).join(', ')}`)
-  return out
-}
+import { saveBlockers } from './draftLogic.js'
 
 // The desktop program workspace: three panes that stay put. Program identity on
 // the left, the week and the selected day's table in the middle, the exercise
@@ -56,7 +40,7 @@ export default function BuilderDesktop({ d }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [d])
 
-  const reasons = blockers(d.draft)
+  const reasons = saveBlockers(d.draft)
 
   return (
     <section className="page full-flow dtb-page">

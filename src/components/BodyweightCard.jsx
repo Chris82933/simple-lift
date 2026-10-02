@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { loadBodyweight, logBodyweight, deleteBodyweight, loadSettings } from '../lib/storage.js'
+import { acceptNumber, maxBodyweight } from '../lib/limits.js'
 
 // Records the lifter's own bodyweight. Deliberately explains *why* the app wants
 // it — an unexplained weight field in a workout app reads as judgemental, and
@@ -46,7 +47,8 @@ export default function BodyweightCard({ compact = false }) {
           className="text-input"
           placeholder={current ? `${current.weight} ${units}` : `Your weight in ${units}`}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          min="0"
+          onChange={(e) => setValue(acceptNumber(e.target.value, value, { max: maxBodyweight() }))}
           onKeyDown={(e) => { if (e.key === 'Enter') save() }}
           aria-label={`Bodyweight in ${units}`}
         />

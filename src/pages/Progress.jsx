@@ -13,6 +13,7 @@ import { buildShareCard, shareImage, canShareImage } from '../lib/shareCard.js'
 import ExerciseDetail, { bestMarksForExercise } from '../components/ExerciseDetail.jsx'
 import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
+import { acceptNumber, maxWeight, MAX_REPS, MAX_HOLD_SEC } from '../lib/limits.js'
 
 // Chart palette — the app's own accent tokens, so series stay on-brand and
 // theme-aware (correct in both light and dark) instead of fixed hexes.
@@ -337,14 +338,16 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
                           type="number" inputMode="decimal" className="text-input" style={{ width: '4.5em' }}
                           aria-label={`${e.name} set ${k + 1} weight (${units})`}
                           value={draft[j][k].weight}
-                          onChange={(ev) => updateSet(j, k, 'weight', ev.target.value)}
+                          min="0"
+                          onChange={(ev) => updateSet(j, k, 'weight', acceptNumber(ev.target.value, draft[j][k].weight, { max: maxWeight() }))}
                         />
                         <span className="muted small">{units} ×</span>
                         <input
                           type="number" inputMode="numeric" className="text-input" style={{ width: '3.5em' }}
                           aria-label={`${e.name} set ${k + 1} ${entryUnit(e)}`}
                           value={draft[j][k].reps}
-                          onChange={(ev) => updateSet(j, k, 'reps', ev.target.value)}
+                          min="0"
+                          onChange={(ev) => updateSet(j, k, 'reps', acceptNumber(ev.target.value, draft[j][k].reps, { max: Math.max(MAX_REPS, MAX_HOLD_SEC) }))}
                         />
                         <span className="muted small">{entryUnit(e)}</span>
                       </div>

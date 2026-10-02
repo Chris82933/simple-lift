@@ -9,6 +9,7 @@ import {
   loadSettings, saveSettings, loadMaxes, saveMax, deleteMax,
 } from '../lib/storage.js'
 import { useToast } from '../components/Toast.jsx'
+import { acceptNumber, maxWeight } from '../lib/limits.js'
 
 // Every loadable lift can get a 1RM — main barbell/dumbbell compounds first,
 // then everything else you might have in a program.
@@ -140,8 +141,9 @@ export default function OneRepMax() {
             type="number"
             inputMode="decimal"
             placeholder={`e.g. 185`}
+            min="0"
             value={weight}
-            onChange={(e) => setWeight(e.target.value)}
+            onChange={(e) => setWeight(acceptNumber(e.target.value, weight, { max: maxWeight() }))}
           />
 
           <Stepper label="Reps performed" value={reps} set={setReps} min={1} max={20} />

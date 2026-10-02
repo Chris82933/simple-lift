@@ -25,6 +25,11 @@ export default function RestTimer({ seconds, onDone, mode = 'rest', label }) {
   const [soundOn, setSoundOn] = useState(() => loadSettings().restSound !== false)
   const doneRef = useRef(onDone)
   doneRef.current = onDone
+  // When this countdown started, so a hold can report how long it actually
+  // ran rather than how long it was meant to.
+  const startedAt = useRef(Date.now())
+  const elapsed = () => Math.max(0, Math.round((Date.now() - startedAt.current) / 1000))
+  const elapsedAtGo = useRef(0)
   const soundRef = useRef(soundOn)
   soundRef.current = soundOn
   // restNotify defaults to unset (falsy) for everyone, which silently disables the
@@ -92,7 +97,7 @@ export default function RestTimer({ seconds, onDone, mode = 'rest', label }) {
     const tick = () => {
       const left = secsLeft(endAt)
       setRemaining(left)
-      if (left <= 0) setPhase('go')
+      if (left <= 0) { elapsedAtGo.current = elapsed(); setPhase('go') }
     }
     tick()
     const id = setInterval(tick, 500)
@@ -128,7 +133,7 @@ export default function RestTimer({ seconds, onDone, mode = 'rest', label }) {
     cancelRestDone()
     if (soundRef.current) playRestDone()
     try { navigator.vibrate?.([120, 70, 120]) } catch { /* not supported */ }
-    const id = setTimeout(() => doneRef.current?.(), 850)
+    const id = setTimeout(() => doneRef.current?.({ elapsed: elapsedAtGo.current, stopped: false }), 850)
     return () => clearTimeout(id)
   }, [phase])
 
@@ -180,8 +185,8 @@ export default function RestTimer({ seconds, onDone, mode = 'rest', label }) {
           <button type="button" className="rest-btn" onClick={() => adjust(15)} aria-label="Add 15 seconds">
             +15s
           </button>
-          <button type="button" className="rest-btn primary" onClick={() => doneRef.current?.()}>
-            Skip
+          <button type="button" className="rest-btn primary" onClick={() => doneRef.current?.({ elapsed: elapsed(), stopped: true })}>
+            {isHold ? 'Stop' : 'Skip'}
           </button>
         </div>
       </div>

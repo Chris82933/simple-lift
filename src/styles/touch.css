@@ -110,3 +110,6 @@
 .day-chip.is-done { border-color: var(--go); }
 .day-chip-done { display: block; font-size: var(--fs-2xs); line-height: 1; color: var(--go); margin-top: 2px; }
 .done-today { margin: 0; font-weight: 600; color: color-mix(in srgb, var(--go) 70%, var(--text)); }
+
+/* ---- Builder (phone): mark the box that is wrong ------------------------ */
+.builder-fields input.is-invalid { border-color: var(--accent-2); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-2) 25%, transparent); }
