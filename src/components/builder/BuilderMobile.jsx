@@ -361,7 +361,7 @@ export default function BuilderMobile({ d }) {
       </div>
 
       <div className="flow-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>Cancel</button>
+        <button type="button" className="btn btn-ghost" onClick={d.cancel}>Cancel</button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={!canSave}>
           {editId ? 'Save changes' : 'Save program'}
         </button>

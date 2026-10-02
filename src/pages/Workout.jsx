@@ -446,7 +446,24 @@ export default function Workout() {
   // C4: dropping a middle member of a superset must not let the entry before
   // it absorb whatever shifts into the gap — clear its link (mirrors
   // Builder's removeExercise).
+  // Every action below that can throw away logged sets goes through this: it
+  // snapshots the session, runs the change, and offers Undo. A confirm dialog
+  // on each would make the common case (you meant it) slower; a silent change
+  // made the uncommon one (a mis-tap with sweaty hands) unrecoverable.
+  const withUndo = (message, change) => {
+    const before = { exercises, sets }
+    change()
+    toast.show(message, {
+      actionLabel: 'Undo',
+      onAction: () => { setExercises(before.exercises); setSets(before.sets) },
+    })
+  }
+
   const removeExercise = (exId) => {
+    const name = exercises.find((e) => e.id === exId)?.name || 'exercise'
+    withUndo(`Removed ${name}`, () => removeExerciseNow(exId))
+  }
+  const removeExerciseNow = (exId) => {
     setExercises((list) => {
       const idx = list.findIndex((e) => e.id === exId)
       return list
@@ -465,11 +482,23 @@ export default function Workout() {
   // Replace an exercise you can't do here with a doable same-pattern alternative,
   // for this session only (marked adhoc, so it never touches program progression).
   const swapExercise = (exId, sub) => {
+    const old = exercises.find((e) => e.id === exId)
+    const logged = (sets[exId] || []).filter((r) => r.done).length
+    withUndo(
+      logged
+        ? `Swapped to ${sub.name} — ${logged} logged set${logged === 1 ? '' : 's'} of ${old?.name} cleared`
+        : `Swapped to ${sub.name}`,
+      () => swapExerciseNow(exId, sub),
+    )
+  }
+  const swapExerciseNow = (exId, sub) => {
     // C4: keep this exercise's superset link (if any) alive through the swap.
     const old = exercises.find((e) => e.id === exId)
     const p = prescriptionFor(sub, schemeForGoals(goals))
     const entry = exerciseEntryFromLibrary(sub, {
-      sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: p.restSec,
+      // The rest time is the lifter's own choice for this slot (they may have
+      // changed it in Edit mode) — it carries over; sets/reps follow the new move.
+      sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: old?.restSec ?? p.restSec,
       startWeight: '', adhoc: true, supersetNext: old?.supersetNext,
       // Records what this replaced, so the card says "Alternate" rather than
       // looking like an unrelated exercise added on a whim.
@@ -499,25 +528,32 @@ export default function Workout() {
     // fields (sets/reps/rest/progression/supersetNext/…) — only identity
     // comes from the target rung.
     const entry = exerciseEntryFromLibrary(target, ex)
-    setExercises((list) => {
-      if (list.some((e) => e.id === target.id && e.id !== exId)) return list // avoid dup id
-      return list.map((e) => (e.id === exId ? entry : e))
-    })
-    setSets((s) => {
-      const n = { ...s }
-      const rows = n[exId] || []
-      delete n[exId]
-      // Keep the same number of working sets; reset done + drop any warm-ups.
-      n[target.id] = rows.filter((r) => !r.warmup).map((r) => ({ ...r, done: false }))
-      return n
-    })
+    if (exercises.some((e) => e.id === target.id && e.id !== exId)) return // avoid dup id
+    const change = () => {
+      setExercises((list) => list.map((e) => (e.id === exId ? entry : e)))
+      setSets((s) => {
+        const n = { ...s }
+        const rows = n[exId] || []
+        delete n[exId]
+        // Keep the same number of working sets; reset done + drop any warm-ups.
+        n[target.id] = rows.filter((r) => !r.warmup).map((r) => ({ ...r, done: false }))
+        return n
+      })
+    }
+    // Only worth an Undo when it un-marks sets already done on the old rung.
+    const logged = (sets[exId] || []).filter((r) => r.done).length
+    if (logged) withUndo(`Switched to ${target.name} — ${logged} logged set${logged === 1 ? '' : 's'} cleared`, change)
+    else change()
   }
 
   const swapAllUnavailable = () => {
-    exercises.forEach((ex) => {
-      if (isDoable(ex, availableSet)) return
-      const sub = bestSubstitute(ex, availableSet)
-      if (sub) swapExercise(ex.id, sub)
+    // One snapshot and one Undo for the whole batch.
+    withUndo('Swapped to what you can do here', () => {
+      exercises.forEach((ex) => {
+        if (isDoable(ex, availableSet)) return
+        const sub = bestSubstitute(ex, availableSet)
+        if (sub) swapExerciseNow(ex.id, sub)
+      })
     })
   }
 
@@ -717,6 +753,13 @@ export default function Workout() {
   // (a sensible default) but starts un-done; keep ex.sets in sync so the review
   // knows how many sets were prescribed.
   const changeSetCount = (exId, delta) => {
+    // Dropping a set that was already logged gets an Undo.
+    const last = (sets[exId] || []).filter((r) => !r.warmup).slice(-1)[0]
+    if (delta < 0 && last?.done && (sets[exId] || []).filter((r) => !r.warmup).length > 1) {
+      withUndo('Removed a logged set', () => changeSetCountNow(exId, delta))
+    } else changeSetCountNow(exId, delta)
+  }
+  const changeSetCountNow = (exId, delta) => {
     setSets((s) => {
       const rows = s[exId] || []
       const workingCount = rows.filter((r) => !r.warmup).length
@@ -788,6 +831,11 @@ export default function Workout() {
     // rotation slot. Match how Exit already confirms.
     if (doneSets === 0 && loggedCardio.length === 0) {
       if (!window.confirm('Finish with nothing logged? This records an empty session and advances your rotation.')) return
+    } else if (totalSets - doneSets > 0) {
+      // Finish is final (it records the session and moves the program on), and
+      // it sits right beside "Save & exit". Ask when work is still open.
+      const open = totalSets - doneSets
+      if (!window.confirm(`${open} set${open === 1 ? ' is' : 's are'} not marked done. Finish the workout anyway?\n\n(Use "Save & exit" to come back to it later.)`)) return
     }
 
     const date = new Date().toISOString()

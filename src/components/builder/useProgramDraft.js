@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { EXERCISES, EXERCISE_BY_ID, exMeasure, matchInfo } from '../../data/exercises.js'
 import { DEFAULT_METHOD } from '../../lib/progressionMethods.js'
@@ -6,7 +6,7 @@ import { prescriptionFor, schemeForGoals } from '../../data/schemes.js'
 import { WEEKDAY_LABELS } from '../../lib/generator.js'
 import {
   loadProfile, getProgram, addProgram, updateProgram, loadSettings,
-  clampRotationPointer,
+  clampRotationPointer, getActiveProgramId, setActiveProgramId,
 } from '../../lib/storage.js'
 import { incrementForUnits } from '../../lib/oneRepMax.js'
 import { ladderInfo } from '../../lib/ladder.js'
@@ -18,6 +18,19 @@ import {
   WEEKDAY_ORDER, exerciseErrors, makeExercise, reorderDays, reorderExercises, resolveStartWeight,
 } from './draftLogic.js'
 
+// An unsaved draft is kept here so leaving the builder — Cancel by mistake, a
+// sidebar link, a reload, the phone killing the tab — never throws away a
+// half-built program. Deliberately outside storage.js: it is scratch state for
+// one device, not account data to export or sync.
+const DRAFT_KEY = 'simple-lift:builder-draft'
+const readSavedDraft = (editId) => {
+  try {
+    const v = JSON.parse(localStorage.getItem(DRAFT_KEY))
+    return v && (v.editId || null) === (editId || null) && Array.isArray(v.draft?.days) ? v.draft : null
+  } catch { return null }
+}
+const clearSavedDraft = () => { try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ } }
+
 // The single source of truth for a program draft. Both the phone column and the
 // desktop workspace render off this one hook, so there is no second copy of
 // `save()` to drift out of sync — whichever view you built the program in, the
@@ -28,7 +41,9 @@ export default function useProgramDraft() {
   const editId = location.state?.id || null
   const profile = loadProfile()
 
-  const [draft, setDraft] = useState(() => {
+  // What the builder shows with nothing typed: the stored program when
+  // editing, an empty shell otherwise. "Unsaved changes" = "differs from this".
+  const [baseline] = useState(() => {
     if (editId) {
       const existing = getProgram(editId)
       if (existing) {
@@ -63,12 +78,41 @@ export default function useProgramDraft() {
       days: [{ weekday: 1, title: 'Day 1', exercises: [], cardio: [] }],
     }
   })
+  const [recovered] = useState(() => readSavedDraft(editId))
+  const [draft, setDraft] = useState(recovered || baseline)
+  const baselineJson = useMemo(() => JSON.stringify(baseline), [baseline])
+  const dirty = useMemo(() => JSON.stringify(draft) !== baselineJson, [draft, baselineJson])
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+
+  // Keep the draft on disk while it differs from what is stored.
+  useEffect(() => {
+    try {
+      if (dirty) localStorage.setItem(DRAFT_KEY, JSON.stringify({ editId, draft, at: Date.now() }))
+      else localStorage.removeItem(DRAFT_KEY)
+    } catch { /* storage full or unavailable — the in-memory draft still works */ }
+  }, [dirty, draft, editId])
 
   const [picker, setPicker] = useState(null) // dayIndex being edited, or null
   const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState(false) // U6: false = filter to active-location gear
   const [creating, setCreating] = useState(false) // custom-exercise form open?
   const toast = useToast()
+
+  // Say so when a draft came back, and offer the way out — otherwise reopening
+  // the builder to find a half-finished program looks like a bug.
+  useEffect(() => {
+    if (!recovered) return
+    toast.show('Picked up your unsaved draft', {
+      actionLabel: 'Start fresh',
+      onAction: () => { clearSavedDraft(); setDraft(baseline) },
+    })
+    // Once, on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Cancel asks first when there is something to lose.
+  const cancel = () => { if (dirty) setConfirmingDiscard(true); else navigate(-1) }
+  const discardAndLeave = () => { clearSavedDraft(); setConfirmingDiscard(false); navigate(-1) }
 
   const scheme = useMemo(() => schemeForGoals(draft.goals), [draft.goals])
   const inc = incrementForUnits(loadSettings().units)
@@ -170,9 +214,14 @@ export default function useProgramDraft() {
   const toggleIso = (di, ei) => {
     const ex = draft.days[di].exercises[ei]
     if (ex.iso) {
-      updateExercise(di, ei, { iso: undefined, repLow: 8, repHigh: 12 })
+      // Put back exactly what was there before the toggle. Without this,
+      // trying Iso and changing your mind turned 5 × 4–6 with warm-ups into
+      // 4 × 8–12 without them, and nothing said so.
+      const prev = ex.isoPrev || { repLow: 8, repHigh: 12 }
+      updateExercise(di, ei, { iso: undefined, isoPrev: undefined, ...prev })
     } else {
-      updateExercise(di, ei, { iso: true, amrap: undefined, warmups: undefined, sets: 4, repLow: 30, repHigh: 30, restSec: 180 })
+      const isoPrev = { sets: ex.sets, repLow: ex.repLow, repHigh: ex.repHigh, restSec: ex.restSec, amrap: ex.amrap, warmups: ex.warmups }
+      updateExercise(di, ei, { iso: true, isoPrev, amrap: undefined, warmups: undefined, sets: 4, repLow: 30, repHigh: 30, restSec: 180 })
     }
   }
 
@@ -266,6 +315,7 @@ export default function useProgramDraft() {
           // a fabricated default for 0/blank/invalid input.
           exercises: d.exercises.map((e) => ({
             ...e,
+            isoPrev: undefined, // builder-only scratch (see toggleIso)
             sets: Math.max(1, Number(e.sets) || 1),
             repLow: Math.max(1, Number(e.repLow) || 1),
             repHigh: Math.max(1, Number(e.repHigh) || 1),
@@ -289,9 +339,22 @@ export default function useProgramDraft() {
         ? { ...existing.schedule, pointer: clampRotationPointer(existing.schedule.pointer, program.days.length) }
         : existing?.schedule
       updateProgram({ ...existing, ...program, schedule })
-    } else {
-      addProgram(program)
+      clearSavedDraft()
+      toast.show(`Saved changes to “${program.name}”`)
+      // Back to wherever the edit started (Plans, the program page, Today).
+      navigate(-1)
+      return
     }
+    // A new program becomes the active one. Say so, and let them keep the old
+    // one active instead — silently swapping what Today shows is a surprise.
+    const previousActive = getActiveProgramId()
+    const previous = previousActive && getProgram(previousActive)
+    addProgram(program)
+    clearSavedDraft()
+    toast.show(`Saved “${program.name}” — it’s now your active program`, previous ? {
+      actionLabel: `Keep ${previous.name}`,
+      onAction: () => { setActiveProgramId(previousActive); window.dispatchEvent(new CustomEvent('sl-data-changed')) },
+    } : {})
     navigate('/today')
   }
 
@@ -339,6 +402,7 @@ export default function useProgramDraft() {
     toggleSuperset, toggleIso, changeLevel, applyRecommended,
     addCardioToDay, updateCardio, removeCardio,
     save, canSave, hasInvalidExercise, totalExercises, weekdayCounts,
+    dirty, cancel, confirmingDiscard, setConfirmingDiscard, discardAndLeave,
     equipActive, filtered, dayExIds, exIdsForDay,
   }
 }

@@ -8,6 +8,7 @@ import {
 import {
   loadSettings, saveSettings, loadMaxes, saveMax, deleteMax,
 } from '../lib/storage.js'
+import { useToast } from '../components/Toast.jsx'
 
 // Every loadable lift can get a 1RM — main barbell/dumbbell compounds first,
 // then everything else you might have in a program.
@@ -31,6 +32,7 @@ const Stepper = ({ label, value, set, min = 1, max = 20, suffix }) => (
 
 export default function OneRepMax() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [settings, setSettings] = useState(loadSettings())
   const units = settings.units || 'lbs'
 
@@ -66,8 +68,24 @@ export default function OneRepMax() {
 
   const save = () => {
     if (!canSave) return
+    // Saving replaces the stored max. Going DOWN is sometimes right (a bad
+    // day isn't a new max, but a corrected typo is), so ask rather than
+    // silently overwrite 275 with 260 — and either way it can be undone.
+    const prev = loadMaxes()[saveKey]
+    if (prev?.oneRM && oneRM < prev.oneRM
+      && !window.confirm(`Your saved ${liftName} max is ${prev.oneRM} ${units}. Replace it with the lower ${oneRM} ${units}?`)) return
     saveMax(saveKey, { oneRM, weight: Number(weight), reps, rir, units, name: liftName })
     refresh()
+    if (prev?.oneRM && prev.oneRM !== oneRM) {
+      toast.show(`${liftName} max: ${prev.oneRM} → ${oneRM} ${units}`, {
+        actionLabel: 'Undo', onAction: () => { saveMax(saveKey, prev); refresh() },
+      })
+    }
+  }
+  const removeMax = (key, m) => {
+    deleteMax(key)
+    refresh()
+    toast.show(`Removed ${m.name} max`, { actionLabel: 'Undo', onAction: () => { saveMax(key, m); refresh() } })
   }
 
   const maxes = loadMaxes()
@@ -194,7 +212,7 @@ export default function OneRepMax() {
               <div className="history-row" key={key}>
                 <span>{m.name}</span>
                 <span className="muted small">{m.oneRM} {m.units} · {new Date(m.updatedAt).toLocaleDateString()}</span>
-                <button type="button" className="icon-btn" onClick={() => { deleteMax(key); refresh() }} aria-label={`delete ${m.name}`}>✕</button>
+                <button type="button" className="icon-btn" onClick={() => removeMax(key, m)} aria-label={`delete ${m.name}`}>✕</button>
               </div>
             ))}
             <p className="muted small">These auto-fill starting weights when you build a custom program or load a template.</p>

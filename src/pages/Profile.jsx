@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   loadProfile, loadSettings, saveSettings, clearAll,
@@ -19,48 +19,30 @@ import {
 import { roundTo, incrementForUnits } from '../lib/oneRepMax.js'
 import PlateSettings from '../components/PlateSettings.jsx'
 import BodyweightCard from '../components/BodyweightCard.jsx'
-import useModalA11y from '../lib/useModalA11y.js'
+import ConfirmModal from '../components/ConfirmModal.jsx'
 
 const ALL_EQUIP = EQUIPMENT_GROUPS.flatMap((g) => g.items)
-
-// ---- In-app confirm dialog (U11) — replaces window.confirm for the two
-// destructive actions on this page (import & replace, reset everything).
-// Reuses the picker-overlay/picker-sheet modal look and useModalA11y for the
-// focus trap + Escape, matching PlateSettings and other overlays.
-function ConfirmModal({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, onConfirm, onCancel }) {
-  const dialogRef = useRef(null)
-  useModalA11y(dialogRef, onCancel)
-
-  return (
-    <div className="picker-overlay" role="dialog" aria-modal="true" aria-label={title} ref={dialogRef} tabIndex={-1}>
-      <div className="picker-sheet">
-        <div className="picker-head">
-          <p className="ex-name big" style={{ flex: 1 }}>{title}</p>
-        </div>
-        <div className="picker-list">
-          <p className="muted small">{message}</p>
-        </div>
-        <div className="picker-foot confirm-foot">
-          <button type="button" className="btn btn-ghost" onClick={onCancel}>{cancelLabel}</button>
-          <button type="button" className={'btn btn-primary' + (danger ? ' danger' : '')} onClick={onConfirm}>{confirmLabel}</button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ---- Units conversion (C6) — switching lbs↔kg must convert stored numbers,
 // not just relabel them. 1 kg = 2.20462 lb exactly; round to a sensible
 // loadable increment for the target unit (the same increments the rest of the
 // app already uses — 2.5 kg / 5 lb, via incrementForUnits).
 const KG_PER_LB = 0.45359237
-function convertWeight(w, from, to) {
+// `step` is what to round to. PLANNED weights (a program's start weight, a
+// training max) round to a loadable plate jump. RECORDED weights must not:
+// they are facts, and snapping them to 2.5 kg rewrote history — 172 lb of
+// bodyweight became 77.5 kg (it is 78.0) and a 285 lb set became 130 kg.
+function convertWeight(w, from, to, step = incrementForUnits(to)) {
   const n = Number(w)
   if (!n || from === to) return w // blank/zero/NaN stays as-is; no-op if units match
   const kg = from === 'kg' ? n : n * KG_PER_LB
   const out = to === 'kg' ? kg : kg / KG_PER_LB
-  return roundTo(out, incrementForUnits(to))
+  // Trim float noise (78.0000001) left by rounding to a fractional step.
+  return Number(roundTo(out, step).toFixed(2))
 }
+// Fine enough to be faithful, coarse enough to read: 0.5 kg / 1 lb for a
+// lifted weight, 0.1 either way for bodyweight.
+const recordedStep = (to) => (to === 'kg' ? 0.5 : 1)
 
 // Converts every weight field a generated/custom/GZCLP/5-3-1 program can carry:
 // each exercise's startWeight, its progression.weight (double/linear/t1/t2),
@@ -109,15 +91,15 @@ function convertStoredWeights(from, to) {
   Object.entries(maxes).forEach(([id, m]) => {
     if (!m || m.units === to) return // already in the target unit — never double-convert
     const patch = { ...m, units: to }
-    if (m.oneRM != null) patch.oneRM = convertWeight(m.oneRM, from, to)
-    if (m.weight != null) patch.weight = convertWeight(m.weight, from, to)
+    if (m.oneRM != null) patch.oneRM = convertWeight(m.oneRM, from, to, recordedStep(to))
+    if (m.weight != null) patch.weight = convertWeight(m.weight, from, to, recordedStep(to))
     saveMax(id, patch)
   })
 
   // logBodyweight(weight, date) overwrites the single entry for that date, so
   // this rewrites each historical entry in place rather than appending.
   loadBodyweight().forEach((entry) => {
-    if (entry?.date && entry.weight != null) logBodyweight(convertWeight(entry.weight, from, to), entry.date)
+    if (entry?.date && entry.weight != null) logBodyweight(convertWeight(entry.weight, from, to, 0.1), entry.date)
   })
 
   // Past workouts: convert each logged set's weight so Progress charts don't
@@ -127,7 +109,7 @@ function convertStoredWeights(from, to) {
     const entries = workout.entries.map((e) => ({
       ...e,
       sets: (e.sets || []).map((s) => (
-        s.weight === '' || s.weight == null ? s : { ...s, weight: String(convertWeight(s.weight, from, to)) }
+        s.weight === '' || s.weight == null ? s : { ...s, weight: String(convertWeight(s.weight, from, to, recordedStep(to))) }
       )),
     }))
     updateWorkout(workout.date, { entries })

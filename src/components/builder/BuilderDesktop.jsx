@@ -85,7 +85,7 @@ export default function BuilderDesktop({ d }) {
             ? <>Before saving: {reasons.join('; ')}.</>
             : <>Ready to save · {d.draft.days.length} day(s), {d.totalExercises} exercise(s)</>}
         </span>
-        <button type="button" className="btn btn-ghost" onClick={() => d.navigate(-1)}>Cancel</button>
+        <button type="button" className="btn btn-ghost" onClick={d.cancel}>Cancel</button>
         <button type="button" className="btn btn-primary" onClick={d.save} disabled={!d.canSave} title="Ctrl/Cmd + S">
           {d.editId ? 'Save changes' : 'Save program'}
         </button>
