@@ -10,6 +10,7 @@ import {
 import { saveProfile, addProgram, loadProfile, logBodyweight, loadSettings, saveMax } from '../lib/storage.js'
 import { generateProgram, EXPERIENCE_LEVELS } from '../lib/generator.js'
 import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
+import { saveProfileEquipment } from '../lib/equipment.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
 import ThemeToggle from '../components/ThemeToggle.jsx'
 
@@ -85,6 +86,10 @@ export default function Onboarding() {
     if (isLast) {
       const profile = { ...draft, createdAt: new Date().toISOString() }
       saveProfile(profile)
+      // The gear picked here IS the gym setup. Without this the Gym profile
+      // stayed at "everything", so the app offered exercises the lifter had
+      // just said they could not do. Nothing picked means bodyweight only.
+      saveProfileEquipment('gym', draft.equipment)
       if (Number(draft.bodyweight) > 0) logBodyweight(Number(draft.bodyweight))
       // Seed real 1RMs from the strength step so generateProgram (and the 1RM
       // tool later) has something to work from instead of leaving every
