@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import './index.css'
+import './styles/touch.css'
 // Desktop layer: purely additive, every rule gated behind a min-width query.
 import './styles/desktop.css'
 import App from './App.jsx'

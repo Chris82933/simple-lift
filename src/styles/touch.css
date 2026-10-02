@@ -1,0 +1,104 @@
+/* Phone ergonomics: number boxes that show their numbers, controls a thumb can
+   hit, and nothing that runs off a narrow screen. Loaded after index.css and
+   before the desktop sheets. */
+
+/* ---- Set rows ---------------------------------------------------------
+   The row is: set number · weight · reps · done. At 375px each number box
+   was left ~25px between its two 32px steppers — "135" only just fit and
+   "102.5" (any kg or decimal load) was clipped; at 320px the box was 0px
+   wide and logged numbers were invisible.
+   Width is clawed back from everything that isn't a number: a narrower set
+   number column, tighter gaps, slightly slimmer steppers — and the weight
+   column gets a bigger share than reps, because "102.5" needs twice the room
+   "12" does. */
+.set-head, .set-line {
+  grid-template-columns: 24px minmax(0, 1.15fr) minmax(0, 1fr) 44px;
+  gap: 6px;
+}
+.set-table.no-load .set-head,
+.set-table.no-load .set-line {
+  grid-template-columns: 24px minmax(0, 1fr) 44px;
+}
+.set-stepper-btn { width: 30px; }
+.set-field .set-input {
+  min-height: 44px;
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+}
+.set-line .set-check { width: 44px; height: 44px; }
+
+/* ---- Timers -----------------------------------------------------------
+   Label, countdown and four buttons on one line needed more than a 320px
+   screen has, so Skip — the one you want most — hung off the edge. Let the
+   buttons drop to their own line when they don't fit. */
+.rest-timer-inner { flex-wrap: wrap; row-gap: 8px; }
+.rest-actions { gap: 6px; }
+.rest-btn { min-height: 40px; padding: 8px 10px; }
+
+/* ---- Plans: program card buttons wrap instead of running off the card */
+.program-card-actions { flex-wrap: wrap; }
+
+/* ---- Toast ------------------------------------------------------------
+   Undo is the only protection on several deletes, so it has to be easy to
+   hit and must not bury the page: real button sizes, a message clamped to
+   two lines, and a width that doesn't collapse into a tall column. */
+.toast {
+  width: max-content;
+  max-width: min(94vw, var(--maxw));
+  gap: 6px;
+  padding: 6px 6px 6px 16px;
+}
+.toast-msg {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-width: 0;
+}
+.toast-action {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  white-space: nowrap;
+}
+.toast-close { min-width: 44px; min-height: 44px; font-size: var(--fs-md); }
+
+/* ---- Sticky action bar: opaque, so content doesn't show through behind
+   Cancel / Save while scrolling. */
+.full-flow > .flow-actions:last-child {
+  background: linear-gradient(to top, var(--bg) 82%, transparent);
+  padding-top: 14px;
+}
+
+/* ---- Very narrow phones (iPhone SE 1st gen, small Androids) ------------ */
+@media (max-width: 359px) {
+  .page { padding-left: 12px; padding-right: 12px; }
+  .card { padding: 14px; }
+  .set-stepper-btn { width: 26px; }
+  .set-head, .set-line { gap: 4px; }
+  .rest-count { font-size: 20px; }
+}
+
+/* ---- Touch targets ----------------------------------------------------
+   Only where the pointer is a finger: a mouse doesn't need 44px and the
+   desktop layout is denser on purpose. Visual size mostly stays; the hit
+   area grows (min-height, or an invisible ::after for text-sized links). */
+@media (pointer: coarse) {
+  .btn-sm { min-height: 40px; }
+  .seg-item, .seg-sm .seg-item { min-height: 40px; }
+  .set-adjust button, .rest-stepper button { min-width: 44px; min-height: 40px; }
+  .chip, .filter-chips .chip, .check-pill { min-height: 40px; }
+  .mini-btn { min-height: 36px; padding: 6px 10px; }
+  .form-check { min-height: 36px; padding: 4px 12px; }
+  .fill-down { min-height: 36px; }
+  .builder-fields input { min-height: 44px; }
+
+  .link-btn, .skip-link, .form-check, .ex-reorder .icon-btn { position: relative; }
+  .link-btn::after, .skip-link::after { content: ''; position: absolute; inset: -12px -6px; }
+  .form-check::after { content: ''; position: absolute; inset: -5px 0; }
+
+  /* iOS zooms the page when a focused field's text is under 16px, and does
+     not zoom back out. */
+  input, select, textarea { font-size: 16px; }
+}

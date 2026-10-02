@@ -32,7 +32,8 @@ export function ToastProvider({ children }) {
     setToast({ id, message, actionLabel: opts.actionLabel, onAction: opts.onAction })
     timer.current = setTimeout(() => {
       setToast((t) => (t && t.id === id ? null : t))
-    }, opts.duration || 6000)
+    // Longer when there is an action: Undo is often the only way back.
+    }, opts.duration || (opts.actionLabel ? 10000 : 6000))
   }, [])
 
   return (
