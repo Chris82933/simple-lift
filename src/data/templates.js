@@ -5,6 +5,7 @@
 // for, how it progresses, and honest pros/cons — so people can make an informed
 // choice. Those presentation-only fields are stripped on instantiation.
 import { EXERCISE_BY_ID } from './exercises.js'
+import { buildBoneProgram } from './boneDensity.js'
 
 // Build a program-exercise entry from a library id, overriding the prescription.
 // `reps` is a number or a [low, high] pair.
@@ -249,6 +250,36 @@ export const TEMPLATES = [
         t1('deadlift'), t2('overhead_press'), t3('db_row'),
       ]),
     ],
+  },
+
+  {
+    // Listed here so people browsing programs find it; the real thing is built
+    // by its setup page from their experience, time and fracture history.
+    templateId: 'bone_strength',
+    setupPath: '/bone-density',
+    setupLabel: 'Set up Bone Strength',
+    deloadWeeks: 7,
+    deloadNote: 'Every 6–8 weeks, take an easier week at about 80% of your working weights.',
+    name: 'Bone Strength',
+    description: 'Strength and impact training to maintain — and often improve — bone density, built on the LIFTMOR trial and osteoporosis-society guidance. Deadlift, press and squat, about 50 impacts, balance and back work, twice or three times a week.',
+    tags: ['Bone health', 'Strength', 'Beginner-friendly'],
+    level: 'All levels',
+    bestFor: 'Bone density, osteopenia, menopause',
+    equipment: 'Trap bar or barbell, dumbbells, a bench (home alternatives included)',
+    progressionInfo: 'Three phases — technique (3×8–10), build (3×6–8), strength (5×5) — with small weight jumps. A low-impact version for anyone with a past spine fracture.',
+    pros: [
+      'Based on the most-cited trial of heavy lifting for bone density',
+      'Adapts to your experience, time and fracture history',
+      'Includes impact, balance and posture work, not just lifting',
+    ],
+    cons: [
+      'Heavy lifting is best learned with a coach — the trials were supervised',
+      'Bone changes take 8+ months to show on a scan',
+    ],
+    source: 'custom',
+    goals: ['strength'],
+    schedule: { mode: 'rotation', trainingDays: [1, 4] },
+    days: buildBoneProgram({ level: 'new', time: '2x30' }).days,
   },
 
   {

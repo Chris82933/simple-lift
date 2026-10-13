@@ -258,7 +258,7 @@ export default function BuilderMobile({ d }) {
                     <button type="button" className="info-icon" onClick={info.show.warmup} aria-label="What is a warm-up ramp?">i</button>
                   </div>
                 )}
-                {exMeasure(ex).type === 'reps' && (
+                {exMeasure(ex).type === 'reps' && !ex.rehab && (
                   <div className="amrap-row">
                     <button
                       type="button"
@@ -275,7 +275,7 @@ export default function BuilderMobile({ d }) {
                 {/* Isometric-hold toggle — only for lifts that are normally rep-based
                     (a plank is already a hold). Uses the base exercise's measure so
                     the chip stays visible to toggle back off. */}
-                {exMeasure({ id: ex.id }).type === 'reps' && (
+                {exMeasure({ id: ex.id }).type === 'reps' && !ex.rehab && (
                   <>
                     <div className="amrap-row">
                       <button
@@ -297,9 +297,11 @@ export default function BuilderMobile({ d }) {
                     )}
                   </>
                 )}
-                <button type="button" className="btn btn-ghost btn-sm recommend-btn" onClick={() => applyRecommended(di, ei)}>
-                  Use recommended{ex.load ? ' (sets, reps, rest & weight from your 1RM)' : ' sets, reps & rest'}
-                </button>
+                {!ex.rehab && (
+                  <button type="button" className="btn btn-ghost btn-sm recommend-btn" onClick={() => applyRecommended(di, ei)}>
+                    Use recommended{ex.load ? ' (sets, reps, rest & weight from your 1RM)' : ' sets, reps & rest'}
+                  </button>
+                )}
               </div>
               {ei < day.exercises.length - 1 && (
                 <button

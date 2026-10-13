@@ -84,6 +84,8 @@ export function methodFor(program) {
 // null = no method opinion → fall back to the lift-standard increment.
 export function recommendChoice(method, sug, difficulty) {
   if (!sug || sug.type === 'levelUp' || sug.type === 'levelDown') return null
+  // Bone program, technique phase: same weight until the form is solid.
+  if (sug.holdForTechnique) return 'keep'
   const wKey = sug.type === 'load' && sug.recommendedInc ? `w${sug.recommendedInc}` : null
   const repKey = sug.reps ? 'reps' : null
 

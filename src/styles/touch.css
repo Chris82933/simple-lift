@@ -136,3 +136,19 @@
 /* ---- Program previews: a second line under an exercise name ------------- */
 .exercise-preview .ex-name { flex: 1; min-width: 0; }
 .exercise-preview .ex-sub { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
+
+/* ---- Bone Strength setup page ------------------------------------------ */
+/* Questions are real headings (for screen readers) that look like the app's
+   group labels. */
+h2.bone-q, h3.day-title { margin: 0; }
+h2.bone-q { font-size: var(--fs-sm); line-height: 1.35; text-transform: none; letter-spacing: 0; color: var(--text); font-weight: 700; }
+.bone-callout { margin: -6px 4px 0; }
+.bone-safety summary { cursor: pointer; }
+.bone-safety-list { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-sm); line-height: 1.45; }
+.bone-phase { display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.15; }
+.bone-phase-n { font-size: var(--fs-2xs); font-weight: 700; opacity: 0.8; }
+.seg-item:disabled { opacity: 0.4; cursor: not-allowed; }
+.bone-preview-grid { display: flex; flex-direction: column; gap: 16px; }
+.consent-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.consent-row input { width: 22px; height: 22px; margin-top: 1px; flex: none; accent-color: var(--accent); }
+.bone-block { text-align: center; margin: 0; }

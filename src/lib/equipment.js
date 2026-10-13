@@ -148,7 +148,7 @@ export function bestSubstitute(ex, available) {
   const loaded = (ex.load ?? base?.load) !== false
 
   const candidates = EXERCISES.filter(
-    (c) => c.id !== ex.id && c.pattern === pattern && !c.ladderOnly
+    (c) => c.id !== ex.id && c.pattern === pattern && !c.ladderOnly && !c.programOnly
       && c.pattern !== 'conditioning' && isDoable(c, have),
   )
   if (!candidates.length) return null

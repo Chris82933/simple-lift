@@ -30,7 +30,7 @@ export default function FocusTiles({ current, onPickProgram }) {
           onClick={() => pickProgram(p.id)}
         >
           <span className="focus-tab-name">{p.name}</span>
-          <span className="muted small">{p.source === 'custom' ? 'Custom' : 'Program'} · {p.days.length} day{p.days.length === 1 ? '' : 's'}</span>
+          <span className="muted small">{p.boneDensity ? `Bone Strength · Phase ${p.boneDensity.phase}` : p.source === 'custom' ? 'Custom' : 'Program'} · {p.days.length} day{p.days.length === 1 ? '' : 's'}</span>
         </button>
       ))}
       {showSkills && (

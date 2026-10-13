@@ -31,6 +31,9 @@ const PROGRAM_FIELDS = [
   // Must survive a swap or a level change: dropping it would quietly re-enable
   // progressive-overload suggestions on a rehab exercise.
   'rehab',
+  // Bone Strength: which slot an entry fills (so a phase change can rewrite
+  // just the main lifts) and how a set is counted ("each leg", "steps").
+  'boneSlot', 'perSide', 'countLabel',
 ]
 
 export function exerciseEntryFromLibrary(lib, overrides = {}) {

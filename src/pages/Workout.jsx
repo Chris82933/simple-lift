@@ -74,7 +74,7 @@ function weightStepFor(ex, units) {
 // so look the library definition up by id).
 function isTwoDumbbell(ex) {
   const lib = EXERCISE_BY_ID[ex.id]
-  return !!lib?.requires?.includes('dumbbells') && !/one-arm/i.test(lib.name || '')
+  return !!lib?.requires?.includes('dumbbells') && !/one-arm|goblet/i.test(lib.name || '')
 }
 
 // Human-readable session length for the completion screen.
@@ -140,6 +140,25 @@ function applyPersist(program, dayIndex, persist, units) {
   return { ...program, days: program.days.map((d, i) => (i === dayIndex ? { ...d, exercises } : d)) }
 }
 
+// Bone programs train the same three lifts on every main day, so a weight
+// earned on Day A is the weight for Day B too. Elsewhere days are independent
+// (a light and a heavy squat day are different prescriptions).
+function syncSharedWeights(program, dayIndex) {
+  if (!program?.boneDensity) return program
+  const trained = new Map()
+  for (const e of program.days[dayIndex]?.exercises || []) {
+    if (e.boneSlot === 'main' && e.startWeight !== '' && e.startWeight != null) trained.set(e.id, e.startWeight)
+  }
+  if (!trained.size) return program
+  return {
+    ...program,
+    days: program.days.map((d, i) => (i === dayIndex ? d : {
+      ...d,
+      exercises: d.exercises.map((e) => (trained.has(e.id) ? { ...e, startWeight: trained.get(e.id) } : e)),
+    })),
+  }
+}
+
 // ---- progression-choice options (end-of-session). Default is always 'keep'. ----
 const optionsFor = (sug, units) => {
   if (sug.type === 'levelUp') {
@@ -156,7 +175,7 @@ const optionsFor = (sug, units) => {
   }
   const opts = []
   if (sug.type === 'load') {
-    for (const inc of INCREMENTS[units] || INCREMENTS.lbs) {
+    for (const inc of sug.incs || INCREMENTS[units] || INCREMENTS.lbs) {
       opts.push({ key: `w${inc}`, label: `+${inc} ${units}`, recommended: inc === sug.recommendedInc })
     }
   }
@@ -230,6 +249,10 @@ function buildInitialSets(session, units, lastWeight = {}, wu = null) {
           rows = lazyWarmupSets(Number(weight), { bar: cfg.bar, availableWeights: cfg.availableWeights })
         }
         if (!rows.length) rows = warmupSets(Number(weight), inc)
+        // A barbell can't go below the empty bar, and a working weight at the
+        // bar needs no ramp at all; drop repeats the rounding can produce.
+        if (isBarbellLift(ex)) rows = Number(weight) <= cfg.bar ? [] : rows.filter((r) => r.weight >= cfg.bar)
+        rows = rows.filter((r, i, all) => i === 0 || r.weight !== all[i - 1].weight)
       }
       const warms = rows.map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: false, warmup: true }))
       // Most schemes prescribe the same weight and reps for every working set.
@@ -502,7 +525,13 @@ export default function Workout() {
     const entry = exerciseEntryFromLibrary(sub, {
       // The rest time is the lifter's own choice for this slot (they may have
       // changed it in Edit mode) — it carries over; sets/reps follow the new move.
-      sets: p.sets, repLow: p.repLow, repHigh: p.repHigh, restSec: old?.restSec ?? p.restSec,
+      // A program entry's sets and reps ARE the plan (a bone program's phase,
+      // a template's 5 × 5) — keep them when the movement is measured the same
+      // way. Only a one-off add, or a rep ↔ time change, takes fresh defaults.
+      ...(old && !old.adhoc && exMeasure(old).type === exMeasure(sub).type
+        ? { sets: old.sets, repLow: old.repLow, repHigh: old.repHigh }
+        : { sets: p.sets, repLow: p.repLow, repHigh: p.repHigh }),
+      restSec: old?.restSec ?? p.restSec,
       startWeight: '', adhoc: true, supersetNext: old?.supersetNext,
       // Records what this replaced, so the card says "Alternate" rather than
       // looking like an unrelated exercise added on a whim.
@@ -515,7 +544,8 @@ export default function Workout() {
     setSets((s) => {
       const n = { ...s }
       delete n[exId]
-      n[sub.id] = Array.from({ length: p.sets }, () => ({ weight: '', reps: String(p.repHigh), done: false }))
+      const keep = old && !old.adhoc && exMeasure(old).type === exMeasure(sub).type
+      n[sub.id] = Array.from({ length: keep ? Number(old.sets) || p.sets : p.sets }, () => ({ weight: '', reps: String(keep ? old.repHigh : p.repHigh), done: false }))
       return n
     })
   }
@@ -697,6 +727,9 @@ export default function Workout() {
     // rest only once the LAST member of the group finishes a set.
     const ex = exercises.find((e) => e.id === exId)
     const supersetted = !!ex?.supersetNext
+    // A round's rest is the LONGEST rest in the group: a heavy press paired with
+    // 30-second impact work needs the press's rest, not the jumps'.
+    const roundRest = Math.max(Number(restSec) || 0, ...supersetMembersFor(exId).map((m) => Number(m.restSec) || 0))
     setSets((s) => ({ ...s, [exId]: (s[exId] || []).map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }))
     // Start rest AFTER the state update (never inside the updater — StrictMode
     // double-invokes updaters, which would spawn duplicate timers).
@@ -714,7 +747,7 @@ export default function Workout() {
         // "Cable Fly" when the lifter just alternated three movements reads as
         // if the other two were forgotten.
         const label = supersetLabelFor(exId)
-        setRests((rs) => [...rs, { key, seconds: restSec, label }].slice(-4))
+        setRests((rs) => [...rs, { key, seconds: roundRest, label }].slice(-4))
       } else {
         // Same reasoning as the multi-timer label: this rest belongs to the
         // round, not to whichever member closed it.
@@ -724,7 +757,7 @@ export default function Workout() {
         const label = members.length === 2
           ? `Superset rest: ${members[0].name} + ${members[1].name}`
           : (members.length > 2 ? 'Superset rest' : undefined)
-        setRest({ seconds: restSec, key, label })
+        setRest({ seconds: label ? roundRest : restSec, key, label })
       }
     } else if (!nowDone) {
       // Un-marking a set cancels whatever rest timer IT started — otherwise a
@@ -875,7 +908,7 @@ export default function Workout() {
     // history record below (contract with the auto-deload-explanations UI:
     // field name must be exactly `autoNotes`).
     const programIds = new Set(program.days[dayIndex].exercises.map((e) => e.id))
-    const result = reviewSession({ ...session, exercises }, sets, goals, units, method)
+    const result = reviewSession({ ...session, exercises }, sets, goals, units, method, { bone: program.boneDensity })
     result.persist = result.persist.filter((p) => programIds.has(p.exId))
     result.suggestions = result.suggestions.filter((s) => programIds.has(s.exId))
 
@@ -886,14 +919,17 @@ export default function Workout() {
     // wrist eccentric in a recovery session isn't a strength test, and letting it
     // set a 1RM would skew every weight the app later recommends.
     const rehabIds = new Set(exercises.filter((e) => e.rehab).map((e) => e.id))
-    setRmUpdates(oneRMUpdates.filter((u) => !rehabIds.has(u.exId)))
+    // Technique phase of the bone program: light learning sets are not a
+    // strength test, so don't offer to update a one-rep max from them.
+    const learning = Number(program.boneDensity?.phase) === 1
+    setRmUpdates(learning ? [] : oneRMUpdates.filter((u) => !rehabIds.has(u.exId)))
     setRmDone({})
     setFinishedAt(date)
     setDurationSec(sessionDurationSec)
     setMuscleHeat(sessionMuscleHeat(entries))
 
     const fresh = loadActiveProgram()
-    if (fresh) updateProgram(applyPersist(fresh, dayIndex, result.persist, units))
+    if (fresh) updateProgram(syncSharedWeights(applyPersist(fresh, dayIndex, result.persist, units), dayIndex))
     advanceRotation(program.id, dayIndex)
 
     // Did they restructure the workout since the last save? If so, offer to save.
@@ -912,7 +948,7 @@ export default function Workout() {
     // 1) Progression choices (weight/rep bumps) onto the active program.
     if (review.suggestions.length) {
       const fresh = loadActiveProgram()
-      if (fresh) updateProgram(applyChoices(fresh, dayIndex, review.suggestions, choices))
+      if (fresh) updateProgram(syncSharedWeights(applyChoices(fresh, dayIndex, review.suggestions, choices), dayIndex))
     }
 
     // 2) Save structural edits to the program, if the user chose to.
@@ -1100,6 +1136,11 @@ export default function Workout() {
                 ? 'Bump these up only if it felt right — otherwise keep the same (the default).'
                 : <>Using <strong>{methodName(method)}</strong>. {recommendReason(method, difficulty)}</>}
             </p>
+            {review.suggestions.some((s) => s.holdForTechnique) && (
+              <p className="muted small">
+                <strong>Technique phase:</strong> keep the weight the same until every rep looks like the first — weight increases start in Phase 2.
+              </p>
+            )}
             {review.suggestions.map((sug) => {
               const rec = recommendChoice(method, sug, difficulty)
               return (
@@ -1360,7 +1401,7 @@ export default function Workout() {
                     </div>
                   )}
                   <p className="muted small">
-                    {setCountLabel(sets[ex.id]?.filter((r) => !r.warmup).length ?? ex.sets)} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)} · {ex.restSec}s rest
+                    {setCountLabel(sets[ex.id]?.filter((r) => !r.warmup).length ?? ex.sets)} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {ex.countLabel || measureUnit(ex)}{ex.perSide ? ` ${ex.perSide}` : ''} · {ex.restSec}s rest
                     {sets[ex.id]?.some((r) => r.warmup) ? ' · + warm-ups' : ''}
                   </p>
                   {ex.swappedFrom && (
@@ -1402,6 +1443,9 @@ export default function Workout() {
               )}
 
               <p className="cue">{ex.cues}</p>
+              {ex.warmups && !(sets[ex.id] || []).some((r) => r.warmup) && (
+                <p className="muted small">Do 2–3 lighter ramp-up sets before your first working set.</p>
+              )}
               {ex.progression && <p className="suggestion">{weekNote(ex, units) || stageNote(ex, units) || extraNote(ex, units)}</p>}
               {/* Not on rehab/bone entries: a fixed-dose plank there is not
                   meant to "level up" into a harder variation. */}
@@ -1460,7 +1504,7 @@ export default function Workout() {
                       {optionalLoad ? `+${units}` : isTwoDumbbell(ex) ? `${units} (each)` : units}
                     </span>
                   )}
-                  <span>{measureUnit(ex)}</span>
+                  <span>{ex.countLabel || measureUnit(ex)}</span>
                   <span>done</span>
                 </div>
                 {(() => {

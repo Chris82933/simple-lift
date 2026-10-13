@@ -76,7 +76,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag, guard }) {
           <MuscleMap pattern={ex.pattern} exId={ex.id} size={34} compact />
           <span className="dtb-name-text">
             <span className="ex-name">{ex.name}</span>
-            {lad && lad.length > 1 && (
+            {lad && lad.length > 1 && !ex.rehab && (
               <span className="dtb-ladder">
                 <button type="button" className="ladder-step-btn" disabled={!lad.prevId} onClick={() => d.changeLevel(di, ei, -1)} title={lad.prevName ? `Easier: ${lad.prevName}` : ''} aria-label={lad.prevName ? `Easier variation: ${lad.prevName}` : 'No easier variation'}>↓</button>
                 <span className="muted small">L{lad.index + 1}/{lad.length}</span>
@@ -155,17 +155,19 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag, guard }) {
           <span className="dtb-tools-opts">
             {ex.load && measure.type === 'reps' &&
               chip(ex.warmups, 'Warm-up', () => d.updateExercise(di, ei, { warmups: ex.warmups ? undefined : true }), 'Ramp-up sets before the working sets')}
-            {measure.type === 'reps' &&
+            {/* Fixed-dose rehab/impact/balance work: no AMRAP, Iso or "Recommended"
+                (which would overwrite the dose with the goal scheme). */}
+            {measure.type === 'reps' && !ex.rehab &&
               chip(ex.amrap, 'AMRAP', () => d.updateExercise(di, ei, { amrap: ex.amrap ? undefined : true }), 'Push the last set for max reps')}
             {/* Uses the BASE exercise's measure so the chip stays visible to toggle
                 back off once the entry has become a timed hold. */}
-            {exMeasure({ id: ex.id }).type === 'reps' &&
+            {exMeasure({ id: ex.id }).type === 'reps' && !ex.rehab &&
               chip(ex.iso, 'Iso', () => d.toggleIso(di, ei), 'Hold for time instead of reps')}
           </span>
           <span className="dtb-tools-move">
             {/* An action, not a toggle — so it sits with the other row actions
                 at a fixed spot on the right, not after chips that come and go. */}
-            <button
+            {!ex.rehab && <button
               type="button"
               className={'dtb-action-btn' + (recFrom !== null ? ' is-done' : '')}
               onClick={() => { setRecFrom(recKey); d.applyRecommended(di, ei) }}
@@ -176,7 +178,7 @@ function ExerciseRow({ d, di, ex, ei, count, info, drag, guard }) {
                   note it wrapped the row and pushed this button — and everything
                   under it — out from under the cursor. */}
               {recFrom === null ? 'Recommended' : recShort}
-            </button>
+            </button>}
             <span className="sr-only" role="status" aria-live="polite">{recNote}</span>
             <span className="dtb-tools-sep" aria-hidden="true" />
             <button type="button" className="icon-btn" disabled={ei === 0} onClick={guard(() => d.moveExercise(di, ei, -1))} aria-label={`Move ${ex.name} up`} title="Move up">

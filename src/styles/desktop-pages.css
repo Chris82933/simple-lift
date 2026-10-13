@@ -422,3 +422,8 @@
 @media (min-width: 1024px) {
   .page:not(.full-flow) > .trained-card + .week-card { grid-column: 1 / -1; }
 }
+
+/* Bone Strength: the day previews sit side by side when there is room. */
+@media (min-width: 1024px) {
+  .bone-page .bone-preview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+}

@@ -115,7 +115,10 @@ function availableFor(equipment) {
   const have = new Set(equipment)
   // Ladder-only variants are excluded from auto-generation — they're for
   // templates and manual selection in the builder.
-  return EXERCISES.filter((e) => !e.ladderOnly && e.requires.every((r) => have.has(r)))
+  // programOnly: drills built for one program (the bone program's impact,
+  // balance and posture work) — a jumping chin-up landing has no business in a
+  // generated hypertrophy split.
+  return EXERCISES.filter((e) => !e.ladderOnly && !e.programOnly && e.requires.every((r) => have.has(r)))
 }
 
 // Specialist variations: good lifts, but not what a first program should be

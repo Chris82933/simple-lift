@@ -61,7 +61,9 @@ export default function useProgramDraft() {
             uid: newUid(),
             // Rotation/template days have no fixed weekday — assign one so the
             // Builder's weekday picker is a controlled input (not null).
-            weekday: d.weekday ?? WEEKDAY_ORDER[i % 7],
+            // A rotation program's training days, when it has them — so the
+            // builder shows Mon/Wed/Fri for a Mon/Wed/Fri program, not Mon/Tue/Wed.
+            weekday: d.weekday ?? existing.schedule?.trainingDays?.[i % (existing.schedule.trainingDays.length || 1)] ?? WEEKDAY_ORDER[i % 7],
             title: d.title,
             // Carried through the edit so save() can preserve them — a rehab
             // day's safety note and its "Recovery · Ankles" label would

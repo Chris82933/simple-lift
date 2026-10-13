@@ -23,7 +23,19 @@ export function recommendedInc(ex, units) {
 
 const maxEntered = (logged) => Math.max(0, ...logged.map((s) => Number(s.weight) || 0))
 
-export function reviewSession(session, setsMap, goals, units, method = 'manual') {
+// Bone programs progress in the SMALLEST steps (the program says so, and a
+// 10 lb jump on a 15 lb goblet squat is +67%): 5 lb / 2.5 kg for leg lifts,
+// 2.5 lb / 1.25 kg for presses and rows — "the next dumbbell" for dumbbell lifts.
+export function boneInc(ex, units) {
+  const lower = ex.regions?.includes('legs') && ['squat', 'hinge', 'lunge'].includes(ex.pattern)
+  const lib = EXERCISE_BY_ID[ex.id]
+  const dumbbellOnly = lib?.requires?.includes('dumbbells') && !lib?.requires?.includes('barbell')
+  if (units === 'kg') return lower || dumbbellOnly ? 2.5 : 1.25
+  return lower || dumbbellOnly ? 5 : 2.5
+}
+
+export function reviewSession(session, setsMap, goals, units, method = 'manual', opts = {}) {
+  const bone = opts.bone || null
   const persist = []
   const autoNotes = []
   const suggestions = []
@@ -151,8 +163,15 @@ export function reviewSession(session, setsMap, goals, units, method = 'manual')
       if (tracksLoad && entered > 0) {
         suggestions.push({
           exId: ex.id, name: ex.name, type: 'load',
-          base: entered, reps: { to: target + stepBy, by: stepBy }, hitTop: completedAll,
-          recommendedInc: recommendedInc(ex, units), isGzclp: false, measure: m,
+          base: entered,
+          // A fixed rep target (5 × 5) has no "+1 rep" step — that would quietly
+          // turn it into 5 × 6.
+          reps: bone && Number(ex.repLow) === Number(ex.repHigh) ? null : { to: target + stepBy, by: stepBy },
+          hitTop: completedAll,
+          recommendedInc: bone ? boneInc(ex, units) : recommendedInc(ex, units), isGzclp: false, measure: m,
+          // Bone programs: offer only the small steps, and none starred while
+          // the technique phase is still about form.
+          ...(bone ? { incs: [boneInc(ex, units)], holdForTechnique: Number(bone.phase) === 1 } : {}),
         })
       } else if (m.type === 'time') {
         // Timed hold (plank, dead hang): grow the duration, not "reps".

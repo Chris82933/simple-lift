@@ -60,7 +60,8 @@ export default function Today() {
     for (const w of history) {
       const t = new Date(w.date).getTime()
       if (t >= weekStart) wds.add(new Date(w.date).getDay())
-      if (t >= dayStart) titles.add(w.sessionTitle)
+      // Keyed by program as well: two programs can share a day title.
+      if (t >= dayStart) titles.add(`${w.programId}|${w.sessionTitle}`)
     }
     return { doneWds: wds, doneTodayTitles: titles }
   }, [history])
@@ -283,16 +284,16 @@ export default function Today() {
             )
           })}
         </ul>
-        {doneTodayTitles.has(session.title) && !resumingThisDay && (
+        {doneTodayTitles.has(`${program.id}|${session.title}`) && !resumingThisDay && (
           <p className="done-today"><span aria-hidden="true">✓</span> You finished {session.title} today.</p>
         )}
         <button
           type="button"
-          className={'btn ' + (doneTodayTitles.has(session.title) && !resumingThisDay ? 'btn-ghost' : 'btn-primary')}
+          className={'btn ' + (doneTodayTitles.has(`${program.id}|${session.title}`) && !resumingThisDay ? 'btn-ghost' : 'btn-primary')}
           onClick={() => navigate('/workout', { state: { dayIndex } })}
         >
           {resumingThisDay ? 'Continue workout'
-            : doneTodayTitles.has(session.title) ? `Do ${session.title} again`
+            : doneTodayTitles.has(`${program.id}|${session.title}`) ? `Do ${session.title} again`
               : isScheduledToday ? 'Start workout' : `Start ${session.title} now`}
         </button>
         {resumingThisDay && (
@@ -309,7 +310,7 @@ export default function Today() {
         )}
         {needSwap > 0 && (
           <p className="muted small">
-            <span aria-hidden="true">🏠</span> {needSwap} move{needSwap === 1 ? '' : 's'} need a swap in {profileMeta(activeProfile).name} mode — you can swap them one-tap during the workout.
+            <span aria-hidden="true">🏠</span> {needSwap} move{needSwap === 1 ? ' needs' : 's need'} a swap in {profileMeta(activeProfile).name} mode — you can swap them one-tap during the workout.
           </p>
         )}
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
