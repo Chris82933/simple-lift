@@ -94,6 +94,7 @@ const PARENT_OF = {
   '/program': '/programs',
   '/import-program': '/programs',
   '/recovery': '/programs',
+  '/bone-density': '/programs',
   '/skills': '/programs',
   '/gzclp': '/templates',
   '/cardio': '/today',

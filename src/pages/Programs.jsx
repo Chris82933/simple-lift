@@ -170,6 +170,9 @@ export default function Programs() {
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/recovery')}>
           Recovery &amp; Strength (rehab a joint)
         </button>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/bone-density')}>
+          Bone Strength (bone density, for women)
+        </button>
         {!skillTreeAdded && (
           <button type="button" className="btn btn-ghost" onClick={addSkillTree}>
             Add the Calisthenics Skill Tree

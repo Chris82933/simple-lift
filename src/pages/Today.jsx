@@ -326,6 +326,7 @@ export default function Today() {
         <p className="group-label" style={{ margin: 0 }}>Tools</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/recovery')}>Recovery &amp; Strength</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/bone-density')}>Bone Strength</button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/skills')}>Skill Tree</button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/one-rep-max')}>1RM finder</button>
         </div>

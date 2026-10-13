@@ -16,6 +16,7 @@ import Onboarding from './pages/Onboarding.jsx'
 import GzclpWizard from './pages/GzclpWizard.jsx'
 import ImportProgram from './pages/ImportProgram.jsx'
 import Recovery from './pages/Recovery.jsx'
+import BoneDensity from './pages/BoneDensity.jsx'
 import Profile from './pages/Profile.jsx'
 import Workout from './pages/Workout.jsx'
 
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/gzclp" element={<GzclpWizard />} />
         <Route path="/import-program" element={<ImportProgram />} />
         <Route path="/recovery" element={<Recovery />} />
+        <Route path="/bone-density" element={<BoneDensity />} />
       </Route>
 
       {/* Main app shell with bottom navigation */}

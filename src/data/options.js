@@ -18,6 +18,7 @@ export const EQUIPMENT_GROUPS = [
       { id: 'kettlebells', label: 'Kettlebells' },
       { id: 'plates', label: 'Weight plates' },
       { id: 'ez_bar', label: 'EZ-curl bar' },
+      { id: 'trap_bar', label: 'Trap / hex bar' },
     ],
   },
   {

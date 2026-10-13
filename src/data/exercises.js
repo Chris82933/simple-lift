@@ -203,6 +203,22 @@ const BASE_EXERCISES = [
   { id: 'smith_bench', name: 'Smith Machine Bench Press', pattern: 'horiz_push', regions: ['chest', 'arms', 'shoulders'], requires: ['smith', 'flat_bench'], compound: true, cues: 'Set the bench so the bar comes down to your mid-chest. Shoulder blades pinned back, touch and press. The safeties mean you can train close to failure without a spotter.' },
   { id: 'smith_row', name: 'Smith Machine Bent-Over Row', pattern: 'horiz_pull', regions: ['back', 'arms'], requires: ['smith'], compound: true, tags: ['climbing'], cues: 'Hinge to about 45°, flat back, bar starting just below the knees. Row to the belly and squeeze the mid-back. The bar tracking for you makes it easier to hold position on the last few reps than a free barbell row.' },
 
+  // ---- Bone strength: impact, balance and posture ----
+  // Added for the bone-density program. Impact moves are counted in landings
+  // (reps), not time: the evidence dose is a NUMBER of impacts — about 50 a
+  // session (Royal Osteoporosis Society, 2022). Balance holds are timed.
+  { id: 'trap_bar_deadlift', name: 'Trap Bar Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['trap_bar'], compound: true, cues: 'Stand in the middle of the hex bar, push the hips back, grip the handles at your sides. Chest proud, back flat, then stand up by pushing the floor away. The handles sit beside you rather than in front, so it is easier to keep a neutral spine than a straight-bar deadlift — a common first heavy lift for bone strength.' },
+  { id: 'split_squat', name: 'Split Squat', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, addLoad: true, load: false, cues: 'Long stride, back heel up, both feet planted. Drop the back knee straight down toward the floor and stand back up, torso upright. Hold a wall or rail for balance at first; add dumbbells when it is easy.' },
+  { id: 'heel_drop', name: 'Heel Drops', pattern: 'conditioning', regions: ['legs'], requires: [], compound: false, load: false, cues: 'Stand tall, rise up onto the balls of your feet, then drop your weight sharply onto your heels with straight knees. That jolt is the point — it loads the hip and spine through the skeleton. The gentlest impact option; hold a counter if you need to.' },
+  { id: 'stomp', name: 'Stomps', pattern: 'conditioning', regions: ['legs'], requires: [], compound: false, load: false, cues: 'March on the spot and bring each foot down firmly and fast — a controlled stamp, flat-footed, trunk upright. Each stamp is one impact; alternate legs.' },
+  { id: 'pogo_jump', name: 'Low Pogo Jumps', pattern: 'conditioning', regions: ['legs'], requires: [], compound: false, load: false, tags: ['running'], cues: 'Small, quick bounces off the balls of the feet with stiff ankles and a tall spine — a few centimetres off the floor, not a big jump. Land quietly and rebound straight away. Stop if you leak or anything hurts.' },
+  { id: 'jump_chinup_drop', name: 'Jumping Chin-Up with Drop Landing', pattern: 'vert_pull', regions: ['back', 'arms', 'legs'], requires: ['pullup_bar'], compound: true, load: false, cues: 'From the LIFTMOR trial. Jump up to a chin-up (bar overhead, palms facing you), lower slowly, then let go and land on both feet, flat-footed, knees soft, trunk upright. The landing is the impact — about the same jolt as a much bigger jump, without the height.' },
+  { id: 'single_leg_stance', name: 'Single-Leg Balance', pattern: 'core', regions: ['legs', 'core'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [20, 40], tags: ['rehab'], cues: 'Stand next to a counter or wall, lift one foot and hold, eyes forward, standing hip level. Hands off the support when you can; then try eyes closed or a cushion underfoot. Time each leg.' },
+  { id: 'tandem_walk', name: 'Tandem Walk', pattern: 'core', regions: ['legs', 'core'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'Walk in a straight line placing each heel directly in front of the other foot’s toes, slowly, eyes ahead. Use a hallway so a wall is within reach. Reps are steps.' },
+  { id: 'single_leg_reach', name: 'Single-Leg Balance Reach', pattern: 'core', regions: ['legs', 'core'], requires: [], compound: false, load: false, tags: ['rehab'], cues: 'Balance on one leg and reach the other foot out to the front, side and back, tapping the floor lightly each time, then return to standing tall. The standing hip and ankle do the work. Reps per leg.' },
+  { id: 'pallof_press', name: 'Pallof Press', pattern: 'core', regions: ['core'], requires: ['bands'], compound: false, cues: 'Band anchored at chest height to your side. Stand side-on, hold the band at your chest and press it straight out, resisting the pull to twist, then bring it back. Core work without bending or twisting the spine — the safe alternative to crunches for anyone with low bone density. Reps per side.' },
+  { id: 'prone_back_extension_hold', name: 'Prone Back Extension Hold', pattern: 'hinge', regions: ['back', 'core'], requires: [], compound: false, load: false, hold: true, unit: 'sec', holdSec: [5, 10], tags: ['rehab'], cues: 'Lie face down, arms by your sides, chin tucked. Squeeze the shoulder blades back and lift the chest a few centimetres to a straight line — no higher — and hold. Strengthens the back extensors that keep you upright and protect the spine.' },
+
   // ---- Cardio (time / heart-rate based — great as a warm-up before lifting) ----
   { id: 'running', name: 'Running', pattern: 'conditioning', regions: ['legs', 'core'], requires: [], compound: true, load: false, hold: true, unit: 'min', tags: ['running'], cues: 'Treadmill or outdoors, whatever suits you. For a warm-up keep it easy — an aerobic “zone 2” pace you can chat at. 10–15 min primes the body before lifting; go longer for a full session.' },
   { id: 'walking_incline', name: 'Incline Walk', pattern: 'conditioning', regions: ['legs'], requires: [], compound: false, load: false, hold: true, unit: 'min', tags: ['running'], cues: 'Brisk walk up a treadmill incline or a hill — low impact and joint-friendly. A gentle, effective warm-up.' },
@@ -532,6 +548,17 @@ const MUSCLE_OVERRIDES = {
   // Hip abduction IS the glute medius/minimus, so the hinge default (hamstrings
   // + lower back) would be wrong for it.
   hip_abduction: M_(['glutes']), cable_kickback: M_(['glutes'], ['hamstrings']),
+  // Bone-strength additions: impact moves load the legs and hips through the
+  // landing; balance work is the standing hip and ankle.
+  trap_bar_deadlift: M_(['glutes', 'quads', 'hamstrings'], ['lower_back', 'traps', 'forearms']),
+  split_squat: M_(['quads', 'glutes'], ['hamstrings']),
+  heel_drop: M_(['calves'], ['quads', 'glutes']), stomp: M_(['quads', 'calves'], ['glutes']),
+  pogo_jump: M_(['calves'], ['quads', 'glutes']),
+  jump_chinup_drop: M_(['lats', 'biceps'], ['quads', 'calves', 'forearms']),
+  single_leg_stance: M_(['glutes', 'calves'], ['core']), tandem_walk: M_(['calves', 'glutes'], ['core']),
+  single_leg_reach: M_(['glutes', 'quads'], ['calves', 'core']),
+  pallof_press: M_(['obliques', 'abs'], ['shoulders']),
+  prone_back_extension_hold: M_(['lower_back'], ['glutes', 'traps']),
   // The map has no inner-thigh region, so adduction is drawn on the upper leg it
   // sits between. Not exact — the adductors are their own group — but much closer
   // than the hinge default, which would light up the lower back, traps and grip.
@@ -687,6 +714,17 @@ const ALIASES = {
   // Machines. People mostly search these by the body part they think the
   // machine is for ("inner thigh", "outer thigh", "rear delt machine") or by
   // gym slang, so those matter more here than the formal name.
+  trap_bar_deadlift: ['trap bar deadlift', 'hex bar deadlift', 'hex bar', 'trap bar', 'hex deadlift'],
+  split_squat: ['split squat', 'static lunge', 'stationary lunge', 'dumbbell split squat'],
+  heel_drop: ['heel drop', 'heel drops', 'heel thumps', 'heel strikes', 'impact drops'],
+  stomp: ['stomps', 'stamps', 'stamping', 'foot stomps', 'stomping'],
+  pogo_jump: ['pogo', 'pogo hops', 'pogos', 'ankle hops', 'low jumps', 'small jumps', 'bounces'],
+  jump_chinup_drop: ['jumping chin up', 'jumping chin-up', 'drop landing', 'liftmor jump', 'chin up drop landing'],
+  single_leg_stance: ['single leg stance', 'one leg balance', 'stand on one leg', 'balance hold', 'single leg balance'],
+  tandem_walk: ['heel to toe walk', 'tightrope walk', 'tandem stance', 'balance walk'],
+  single_leg_reach: ['star excursion', 'balance reach', 'single leg reach', 'clock reach'],
+  pallof_press: ['pallof', 'anti rotation press', 'anti-rotation press', 'band pallof press', 'cable pallof press'],
+  prone_back_extension_hold: ['prone extension', 'prone back extension', 'back extension hold', 'floor back extension', 'lying back extension'],
   hip_abduction: ['abductor machine', 'hip abductor', 'abduction machine', 'outer thigh machine', 'outer thigh', 'glute medius machine', 'hip abductor machine', 'good girl machine'],
   hip_adduction: ['adductor machine', 'hip adductor', 'adduction machine', 'inner thigh machine', 'inner thigh', 'groin machine', 'hip adductor machine', 'bad girl machine'],
   chest_press_machine: ['machine chest press', 'seated chest press', 'chest press', 'machine bench press', 'hammer strength chest press'],

@@ -132,3 +132,7 @@
 /* ---- Session log edit: per-set remove ----------------------------------- */
 .log-set-remove { width: 28px; height: 28px; font-size: var(--fs-2xs); margin-left: auto; }
 .cardio-fields input[type='date'] { min-width: 0; }
+
+/* ---- Program previews: a second line under an exercise name ------------- */
+.exercise-preview .ex-name { flex: 1; min-width: 0; }
+.exercise-preview .ex-sub { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }

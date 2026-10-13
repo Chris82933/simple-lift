@@ -98,6 +98,11 @@ describe('gym machines', () => {
     ['crunch machine', 'ab_crunch_machine'],
     ['glute kickback', 'cable_kickback'],
     ['smith squat', 'smith_squat'],
+    ['hex bar deadlift', 'trap_bar_deadlift'],
+    ['pallof', 'pallof_press'],
+    ['heel drops', 'heel_drop'],
+    ['stand on one leg', 'single_leg_stance'],
+    ['heel to toe walk', 'tandem_walk'],
   ])('searching %s finds %s', (query, id) => {
     const hits = EXERCISES.filter((e) => matchInfo(e, query).match).map((e) => e.id)
     expect(hits).toContain(id)
