@@ -45,6 +45,12 @@ export default function ExercisePicker({ onPick, onClose, title = 'Add exercise'
   }
   // With nothing typed this is a 200-row list. Group it by movement so it can
   // be scanned; once there is a query, relevance order matters more.
+  // With a query, best matches first: a hit in the name beats one in an alias
+  // ("trap bar" is in Barbell Shrug's aliases) beats a typo match.
+  if (q) {
+    const rank = { name: 0, alias: 1, fuzzy: 2 }
+    filtered.sort((a, b) => rank[a.info.via] - rank[b.info.via])
+  }
   const grouped = !q
   if (grouped) {
     const order = Object.keys(GROUP_LABEL)

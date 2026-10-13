@@ -1403,7 +1403,9 @@ export default function Workout() {
 
               <p className="cue">{ex.cues}</p>
               {ex.progression && <p className="suggestion">{weekNote(ex, units) || stageNote(ex, units) || extraNote(ex, units)}</p>}
-              {lad && lad.length > 1 && (
+              {/* Not on rehab/bone entries: a fixed-dose plank there is not
+                  meant to "level up" into a harder variation. */}
+              {lad && lad.length > 1 && !ex.rehab && (
                 <div className="ladder-hint">
                   <p className="suggestion" style={{ margin: 0 }}>
                     Progression ladder · step {lad.index + 1} of {lad.length}
@@ -1439,7 +1441,7 @@ export default function Workout() {
                 />
               )}
 
-              {optionalLoad && (
+              {optionalLoad && !ex.rehab && (
                 <p className="muted small optional-load-hint">
                   Bodyweight — leave the {units} blank, or add weight (a belt, dumbbells, or a vest) to load it.
                 </p>

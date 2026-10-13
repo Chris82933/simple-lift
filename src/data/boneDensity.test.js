@@ -1,26 +1,26 @@
 // The bone-strength generator turns two answers into a program. Every
 // combination must produce something real, safe and the length it promises.
 import { describe, it, expect } from 'vitest'
-import { buildBoneProgram, rebuildBoneProgram, BONE_LEVELS, BONE_TIMES, BONE_PHASES, BONE_DISCLAIMER } from './boneDensity.js'
+import { buildBoneProgram, rebuildBoneProgram, BONE_LEVELS, BONE_TIMES, BONE_PHASES, BONE_DAY_SAFETY } from './boneDensity.js'
 import { EXERCISE_BY_ID, exMeasure, musclesFor } from './exercises.js'
 import { estimateSessionMinutes } from '../lib/duration.js'
 import { resolveExercisesForEquipment } from '../lib/equipment.js'
 
 const COMBOS = []
-for (const l of BONE_LEVELS) for (const t of BONE_TIMES) for (const p of [1, 2, 3]) COMBOS.push([l.id, t.id, p])
+for (const l of BONE_LEVELS) for (const t of BONE_TIMES) for (const p of [1, 2, 3]) for (const li of [false, true]) COMBOS.push([l.id, t.id, p, li])
 
 // Loaded spinal flexion is the one thing the osteoporosis guidance is unanimous
 // about avoiding. None of these may ever appear.
 const FLEXION = ['crunch', 'situp', 'sit_up', 'v_up', 'toe_touch', 'russian_twist', 'ab_crunch', 'jackknife', 'leg_raise', 'roll_up', 'good_morning', 'jefferson']
 
-describe.each(COMBOS)('%s · %s · phase %s', (level, time, phase) => {
-  const p = buildBoneProgram({ level, time, phase })
+describe.each(COMBOS)('%s · %s · phase %s · low-impact %s', (level, time, phase, lowImpact) => {
+  const p = buildBoneProgram({ level, time, phase, lowImpact })
   const T = BONE_TIMES.find((t) => t.id === time)
 
   it('has the promised number of sessions and a valid shape', () => {
     expect(p.id).toBeUndefined()
     expect(p.days).toHaveLength(T.days)
-    expect(p.boneDensity).toEqual({ level, time, phase })
+    expect(p.boneDensity).toEqual({ level, time, phase, lowImpact })
     expect(p.schedule.trainingDays).toHaveLength(T.days)
   })
 
@@ -39,7 +39,7 @@ describe.each(COMBOS)('%s · %s · phase %s', (level, time, phase) => {
     for (const d of p.days) {
       const min = estimateSessionMinutes(d)
       expect(min).toBeGreaterThanOrEqual(T.minutes - 20)
-      expect(min).toBeLessThanOrEqual(T.minutes + 5)
+      expect(min).toBeLessThanOrEqual(T.minutes + 10)
     }
   })
 
@@ -48,14 +48,34 @@ describe.each(COMBOS)('%s · %s · phase %s', (level, time, phase) => {
       const [hinge, press, impact, squat] = d.exercises
       expect(hinge.pattern).toBe('hinge')
       expect(press.pattern).toBe('vert_push')
-      expect(press.supersetNext).toBe(true)
+      // alternate press and impact only when their set counts match
+      expect(!!press.supersetNext).toBe(press.sets === impact.sets)
       expect(squat.pattern).toBe('squat')
+      // ramp-up sets on every heavy lift once the weights are real
+      for (const lift of [hinge, press, squat]) expect(!!lift.warmups).toBe(phase > 1)
       // the phase sets the main lifts' sets × reps
       for (const lift of [hinge, press, squat]) {
         expect([lift.sets, lift.repLow, lift.repHigh]).toEqual([BONE_PHASES[phase].sets, BONE_PHASES[phase].low, BONE_PHASES[phase].high])
       }
-      // ~50 impacts: 5 × 10, or 5 × 5 of the bigger chin-up landing
-      expect(impact.sets * impact.repHigh).toBeGreaterThanOrEqual(impact.id === 'jump_chinup_drop' ? 25 : 50)
+      // ~50 impacts a session, counting the extra stomps after chin-up landings
+      const impacts = d.exercises.filter((e) => ['heel_drop', 'stomp', 'pogo_jump', 'jump_chinup_drop'].includes(e.id))
+      if (!lowImpact) expect(impacts.reduce((n, e) => n + e.sets * e.repHigh, 0)).toBeGreaterThanOrEqual(50)
+    }
+  })
+
+  it('has no jumps or landings in the low-impact version', () => {
+    if (!lowImpact) return
+    for (const d of p.days) for (const e of d.exercises) {
+      expect(['pogo_jump', 'jump_chinup_drop', 'heel_drop', 'stomp', 'squat_jump', 'jump_rope'].includes(e.id), e.id).toBe(false)
+    }
+    expect(p.days.every((d) => d.exercises.some((e) => e.id === 'marching'))).toBe(true)
+  })
+
+  it('never does a second hinge or a bent-over row after heavy deadlifts', () => {
+    for (const d of p.days) {
+      const ids = d.exercises.map((e) => e.id)
+      expect(ids).not.toContain('romanian_dl')
+      expect(ids).not.toContain('barbell_row')
     }
   })
 
@@ -74,7 +94,7 @@ describe.each(COMBOS)('%s · %s · phase %s', (level, time, phase) => {
   })
 
   it('carries the safety note on every day', () => {
-    for (const d of p.days) expect(d.note).toContain(BONE_DISCLAIMER)
+    for (const d of p.days) expect(d.note).toContain(BONE_DAY_SAFETY)
   })
 })
 
@@ -89,6 +109,8 @@ describe('experience changes the program', () => {
     const p = buildBoneProgram({ level: 'experienced', time: '2x30' })
     expect(p.boneDensity.phase).toBe(3)
     expect(lifts('experienced')).toEqual(['deadlift', 'overhead_press', 'jump_chinup_drop', 'back_squat'])
+    // the chin-up landing is 5 × 5, so stomps top the day up to ~50 impacts
+    expect(buildBoneProgram({ level: 'experienced', time: '2x30' }).days[0].exercises[4].id).toBe('stomp')
   })
 })
 
@@ -117,7 +139,7 @@ describe('moving to the next phase', () => {
 })
 
 describe('new library entries', () => {
-  const NEW = ['trap_bar_deadlift', 'split_squat', 'heel_drop', 'stomp', 'pogo_jump', 'jump_chinup_drop', 'single_leg_stance', 'tandem_walk', 'single_leg_reach', 'pallof_press', 'prone_back_extension_hold']
+  const NEW = ['marching', 'trap_bar_deadlift', 'split_squat', 'heel_drop', 'stomp', 'pogo_jump', 'jump_chinup_drop', 'single_leg_stance', 'tandem_walk', 'single_leg_reach', 'pallof_press', 'prone_back_extension_hold']
   it.each(NEW)('%s has muscles, cues and search aliases', (id) => {
     const ex = EXERCISE_BY_ID[id]
     expect(ex).toBeTruthy()
@@ -129,5 +151,14 @@ describe('new library entries', () => {
     expect(exMeasure(EXERCISE_BY_ID.heel_drop).type).toBe('reps')
     expect(exMeasure(EXERCISE_BY_ID.single_leg_stance).type).toBe('time')
     expect(exMeasure(EXERCISE_BY_ID.prone_back_extension_hold).type).toBe('time')
+  })
+})
+
+describe('equipment swaps use the program’s own alternatives first', () => {
+  it('a standing barbell press becomes a standing dumbbell press, not a seated one', async () => {
+    const { bestSubstitute } = await import('../lib/equipment.js')
+    const p = buildBoneProgram({ level: 'some', time: '2x30', phase: 2 })
+    const press = p.days[0].exercises[1]
+    expect(bestSubstitute(press, ['dumbbells', 'adj_bench'])?.id).toBe('db_shoulder_press')
   })
 })

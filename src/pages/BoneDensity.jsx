@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { addProgram, loadPrograms, updateProgram, setActiveProgramId } from '../lib/storage.js'
+import { addProgram, loadPrograms, updateProgram, setActiveProgramId, getActiveProgramId } from '../lib/storage.js'
 import {
-  BONE_LEVELS, BONE_TIMES, BONE_PHASES, BONE_DISCLAIMER, BONE_EVIDENCE, BONE_SOURCES, BONE_HOME_ROUTINE,
+  BONE_LEVELS, BONE_TIMES, BONE_PHASES, BONE_DISCLAIMER, BONE_EVIDENCE, BONE_SOURCES, BONE_HOME_ROUTINE, BONE_PRACTICE_SOURCE,
   buildBoneProgram, rebuildBoneProgram,
 } from '../data/boneDensity.js'
 import { measureUnit } from '../data/exercises.js'
@@ -21,13 +21,16 @@ export default function BoneDensity() {
   const [level, setLevel] = useState(null)
   const [time, setTime] = useState(null)
   const [phase, setPhase] = useState(null) // null = the level's default
+  // Spine fracture or several low-trauma fractures → no jumping (ROS 2022).
+  const [fracture, setFracture] = useState(null)
   const [cleared, setCleared] = useState(false)
   const [, force] = useState(0)
 
   const existing = loadPrograms().filter((p) => p.boneDensity)
   const startPhase = BONE_LEVELS.find((l) => l.id === level)?.startPhase || 1
   const ph = phase || startPhase
-  const preview = level && time ? buildBoneProgram({ level, time, phase: ph }) : null
+  const preview = level && time && fracture !== null ? buildBoneProgram({ level, time, phase: ph, lowImpact: fracture }) : null
+  const activeId = getActiveProgramId()
 
   const create = () => {
     if (!preview || !cleared) return
@@ -35,12 +38,17 @@ export default function BoneDensity() {
     navigate('/today')
   }
 
-  const advance = (p) => {
-    const nextPhase = Math.min(3, (p.boneDensity.phase || 1) + 1)
-    updateProgram(rebuildBoneProgram(p, nextPhase))
-    setActiveProgramId(p.id)
+  // Changing phase rewrites every day's sets and reps, so it asks first, can be
+  // undone, and can go back as well as forward.
+  const changePhase = (p, to) => {
+    if (!window.confirm(`Switch "${p.name}" to Phase ${to} · ${BONE_PHASES[to].label}? Main lifts become ${BONE_PHASES[to].sets} × ${BONE_PHASES[to].low === BONE_PHASES[to].high ? BONE_PHASES[to].low : `${BONE_PHASES[to].low}–${BONE_PHASES[to].high}`}. Your weights are kept.`)) return
+    const before = p
+    updateProgram(rebuildBoneProgram(p, to))
     force((n) => n + 1)
-    toast.show(`Moved to Phase ${nextPhase} · ${BONE_PHASES[nextPhase].label} — your weights are kept`)
+    toast.show(`Now in Phase ${to} · ${BONE_PHASES[to].label}`, {
+      actionLabel: 'Undo',
+      onAction: () => { updateProgram(before); force((n) => n + 1) },
+    })
   }
 
   return (
@@ -69,15 +77,27 @@ export default function BoneDensity() {
           return (
             <div className="card" key={p.id}>
               <p className="group-label">Your bone program</p>
-              <p className="day-title">{p.name}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <p className="day-title" style={{ margin: 0 }}>{p.name}</p>
+                {p.id === activeId
+                  ? <span className="active-badge">Active</span>
+                  : <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setActiveProgramId(p.id); force((n) => n + 1) }}>Make active</button>}
+              </div>
               <p className="muted small">
-                Phase {cur} · {BONE_PHASES[cur].label}. {BONE_PHASES[cur].advance}
+                Phase {cur} · {BONE_PHASES[cur].label}{p.boneDensity.lowImpact ? ' · low-impact' : ''}. {BONE_PHASES[cur].advance}
               </p>
-              {cur < 3 && (
-                <button type="button" className="btn btn-ghost" onClick={() => advance(p)}>
-                  Move to Phase {cur + 1} · {BONE_PHASES[cur + 1].label}
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {cur < 3 && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => changePhase(p, cur + 1)}>
+                    Move to Phase {cur + 1} · {BONE_PHASES[cur + 1].label}
+                  </button>
+                )}
+                {cur > 1 && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => changePhase(p, cur - 1)}>
+                    Back to Phase {cur - 1}
+                  </button>
+                )}
+              </div>
             </div>
           )
         })}
@@ -119,6 +139,21 @@ export default function BoneDensity() {
           <p className="muted small">Twice a week is enough: that is what the trials used. A third day adds balance and single-leg strength.</p>
         </div>
 
+        <div className="card">
+          <p className="group-label">Have you had a spine (vertebral) fracture, or more than one fracture from a minor fall?</p>
+          <div className="seg" role="group" aria-label="Fracture history">
+            <button type="button" className={'seg-item' + (fracture === false ? ' is-selected' : '')} aria-pressed={fracture === false} onClick={() => setFracture(false)}>No</button>
+            <button type="button" className={'seg-item' + (fracture === true ? ' is-selected' : '')} aria-pressed={fracture === true} onClick={() => setFracture(true)}>Yes / not sure</button>
+          </div>
+          {fracture && (
+            <p className="muted small">
+              You&apos;ll get the low-impact version: no jumps or landings — marching instead, which loads the
+              bones about as much as brisk walking (the limit the osteoporosis guidance sets after a spine
+              fracture). Please see a physiotherapist before lifting heavy.
+            </p>
+          )}
+        </div>
+
         {level && (
           <div className="card">
             <p className="group-label">Starting phase</p>
@@ -131,7 +166,7 @@ export default function BoneDensity() {
                   aria-pressed={ph === n}
                   onClick={() => setPhase(n)}
                 >
-                  {n} · {BONE_PHASES[n].label}
+                  <span className="sr-only">Phase {n}: </span>{BONE_PHASES[n].label}
                 </button>
               ))}
             </div>
@@ -150,7 +185,7 @@ export default function BoneDensity() {
         {preview && preview.days.map((d) => (
           <div className="card" key={d.title}>
             <p className="day-title">{d.title}</p>
-            <p className="muted small">~{estimateSessionMinutes(d)} min · {d.note.split(' General guidance')[0].split(': ').slice(1).join(': ')}</p>
+            <p className="muted small">~{estimateSessionMinutes(d)} min · {d.note.split(' Warm up for')[0].split(': ').slice(1).join(': ')}</p>
             <ul className="exercise-preview">
               {d.exercises.map((e, i) => (
                 <li key={e.id}>
@@ -165,6 +200,13 @@ export default function BoneDensity() {
             </ul>
           </div>
         ))}
+
+        {preview && (
+          <p className="muted small">
+            No trap (hex) bar? A regular deadlift — or dumbbell Romanian deadlift at home — is used automatically.
+            If your gym has one, tick “Trap / hex bar” under Settings → Equipment.
+          </p>
+        )}
 
         {preview && (
           <div className="card">
@@ -188,6 +230,10 @@ export default function BoneDensity() {
                 <a href={s.url} target="_blank" rel="noopener noreferrer">{s.label}</a>
               </span>
             ))}
+          </p>
+          <p className="muted small">
+            Progression rules (small weight jumps, drop 10% after a stall) follow common practice, e.g.{' '}
+            <a href={BONE_PRACTICE_SOURCE.url} target="_blank" rel="noopener noreferrer">{BONE_PRACTICE_SOURCE.label}</a> — not bone-density research.
           </p>
         </details>
 

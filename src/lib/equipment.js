@@ -135,6 +135,13 @@ export function missingEquipment(ex, available) {
 export function bestSubstitute(ex, available) {
   const have = asSet(available)
   if (isDoable(ex, have)) return null
+  // A program's own curated fallback list comes first: it was chosen for this
+  // slot (a standing press stays a standing press), where the generic search
+  // below only matches the movement pattern.
+  for (const id of ex.alts || []) {
+    const alt = EXERCISE_BY_ID[id]
+    if (alt && !alt.ladderOnly && isDoable(alt, have)) return alt
+  }
   const base = EXERCISE_BY_ID[ex.id]
   const pattern = ex.pattern ?? base?.pattern
   const compound = ex.compound ?? base?.compound

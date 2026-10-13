@@ -392,6 +392,11 @@ export default function useProgramDraft() {
       seen.add(key)
       out.push({ ex: e, info })
     }
+    // Best matches first: name hits, then alias hits, then typo matches.
+    if (search.trim()) {
+      const rank = { name: 0, alias: 1, fuzzy: 2 }
+      out.sort((a, b) => rank[a.info.via] - rank[b.info.via])
+    }
     return out
   })()
   // Which exercises a given day already holds — drives the "✓ / added" state in
