@@ -34,6 +34,10 @@ const env = (typeof import.meta !== 'undefined' && import.meta.env) || {}
 
 export const firebaseConfig = {
   apiKey: "AIzaSyBUFevSCsd5Vh2lx5hc6jOS4qREboueEyk",
+  // To make Google sign-in fully reliable on iPhone home-screen apps, serve
+  // Firebase's auth helper from this site's own origin and change this to
+  // "chris82933.github.io" — see docs/IOS_SIGN_IN.md. Until then sign-in uses a
+  // popup, which works with this value.
   authDomain: "simple-lift-1f7ec.firebaseapp.com",
   projectId: "simple-lift-1f7ec",
   storageBucket: "simple-lift-1f7ec.firebasestorage.app",

@@ -305,15 +305,11 @@ export default function Profile() {
     })
   }
 
-  const signIn = async () => {
+  // auth.signIn() is called synchronously inside the tap so iOS lets the popup
+  // open; errors are shown on the card (auth.authError), not in an alert.
+  const signIn = () => {
     setSigningIn(true)
-    try {
-      await auth.signIn()
-    } catch (e) {
-      window.alert('Sign-in failed or was cancelled.\n\n' + (e?.message || ''))
-    } finally {
-      setSigningIn(false)
-    }
+    auth.signIn().finally(() => setSigningIn(false))
   }
 
   const reset = () => {
@@ -348,12 +344,16 @@ export default function Profile() {
             everything is saved on this device (see below).
           </p>
         )}
-        {auth?.configured && !signedIn && (
+        {auth?.configured && !auth.authReady && (
+          <p className="muted small">Checking sign-in…</p>
+        )}
+        {auth?.configured && auth.authReady && !signedIn && (
           <>
             <p className="muted small">Sign in to back up your programs and progress and sync across devices.</p>
             <button className="btn btn-primary" onClick={signIn} disabled={signingIn}>
               {signingIn ? 'Opening…' : 'Sign in with Google'}
             </button>
+            {auth.authError && <p className="muted small import-error" role="alert">{auth.authError}</p>}
           </>
         )}
         {signedIn && (
@@ -445,7 +445,7 @@ export default function Profile() {
             : 'Your programs and workout history are saved only in this browser, on this device. If you clear your browser cache / site data, switch browsers, or use another device, this data will be gone.'}
           {!signedIn && auth?.configured && ' Sign in with Google above to back it up.'}
         </p>
-        {!signedIn && isIOS() && (
+        {!signedIn && auth?.authReady !== false && isIOS() && (
           <p className="muted small">
             <strong>On iPhone &amp; iPad this is more urgent:</strong> Safari (and home-screen web apps) can automatically delete this app&apos;s saved data after about <strong>7 days without opening it</strong>. To be safe, copy a backup code below and keep it somewhere — or {auth?.configured ? 'sign in above' : 'use cloud sync once it&apos;s enabled'}.
           </p>

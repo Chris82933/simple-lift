@@ -2,11 +2,48 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import {
   isFirebaseConfigured, subscribeAuth, signInWithGoogle, signOutUser,
 } from '../lib/firebase.js'
+import { isIOS, isStandalone } from '../lib/platform.js'
+import { friendlyAuthError, STANDALONE_SIGN_IN_MSG } from '../lib/authErrors.js'
 import { pullCloud, pushCloud, mainDocSizeInfo } from '../lib/cloud.js'
 import {
   exportData, importData, getUpdatedAt, getRev, loadActiveSession,
   getSyncMarker, setSyncMarker, clearSyncMarker, syncDecision, summarizeSnapshot,
 } from '../lib/storage.js'
+
+// In an iPhone home-screen app Firebase can't watch the Google sheet it opens
+// (there is no window handle), so if the person closes it — or the result
+// can't make it back — signInWithPopup never settles and the button would sit
+// on "Opening…" forever. Settle once they're back in the app and nothing has
+// arrived after a short grace period, or after 90s regardless. A late success
+// still signs them in through onAuthStateChanged.
+function withStandaloneEscape(attempt, setAuthError) {
+  return new Promise((resolve) => {
+    let done = false
+    let leftApp = false
+    let graceTimer = null
+    let hardTimer = null
+    const onVisible = () => {
+      if (document.visibilityState === 'hidden') { leftApp = true; return }
+      if (!leftApp) return
+      clearTimeout(graceTimer)
+      graceTimer = setTimeout(() => finish(true), 5000)
+    }
+    const finish = (timedOut) => {
+      if (done) return
+      done = true
+      clearTimeout(graceTimer)
+      clearTimeout(hardTimer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+      if (timedOut) setAuthError(STANDALONE_SIGN_IN_MSG)
+      resolve()
+    }
+    hardTimer = setTimeout(() => finish(true), 90000)
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    attempt.then(() => finish(false))
+  })
+}
 
 const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
@@ -30,6 +67,12 @@ const shapeErrorKind = (e) => {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  // False until Firebase has reported the saved session (or its absence). Until
+  // then "no user" means "don't know yet", not "signed out" — the sign-in button
+  // used to flash up on every launch of the home-screen app and look like the
+  // sign-in had been lost.
+  const [authReady, setAuthReady] = useState(!isFirebaseConfigured)
+  const [authError, setAuthError] = useState(null)
   // idle | syncing | synced | conflict | error | pull-pending (a pull/refresh
   // is ready but held back because a workout is in progress — see R4 below)
   const [status, setStatus] = useState('idle')
@@ -47,9 +90,18 @@ export function AuthProvider({ children }) {
     if (!isFirebaseConfigured) return
     let active = true
     let unsub = () => {}
-    subscribeAuth(setUser).then((fn) => {
+    subscribeAuth(
+      (u) => { setUser(u); setAuthReady(true); if (u) setAuthError(null) },
+      (e) => { const msg = friendlyAuthError(e); if (msg) setAuthError(msg) },
+    ).then((fn) => {
       if (active) unsub = fn
       else fn()
+    }).catch((e) => {
+      // The SDK chunk failed to load: stop showing "Checking sign-in…" forever.
+      console.warn('Firebase failed to load', e)
+      if (!active) return
+      setAuthReady(true)
+      setAuthError(friendlyAuthError({ code: 'app/sdk-load-failed' }))
     })
     return () => { active = false; unsub() }
   }, [])
@@ -252,7 +304,18 @@ export function AuthProvider({ children }) {
     conflict,
     resolveConflict,
     lastSyncedAt,
-    signIn: signInWithGoogle,
+    authReady,
+    authError,
+    // Not async on purpose: the popup has to open synchronously from the tap.
+    signIn: () => {
+      setAuthError(null)
+      const attempt = signInWithGoogle().catch((e) => {
+        const msg = friendlyAuthError(e)
+        if (msg) setAuthError(msg)
+        console.warn('Google sign-in failed', e?.code, e)
+      })
+      return isIOS() && isStandalone() ? withStandaloneEscape(attempt, setAuthError) : attempt
+    },
     signOut,
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

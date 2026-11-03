@@ -49,6 +49,9 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // Any in-app (hash) route falls back to the cached shell when offline.
         navigateFallback: `/${REPO}/index.html`,
+        // Never answer Firebase's auth helper pages (/__/auth/…) with the app
+        // shell, should they ever be served from this site.
+        navigateFallbackDenylist: [/\/__\//],
         cleanupOutdatedCaches: true,
       },
       devOptions: {

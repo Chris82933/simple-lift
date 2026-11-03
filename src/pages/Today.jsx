@@ -69,7 +69,9 @@ export default function Today() {
   // iOS quietly deletes local app data after ~7 days of no use. Nudge iOS users
   // with no cloud backup to save a backup — once, until they dismiss or sign in.
   const [iosDismissed, setIosDismissed] = useState(() => !!loadSettings().iosBackupDismissed)
-  const showIosWarning = isIOS() && !auth?.user && !iosDismissed
+  // Not before the saved session has been checked — a signed-in user would see
+  // "you're not backed up" flash on every launch.
+  const showIosWarning = isIOS() && auth?.authReady !== false && !auth?.user && !iosDismissed
   const dismissIos = () => {
     setIosDismissed(true)
     saveSettings({ ...loadSettings(), iosBackupDismissed: true })
