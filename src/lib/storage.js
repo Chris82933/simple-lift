@@ -1,5 +1,6 @@
 // On-device persistence with a multi-program model and change events that the
 // optional cloud-sync layer listens to. All data lives under these keys:
+import { uniqueDate } from './sessionDate.js'
 import { hasCompression, encodeGzip, decodeGzip } from './codec.js'
 
 const PROFILE_KEY = 'simple-lift:profile'
@@ -384,10 +385,38 @@ export function currentBodyweight() {
 
 // ---- In-progress workout (for resuming after a close / crash / iOS eviction) ----
 // Kept local-only (silent) — no need to sync a half-finished session.
-export const loadActiveSession = () => read(ACTIVE_SESSION_KEY, null)
-export const saveActiveSession = (s) => write(ACTIVE_SESSION_KEY, s, { silent: true })
-export function clearActiveSession() {
-  try { localStorage.removeItem(ACTIVE_SESSION_KEY) } catch { /* ignore */ }
+//
+// More than one can be in progress — one per program day. (There used to be a
+// single slot, so starting Day B while Day A was unfinished silently threw
+// Day A away.) Stored as an array; an older single-object value is read as a
+// one-item list.
+const sameSlot = (a, programId, dayIndex) => a && a.programId === programId && a.dayIndex === dayIndex
+export function loadActiveSessions() {
+  const v = read(ACTIVE_SESSION_KEY, null)
+  const list = Array.isArray(v) ? v : v && typeof v === 'object' ? [v] : []
+  return list.filter((x) => x && typeof x === 'object')
+    .sort((a, b) => (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0)) // most recent first
+}
+// With a program + day: that day's in-progress session. Without: the most
+// recently touched one (any) — "is a workout in progress at all?".
+export function loadActiveSession(programId, dayIndex) {
+  const list = loadActiveSessions()
+  if (programId === undefined) return list[0] || null
+  return list.find((s) => sameSlot(s, programId, dayIndex)) || null
+}
+export function saveActiveSession(s) {
+  const rest = loadActiveSessions().filter((x) => !sameSlot(x, s.programId, s.dayIndex))
+  return write(ACTIVE_SESSION_KEY, [s, ...rest], { silent: true })
+}
+// With a program + day: forget just that one. Without: forget them all.
+export function clearActiveSession(programId, dayIndex) {
+  if (programId === undefined) {
+    try { localStorage.removeItem(ACTIVE_SESSION_KEY) } catch { /* ignore */ }
+    return
+  }
+  const rest = loadActiveSessions().filter((x) => !sameSlot(x, programId, dayIndex))
+  if (rest.length) write(ACTIVE_SESSION_KEY, rest, { silent: true })
+  else { try { localStorage.removeItem(ACTIVE_SESSION_KEY) } catch { /* ignore */ } }
 }
 
 // ---- Workout history ----
@@ -402,9 +431,33 @@ export function insertWorkoutAt(entry, idx) {
   })
 }
 
+// Newest first. Usually the new session is the newest, but a back-dated one
+// (logged for yesterday, say) is slotted in where it belongs. Its date is
+// nudged by a millisecond if another session already has it (date = id).
 export function appendWorkout(entry) {
-  mutate(HISTORY_KEY, [], (history) => [entry, ...history]) // newest first
-  return loadHistory()
+  let date = entry.date
+  mutate(HISTORY_KEY, [], (history) => {
+    date = uniqueDate(entry.date, history.map((w) => w.date))
+    return sortNewestFirst([{ ...entry, date }, ...history])
+  })
+  return date
+}
+
+const sortNewestFirst = (list) => list.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+
+// Move a logged session to another date/time. Returns the date it was saved
+// under (nudged if it collided with another session), or null when the
+// session wasn't found.
+export function changeWorkoutDate(oldDate, newDate) {
+  let saved = null
+  mutate(HISTORY_KEY, [], (history) => {
+    const idx = history.findIndex((w) => w.date === oldDate)
+    if (idx === -1) return history
+    const others = history.filter((_, i) => i !== idx)
+    saved = uniqueDate(newDate, others.map((w) => w.date))
+    return sortNewestFirst([...others, { ...history[idx], date: saved }])
+  })
+  return saved
 }
 
 // Remove a logged workout by its date stamp (its unique id).

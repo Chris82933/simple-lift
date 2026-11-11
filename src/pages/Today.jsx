@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadPrograms, getActiveProgramId, loadHistory, loadSettings, saveSettings, loadActiveSession } from '../lib/storage.js'
+import { loadPrograms, getActiveProgramId, loadHistory, loadSettings, saveSettings, loadActiveSessions } from '../lib/storage.js'
 import { isIOS } from '../lib/platform.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getEquipment, setActiveProfile, isDoable, profileMeta, PROFILE_IDS, resolveExercisesForEquipment, activeCapacity } from '../lib/equipment.js'
@@ -166,14 +166,15 @@ export default function Today() {
   const previewExercises = resolveExercisesForEquipment(session.exercises, availableSet, gear)
   const needSwap = previewExercises.filter((ex) => !isDoable(ex, availableSet, gear)).length
 
-  // An in-progress session for this program (any logged set) → offer to continue.
-  const inProgress = (() => {
-    const s = loadActiveSession()
-    if (!s || !program || s.programId !== program.id) return null
-    const has = Object.values(s.sets || {}).some((rows) => Array.isArray(rows) && rows.some((r) => r.done))
-    return has ? s : null
-  })()
-  const resumingThisDay = inProgress && inProgress.dayIndex === dayIndex
+  // In-progress sessions for this program (any logged set or cardio) → offer
+  // to continue each. There can be several — one per day.
+  const inProgressList = !program ? [] : loadActiveSessions().filter((s) => s.programId === program.id && (
+    Object.values(s.sets || {}).some((rows) => Array.isArray(rows) && rows.some((r) => r.done))
+    || (Array.isArray(s.cardio) && s.cardio.length > 0)
+  ))
+  const inProgress = inProgressList.find((s) => s.dayIndex === dayIndex) || null
+  const resumingThisDay = !!inProgress
+  const otherInProgress = inProgressList.filter((s) => s.dayIndex !== dayIndex)
 
   return (
     <section className="page">
@@ -301,15 +302,16 @@ export default function Today() {
         {resumingThisDay && (
           <p className="muted small"><Icon name="play" size={12} /> Picking up where you left off · {timeAgo(inProgress.savedAt)}</p>
         )}
-        {inProgress && !resumingThisDay && (
+        {otherInProgress.map((s) => (
           <button
+            key={s.dayIndex}
             type="button"
             className="btn btn-ghost btn-sm"
-            onClick={() => navigate('/workout', { state: { dayIndex: inProgress.dayIndex } })}
+            onClick={() => navigate('/workout', { state: { dayIndex: s.dayIndex } })}
           >
-            <Icon name="play" size={13} /> Continue {inProgress.sessionTitle} (in progress · {timeAgo(inProgress.savedAt)})
+            <Icon name="play" size={13} /> Continue {s.sessionTitle} (in progress · {timeAgo(s.savedAt)})
           </button>
-        )}
+        ))}
         {needSwap > 0 && (
           <p className="muted small">
             <span aria-hidden="true">🏠</span> {needSwap} move{needSwap === 1 ? ' needs' : 's need'} a swap in {profileMeta(activeProfile).name} mode — you can swap them one-tap during the workout.

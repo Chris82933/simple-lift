@@ -102,9 +102,9 @@ describe('history', () => {
   })
 
   it('insertWorkoutAt restores a deleted session to its original slot (undo)', () => {
-    appendWorkout({ date: '3', sessionTitle: 'C' })
+    appendWorkout({ date: '1', sessionTitle: 'C' })
     appendWorkout({ date: '2', sessionTitle: 'B' })
-    appendWorkout({ date: '1', sessionTitle: 'A' })
+    appendWorkout({ date: '3', sessionTitle: 'A' })
     const removed = loadHistory()[1] // 'B', in the middle
     const without = loadHistory().filter((w) => w.date !== removed.date)
     window.localStorage.setItem('simple-lift:history', JSON.stringify(without))

@@ -153,3 +153,20 @@ export function buildSessionSummary(title, entries, { units, cardio } = {}) {
   lines.push('', 'Tracked with Simple Lift')
   return lines.join('\n')
 }
+
+// Re-derive `prs` for every session dated `fromDate` or later, oldest →
+// newest, each against everything before it. Used when a session is edited,
+// moved to another date, or logged back-dated — any of which can make a later
+// session's "new record" wrong (or a missing one right). Returns
+// [{ date, prs }] for the sessions to rewrite.
+export function recomputeRecordsFrom(history, fromDate, maxes, { bodyweight } = {}) {
+  const chrono = [...history].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  const updates = []
+  for (let i = 0; i < chrono.length; i++) {
+    if (chrono[i].date < fromDate) continue
+    const { prs } = sessionRecords(chrono[i].entries || [], chrono.slice(0, i), maxes, { bodyweight })
+    chrono[i] = { ...chrono[i], prs }
+    updates.push({ date: chrono[i].date, prs })
+  }
+  return updates
+}

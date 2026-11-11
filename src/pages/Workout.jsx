@@ -7,7 +7,7 @@ import {
   addCardio, deleteCardio, insertCardioAt, addProgram, updateWorkout, loadHistory, loadMaxes, saveMax,
   loadActiveSession, saveActiveSession, clearActiveSession, currentBodyweight,
 } from '../lib/storage.js'
-import { sessionRecords, buildSessionSummary, prShort } from '../lib/records.js'
+import { sessionRecords, buildSessionSummary, prShort, recomputeRecordsFrom } from '../lib/records.js'
 import { repsLabel, schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { stageNote, applyStage } from '../lib/gzclp.js'
 import { is531, applyWeek, weekNote } from '../lib/fiveThreeOne.js'
@@ -37,6 +37,8 @@ import { sessionMuscleHeat, plannedMuscleHeat, describeHeat } from '../lib/muscl
 import { buildShareCard, shareImage, canShareImage } from '../lib/shareCard.js'
 import StretchPanel from '../components/StretchPanel.jsx'
 import Icon from '../components/Icon.jsx'
+import SessionDateRow from '../components/SessionDate.jsx'
+import { clampToNow, sameLocalDay } from '../lib/sessionDate.js'
 import { acceptNumber, maxWeightFor, MAX_REPS, MAX_HOLD_SEC } from '../lib/limits.js'
 
 // Which set the plate breakdown should load for: the set you're about to do —
@@ -314,8 +316,9 @@ export default function Workout() {
       ? { ...raw, exercises: forGear.map((e) => (is531(e) ? applyWeek(e, units) : e.progression ? applyStage(e) : e)) }
       : null
     // A saved in-progress session for THIS program+day, with real progress
-    // (at least one logged set) → offer to resume it.
-    const saved = loadActiveSession()
+    // (at least one logged set) → offer to resume it. Other days' unfinished
+    // sessions are kept in their own slots and left alone.
+    const saved = program ? loadActiveSession(program.id, dayIndex) : null
     const loggedSets = saved && saved.sets && Object.values(saved.sets).some(
       (rows) => Array.isArray(rows) && rows.some((r) => r.done),
     )
@@ -357,6 +360,14 @@ export default function Workout() {
   // U4: when this session started — restored from the saved active session on
   // resume, else the first mount. Used to compute durationSec at finish.
   const [startedAt, setStartedAt] = useState(() => (resumed?.startedAt) || Date.now())
+  // When this session will be logged. null = the moment Finish is tapped. A
+  // session resumed on a later day than it was started defaults to the day it
+  // was started — that's when the workout happened — and says so on screen.
+  const [logDate, setLogDate] = useState(() => {
+    if (resumed?.logDate) return resumed.logDate
+    if (resumed?.startedAt && !sameLocalDay(resumed.startedAt, Date.now())) return new Date(resumed.startedAt).toISOString()
+    return null
+  })
   const [durationSec, setDurationSec] = useState(0)
 
   const [rest, setRest] = useState(null)
@@ -408,10 +419,10 @@ export default function Workout() {
   useEffect(() => {
     if (!session || finished) return
     const t = setTimeout(() => {
-      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, startedAt, savedAt: Date.now() })
+      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, startedAt, logDate, savedAt: Date.now() })
     }, 500)
     return () => clearTimeout(t)
-  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt])
+  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt, logDate])
 
   // R6: the debounce above can drop the last sub-500ms of edits if the tab is
   // backgrounded or a service-worker update swaps the page out from under it.
@@ -420,7 +431,7 @@ export default function Workout() {
   useEffect(() => {
     if (!session || finished) return
     const flush = () => {
-      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, startedAt, savedAt: Date.now() })
+      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, startedAt, logDate, savedAt: Date.now() })
     }
     const onVisibility = () => { if (document.visibilityState === 'hidden') flush() }
     document.addEventListener('visibilitychange', onVisibility)
@@ -429,7 +440,7 @@ export default function Workout() {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', flush)
     }
-  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt])
+  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt, logDate])
 
   // Discard a resumed session and start this day fresh. Sits right next to the
   // "Resumed your in-progress session" banner, so a stray tap here can wipe out
@@ -447,11 +458,12 @@ export default function Workout() {
       const what = [setPart, cardioPart].filter(Boolean).join(' and ')
       if (!window.confirm(`Discard ${what} and start this workout over?`)) return
     }
-    clearActiveSession()
+    clearActiveSession(program.id, dayIndex)
     setExercises(session ? session.exercises : [])
     setSets(buildInitialSets(session, units))
     setLoggedCardio([])
     setStartedAt(Date.now()) // fresh session, fresh clock (U4)
+    setLogDate(null)
     setShowResumed(false)
   }
 
@@ -893,14 +905,18 @@ export default function Workout() {
       if (!window.confirm(`${open} set${open === 1 ? ' is' : 's are'} not marked done. Finish the workout anyway?\n\n(Use "Save & exit" to come back to it later.)`)) return
     }
 
-    const date = new Date().toISOString()
+    const wanted = logDate ? clampToNow(logDate) : new Date().toISOString()
     const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, swappedFrom: ex.swappedFrom || undefined, sets: sets[ex.id] || [] }))
     // U4: session length, from first mount (or the resumed session's original
     // start) to now.
-    const sessionDurationSec = Math.max(0, Math.round((Date.now() - startedAt) / 1000))
+    // A session left open for hours (overnight, or across days) has no
+    // meaningful length — leave it out rather than log "19h 4m".
+    const elapsedSec = Math.max(0, Math.round((Date.now() - startedAt) / 1000))
+    const sessionDurationSec = elapsedSec > 6 * 3600 ? 0 : elapsedSec
 
-    // Detect PRs and fresh 1RM estimates against the history *before* this session.
-    const { prs: newPrs, oneRMUpdates } = sessionRecords(entries, loadHistory(), loadMaxes(), { bodyweight: currentBodyweight() })
+    // Detect PRs and fresh 1RM estimates against the history *before* this
+    // session (by date — a back-dated session is compared with what came before it).
+    const { prs: newPrs, oneRMUpdates } = sessionRecords(entries, loadHistory().filter((w) => w.date < wanted), loadMaxes(), { bodyweight: currentBodyweight() })
 
     // Carry values forward + auto-apply deloads; collect optional increase suggestions.
     // Ad-hoc adds aren't in the program, so they can't persist/progress — exclude them.
@@ -912,8 +928,14 @@ export default function Workout() {
     result.persist = result.persist.filter((p) => programIds.has(p.exId))
     result.suggestions = result.suggestions.filter((s) => programIds.has(s.exId))
 
-    appendWorkout({ date, programId: program.id, sessionTitle: session.title, dayIndex, entries, prs: newPrs, durationSec: sessionDurationSec, autoNotes: result.autoNotes })
-    clearActiveSession() // session is logged — no longer resumable
+    const date = appendWorkout({ date: wanted, programId: program.id, sessionTitle: session.title, dayIndex, entries, prs: newPrs, durationSec: sessionDurationSec, autoNotes: result.autoNotes })
+    clearActiveSession(program.id, dayIndex) // session is logged — no longer resumable
+    // Logged for an earlier date with sessions after it: their "new record"
+    // flags were judged without this one, so re-check them.
+    const later = loadHistory().filter((w) => w.date > date)
+    if (later.length) {
+      for (const u of recomputeRecordsFrom(loadHistory(), later[later.length - 1].date, loadMaxes(), { bodyweight: currentBodyweight() })) updateWorkout(u.date, { prs: u.prs })
+    }
     setPrs(newPrs)
     // A rehab routine must not feed the strength maxes. A loaded glute bridge or
     // wrist eccentric in a recovery session isn't a strength test, and letting it
@@ -1292,6 +1314,7 @@ export default function Workout() {
       </header>
 
       <div className="step-body">
+        <SessionDateRow logDate={logDate} onChange={setLogDate} startedAt={startedAt} />
         {showResumed && (
           <div className="card notice resumed-banner">
             <p className="muted small">Resumed your in-progress session — your logged sets are back.</p>

@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt, loadBodyweight, updateWorkout, loadMaxes, currentBodyweight } from '../lib/storage.js'
+import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt, loadBodyweight, updateWorkout, loadMaxes, currentBodyweight, changeWorkoutDate } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { exMeasure, musclesFor, matchesQuery, EXERCISE_BY_ID } from '../data/exercises.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
-import { prShort, sessionRecords, buildSessionSummary } from '../lib/records.js'
+import { prShort, buildSessionSummary, recomputeRecordsFrom } from '../lib/records.js'
+import { SessionDateInput } from '../components/SessionDate.jsx'
 import { sessionsThisWeek, trainingStreakWeeks, weeklyCounts, volumeThisWeek, prTimeline } from '../lib/consistency.js'
 import ProgressChart from '../components/ProgressChart.jsx'
 import MuscleMap from '../components/MuscleMap.jsx'
@@ -89,30 +90,6 @@ function topSet(entry, units) {
   return done.length ? `${done.length} × ${done[0].reps} ${unit}` : '—'
 }
 
-// U4-1: after a session's sets are edited (fixing a typo'd weight/reps), the
-// PRs recorded for THAT session and every session after it may no longer be
-// right — a later session's "PR" may have only been a PR because this one's
-// bad number set too low a bar (or a real PR here may have been missed
-// because a later typo looked like it broke the record first). Re-derive
-// `prs` chronologically from the edited session forward against sessionRecords
-// (read-only, unchanged) so the timeline self-heals instead of staying wrong
-// until someone notices. Returns [{ date, prs }] for every session that needs
-// a rewrite — callers persist each via updateWorkout.
-export function recomputeRecordsAfterEdit(history, editedDate, editedEntries, maxes, bodyweight) {
-  const chrono = [...history].sort((a, b) => (a.date < b.date ? -1 : 1)) // oldest → newest
-  const idx = chrono.findIndex((w) => w.date === editedDate)
-  if (idx === -1) return []
-  chrono[idx] = { ...chrono[idx], entries: editedEntries }
-  const updates = []
-  for (let i = idx; i < chrono.length; i++) {
-    const prior = chrono.slice(0, i)
-    const { prs } = sessionRecords(chrono[i].entries, prior, maxes, { bodyweight })
-    chrono[i] = { ...chrono[i], prs }
-    updates.push({ date: chrono[i].date, prs })
-  }
-  return updates
-}
-
 const DIFF_LABELS = {
   easy: 'Easy', moderate: 'Moderate', hard: 'Hard', maxed: 'Maxed out',
 }
@@ -184,6 +161,7 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
   const [showSets, setShowSets] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(null) // [[{...set}, ...], ...] — one array per entry, mirrors entries
+  const [draftDate, setDraftDate] = useState(workout.date) // when it happened — editable too
   const entries = workout.entries || []
   const working = (e) => (e.sets || []).filter((s) => !s.warmup)
   const setCount = entries.reduce((n, e) => n + working(e).filter((s) => s.done).length, 0)
@@ -261,9 +239,10 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
   // deleting the whole session (losing every other exercise logged that day).
   // Editing writes straight through the existing updateWorkout(date, patch)
   // API — nothing new on the storage side — and PRs are recomputed rather
-  // than left stale (see recomputeRecordsAfterEdit above).
+  // than left stale (see recomputeRecordsFrom in records.js).
   const startEdit = () => {
     setDraft(entries.map((e) => (e.sets || []).map((s) => ({ ...s }))))
+    setDraftDate(workout.date)
     setEditing(true)
   }
   const cancelEdit = () => { setEditing(false); setDraft(null) }
@@ -290,7 +269,7 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
         reps: s.reps === '' ? '' : Number(s.reps) || 0,
       })),
     }))
-    onEditSaved(workout, newEntries)
+    onEditSaved(workout, newEntries, draftDate)
     setEditing(false)
     setDraft(null)
   }
@@ -334,6 +313,7 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
 
           {editing ? (
             <div className="log-edit">
+              <SessionDateInput value={draftDate} onChange={setDraftDate} label="Date and time" />
               {entries.map((e, j) => (
                 <div key={j} className="log-ex">
                   <div className="log-row"><span className="log-ex-name">{e.name}</span></div>
@@ -367,7 +347,7 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
                   </div>
                 </div>
               ))}
-              <p className="muted small">Fixing a number here re-checks this session&apos;s personal records.</p>
+              <p className="muted small">Saving re-checks personal records from this session on.</p>
               <div className="log-detail-actions">
                 <button type="button" className="btn btn-ghost btn-sm" onClick={cancelEdit}>Cancel</button>
                 <button type="button" className="btn btn-primary btn-sm" onClick={saveEdit}>Save changes</button>
@@ -507,19 +487,21 @@ export default function Progress() {
     toast.show('Cardio entry deleted', { actionLabel: 'Undo', onAction: () => { insertCardioAt(c, idx); refresh() } })
   }
   // U4-1: apply an edited session's sets, then re-run PR detection from that
-  // session forward (see recomputeRecordsAfterEdit) so a corrected weight can
+  // session forward (see recomputeRecordsFrom) so a corrected weight can
   // retroactively fix a wrongly-awarded — or wrongly missing — PR.
-  const saveSessionEdit = (workout, newEntries) => {
+  // A new date moves the session (its date is its id); records are then
+  // re-checked from whichever is earlier, the old date or the new one, since
+  // the sessions in between now have a different "before".
+  const saveSessionEdit = (workout, newEntries, newDate) => {
     const maxes = loadMaxes()
     const bodyweight = currentBodyweight()
-    const updates = recomputeRecordsAfterEdit(history, workout.date, newEntries, maxes, bodyweight)
-    updateWorkout(workout.date, { entries: newEntries, prs: updates.find((u) => u.date === workout.date)?.prs || [] })
-    for (const u of updates) {
-      if (u.date === workout.date) continue // already written above, together with the entries
-      updateWorkout(u.date, { prs: u.prs })
-    }
+    let date = workout.date
+    if (newDate && newDate !== workout.date) date = changeWorkoutDate(workout.date, newDate) || workout.date
+    updateWorkout(date, { entries: newEntries })
+    const from = date < workout.date ? date : workout.date
+    for (const u of recomputeRecordsFrom(loadHistory(), from, maxes, { bodyweight })) updateWorkout(u.date, { prs: u.prs })
     refresh()
-    toast.show('Session updated')
+    toast.show(date !== workout.date ? 'Session moved and updated' : 'Session updated')
   }
   const [weightMetric, setWeightMetric] = useState('top') // 'top' | 'e1rm'
   const allSeries = useMemo(() => buildSeries(history, weightMetric), [history, weightMetric])
