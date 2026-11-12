@@ -164,3 +164,32 @@ h2.bone-q { font-size: var(--fs-sm); line-height: 1.35; text-transform: none; le
 .session-date-input input { width: 100%; max-width: 18rem; min-width: 0; }
 .session-date-quick { display: flex; gap: 8px; flex-wrap: wrap; }
 .log-edit > .session-date-input { margin-bottom: 4px; }
+
+/* ---- Program list: goal groups, search, "help me choose" ---------------- */
+.program-group-head { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
+.program-group-head h2.group-label { margin: 0; }
+.program-group-head > p { margin: 0; }
+.program-search .text-input { width: 100%; }
+.card.notice.help-choose { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; text-align: left; }
+.help-choose .choice-title { margin: 0; }
+.help-choose p { margin: 0; }
+.template-subtitle { margin: 2px 0 0; }
+
+/* ---- Program setup sheet ------------------------------------------------ */
+.setup-sheet-body { display: flex; flex-direction: column; gap: 16px; }
+.setup-sheet-body .group-label { margin: 0 0 6px; }
+.weekday-chips { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.weekday-chips .check-pill { padding-left: 0; padding-right: 0; justify-content: center; text-align: center; }
+.setup-weights { display: flex; flex-direction: column; gap: 8px; }
+.setup-weights .strength-row .text-input { width: 100%; }
+
+/* ---- Onboarding: plan screen and the optional equipment list ------------ */
+.plan-summary { display: flex; flex-direction: column; gap: 6px; }
+.plan-summary .group-label, .plan-summary p { margin: 0; }
+.plan-week { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; font-weight: 600; }
+.plan-alts .group-label { margin: 6px 0; }
+.equip-more summary { cursor: pointer; color: var(--accent); font-size: var(--fs-sm); padding: 6px 0; }
+.equip-more[open] { display: flex; flex-direction: column; gap: 8px; }
+.welcome-hero { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.welcome-hero .btn { align-self: stretch; }
+.today-more { margin: 0; }

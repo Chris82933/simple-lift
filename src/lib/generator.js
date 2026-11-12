@@ -2,6 +2,7 @@ import { EXERCISES, exMeasure } from '../data/exercises.js'
 import { schemeForGoals, prescriptionFor } from '../data/schemes.js'
 import { loadMaxes, loadSettings } from './storage.js'
 import { weightForReps, interpolate1RM, incrementForUnits } from './oneRepMax.js'
+import { lightDefaultWeight } from './seedWeights.js'
 
 // ---- Experience level (U3) — drives starting volume, warm-up ramps, and the
 // default progression method. Templates already carry a similar `level`
@@ -82,22 +83,8 @@ const slotsForLength = (minutes) => Math.min(8, Math.max(3, Math.round(minutes /
 // placeholder: a dead end on the very first screen after onboarding. Fall
 // back to a safely light, equipment-appropriate default so the program is
 // always usable, never blank.
-const LIGHT_DEFAULTS = {
-  barbell: { lbs: 45, kg: 20 }, // an empty barbell
-  dumbbells: { lbs: 10, kg: 5 }, // a light pair, per hand
-  kettlebells: { lbs: 15, kg: 8 },
-  cable: { lbs: 30, kg: 15 },
-  machines: { lbs: 40, kg: 20 },
-  leg_press: { lbs: 90, kg: 40 },
-}
-
-function lightDefaultWeight(ex, units) {
-  for (const gear of ex.requires || []) {
-    const d = LIGHT_DEFAULTS[gear]
-    if (d) return d[units] ?? d.lbs
-  }
-  return units === 'kg' ? 5 : 10 // unknown/misc gear — still err light, never blank
-}
+// LIGHT_DEFAULTS / lightDefaultWeight live in seedWeights.js, shared with
+// ready-made programs.
 
 // Starting weight for a loaded exercise: a saved 1RM (or one interpolated from
 // other saved lifts, same method the Builder/1RM tool use) scaled to the

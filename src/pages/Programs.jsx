@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   loadPrograms, getActiveProgramId, setActiveProgramId, deleteProgram, restoreProgram, addProgram,
   isSkillTreeAdded, setSkillTreeAdded, loadSkills,
@@ -7,6 +7,19 @@ import {
 import { computeStats, powerLevel, rankFor } from '../data/skills.js'
 import { useToast } from '../components/Toast.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
+
+// What kind of program this is, in words people use. Templates used to be
+// labelled "Generated" — only the Builder set a source anyone checked.
+function sourceLabel(p) {
+  if (p.boneDensity) return 'Bone Strength'
+  if (p.recovery) return 'Recovery'
+  switch (p.source) {
+    case 'template': return 'Ready-made'
+    case 'gzclp-wizard': return 'GZCLP'
+    case 'generated': return 'Personalised'
+    default: return 'Custom'
+  }
+}
 
 export default function Programs() {
   const navigate = useNavigate()
@@ -17,6 +30,12 @@ export default function Programs() {
   const skillTreeAdded = isSkillTreeAdded()
 
   const refresh = () => force((n) => n + 1)
+  // Today's "Plans → More" link lands on that card, not the top of the page.
+  const location = useLocation()
+  useEffect(() => {
+    const id = location.state?.scrollTo
+    if (id) document.getElementById(id)?.scrollIntoView({ block: 'start' })
+  }, [location.state])
   const [confirmDelete, setConfirmDelete] = useState(null)
 
   // A copy to experiment on — the usual reason to duplicate is "same program,
@@ -67,13 +86,13 @@ export default function Programs() {
     <section className="page">
       <header className="page-header">
         <h1>Plans</h1>
-        <p className="muted">Your programs first — create a new one, or open the extras and tools, below.</p>
+        <p className="muted">Your programs, then ways to start a new one and a few extras.</p>
       </header>
 
       {programs.length === 0 && !skillTreeAdded && (
         <div className="card placeholder-card">
           <p className="placeholder-title">No programs yet</p>
-          <p className="muted">Pick one of the options below to create your first — a ready-made template is the quickest start.</p>
+          <p className="muted">Not sure where to start? “Help me choose” asks five quick questions and picks one for you.</p>
         </div>
       )}
 
@@ -112,7 +131,7 @@ export default function Programs() {
               <div>
                 <p className="day-title">{p.name}</p>
                 <p className="muted small">
-                  {p.source === 'custom' ? 'Custom' : 'Generated'} · {p.days.length} days · {exCount} exercises
+                  {sourceLabel(p)} · {p.days.length} workout{p.days.length === 1 ? '' : 's'} · {exCount} exercises
                 </p>
               </div>
               {isActive ? (
@@ -150,38 +169,31 @@ export default function Programs() {
         )
       })}
       <div className="card">
-        <p className="group-label">Create a program</p>
-        <button type="button" className="btn btn-primary" onClick={() => navigate('/templates')}>
-          Browse templates (GZCLP, bodyweight…)
+        <p className="group-label">Start a new plan</p>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/onboarding')}>
+          Help me choose
         </button>
-        <button type="button" className="btn btn-ghost" onClick={() => navigate('/onboarding', { state: { guided: true } })}>
-          Generate one from a few questions
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/templates')}>
+          Browse all programs
         </button>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/builder')}>
-          Build a custom program
+          Build my own
         </button>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/import-program')}>
           Import a program (share code or pasted text)
         </button>
       </div>
 
-      <div className="card">
-        <p className="group-label">Extras</p>
+      <div className="card" id="more">
+        <p className="group-label">More</p>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/recovery')}>
-          Recovery &amp; Strength (rehab a joint)
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={() => navigate('/bone-density')}>
-          Bone Strength (bone density, for women)
+          Recovery &amp; Strength — rehab a sore joint
         </button>
         {!skillTreeAdded && (
           <button type="button" className="btn btn-ghost" onClick={addSkillTree}>
             Add the Calisthenics Skill Tree
           </button>
         )}
-      </div>
-
-      <div className="card">
-        <p className="group-label">Tools</p>
         <Link className="btn btn-ghost" to="/one-rep-max">Find your starting weights (1RM)</Link>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
       </div>

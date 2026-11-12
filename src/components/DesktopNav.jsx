@@ -67,7 +67,7 @@ export const PRIMARY_TABS = [
 const SECONDARY_LINKS = [
   { to: '/builder', label: 'Build a program', icon: 'build' },
   { to: '/schedule', label: 'Schedule', icon: 'program' },
-  { to: '/templates', label: 'Templates', icon: 'templates' },
+  { to: '/templates', label: 'Find a program', icon: 'templates' },
   { to: '/one-rep-max', label: '1RM calculator', icon: 'calculator' },
 ]
 
@@ -94,7 +94,8 @@ const PARENT_OF = {
   '/program': '/programs',
   '/import-program': '/programs',
   '/recovery': '/programs',
-  '/bone-density': '/programs',
+  '/bone-density': '/templates',
+  '/onboarding': '/templates',
   '/skills': '/programs',
   '/gzclp': '/templates',
   '/cardio': '/today',

@@ -36,9 +36,9 @@ export default function Program() {
         <div className="card placeholder-card">
           <p className="placeholder-title">Nothing here yet</p>
           <p className="muted">Build a program and your weekly split will show up here.</p>
-          <button className="btn btn-primary" onClick={() => navigate('/templates')}>Browse templates</button>
+          <button className="btn btn-primary" onClick={() => navigate('/onboarding')}>Help me choose</button>
+          <button className="btn btn-ghost" onClick={() => navigate('/templates')}>Browse programs</button>
           <button className="btn btn-ghost" onClick={() => navigate('/builder')}>Build custom program</button>
-          <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
         </div>
       </section>
     )

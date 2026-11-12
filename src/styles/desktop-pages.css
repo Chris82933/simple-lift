@@ -40,7 +40,9 @@
   .page:not(.full-flow) > .switch-row,
   .page:not(.full-flow) > .placeholder-card,
   .page:not(.full-flow) > .consistency-card,
-  .page:not(.full-flow) > .card.notice {
+  .page:not(.full-flow) > .card.notice,
+  .page:not(.full-flow) > .program-group-head,
+  .page:not(.full-flow) > .program-search {
     grid-column: 1 / -1;
   }
 

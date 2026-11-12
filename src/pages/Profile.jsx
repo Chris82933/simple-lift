@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   loadProfile, loadSettings, saveSettings, clearAll,
   exportCode, importCode, readBackupCode,
@@ -277,6 +277,13 @@ export default function Profile() {
   // While Settings is open with 'System' selected, follow OS scheme changes
   // live (U9). An explicit Dark/Light choice is never touched by this.
   useEffect(() => watchSystemTheme(() => theme), [theme])
+  // "I've used Simple Lift before" on the welcome screen lands on sign-in and
+  // backup restore, not the top of Settings.
+  const location = useLocation()
+  useEffect(() => {
+    const id = location.state?.scrollTo
+    if (id) (document.getElementById(id) || document.getElementById('backup-card'))?.scrollIntoView({ block: 'start' })
+  }, [location.state])
 
   // ---- Training location (Home / Gym equipment profiles) ----
   const [equip, setEquip] = useState(() => getEquipment())
@@ -336,7 +343,7 @@ export default function Profile() {
       <InstallApp />
 
       {/* ---- Account / sync ---- */}
-      <div className="card">
+      <div className="card" id="account-card">
         <p className="group-label">Account</p>
         {!auth?.configured && (
           <p className="muted small">
@@ -712,7 +719,7 @@ export default function Profile() {
         <div className="card">
           <p className="muted">No program yet.</p>
           <button className="btn btn-primary" onClick={() => navigate('/builder')}>Build custom program</button>
-          <Link className="btn btn-ghost" to="/onboarding">Generate from a few questions</Link>
+          <Link className="btn btn-ghost" to="/onboarding">Help me choose a program</Link>
         </div>
       )}
 

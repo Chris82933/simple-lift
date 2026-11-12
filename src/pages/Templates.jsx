@@ -1,15 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TEMPLATES, instantiateTemplate } from '../data/templates.js'
-import { addProgram, getMax, loadSettings } from '../lib/storage.js'
-import { weightForReps, incrementForUnits } from '../lib/oneRepMax.js'
+import { TEMPLATE_BY_ID } from '../data/templates.js'
+import { PROGRAM_GROUPS, PROGRAM_SUBTITLES, EQUIP_FILTERS, matchesFilter, matchesSearch } from '../data/programCatalog.js'
 import { sessionLengthLabel } from '../lib/duration.js'
-import { trainingMaxFrom } from '../lib/fiveThreeOne.js'
 import { REGIONS } from '../data/options.js'
 import SkillTreeCard from '../components/SkillTreeCard.jsx'
-
-// Conservative starting reps per GZCLP tier (heavier T1, lighter accessory).
-const TIER_START_REPS = { t1: 5, t2: 10, t3: 15 }
+import ProgramSetupSheet from '../components/ProgramSetupSheet.jsx'
+import { useToast } from '../components/Toast.jsx'
 
 const REGION_LABEL = Object.fromEntries(REGIONS.map((r) => [r.id, r.label]))
 
@@ -40,17 +37,8 @@ function targetSummary(t) {
 
 const daysPerWeek = (t) => t.schedule?.trainingDays?.length || t.days.length
 
-// Equipment filter chips. Each maps to a tag (or set of tags) a template carries;
-// 'all' shows everything. Kept to one clear facet so the row stays scannable.
-const EQUIP_FILTERS = [
-  { id: 'all', label: 'All', match: () => true },
-  { id: 'barbell', label: 'Barbell', match: (t) => t.tags.includes('Barbell') },
-  { id: 'dumbbell', label: 'Dumbbell', match: (t) => t.tags.includes('Dumbbells') },
-  { id: 'kettlebell', label: 'Kettlebell', match: (t) => t.tags.includes('Kettlebell') },
-  { id: 'bodyweight', label: 'Bodyweight', match: (t) => t.tags.includes('Bodyweight') },
-]
-
 function TemplateCard({ t, open, onToggle, onUse }) {
+  const subtitle = PROGRAM_SUBTITLES[t.templateId]
   return (
     <div className={'card template-card' + (open ? ' is-open' : '')}>
       <button
@@ -63,6 +51,7 @@ function TemplateCard({ t, open, onToggle, onUse }) {
           <p className="day-title">{t.name}</p>
           <span className={'collapse-chevron' + (open ? ' is-open' : '')} aria-hidden="true">▾</span>
         </div>
+        {subtitle && <p className="muted small template-subtitle">{subtitle}</p>}
         <div className="template-facts">
           {t.level && <span className="level-chip">{t.level}</span>}
           <span className="fact">{sessionLengthLabel(t)}</span>
@@ -98,13 +87,13 @@ function TemplateCard({ t, open, onToggle, onUse }) {
 
           {t.setupPath ? (
             <>
-              <button type="button" className="btn btn-primary" onClick={() => onUse(t, true)}>
+              <button type="button" className="btn btn-primary" onClick={() => onUse(t)}>
                 {t.setupLabel || 'Set this up'}
               </button>
-              <p className="muted small">A few questions and we&apos;ll work out every starting weight for you.</p>
+              <p className="muted small">Answers a few questions first, then works out every starting weight for you.</p>
             </>
           ) : (
-            <button type="button" className="btn btn-primary" onClick={() => onUse(t, false)}>
+            <button type="button" className="btn btn-primary" onClick={() => onUse(t)}>
               Use this program
             </button>
           )}
@@ -116,49 +105,51 @@ function TemplateCard({ t, open, onToggle, onUse }) {
 
 export default function Templates() {
   const navigate = useNavigate()
-  // Collapsed by default — eleven fully expanded programs was a very long scroll.
+  const toast = useToast()
+  // Collapsed by default — fifteen fully expanded programs is a very long scroll.
   const [openId, setOpenId] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [query, setQuery] = useState('')
+  const [setupId, setSetupId] = useState(null)
 
-  const active = EQUIP_FILTERS.find((f) => f.id === filter) || EQUIP_FILTERS[0]
-  const shown = TEMPLATES.filter(active.match)
+  const visible = (t) => matchesFilter(t, filter) && matchesSearch(t, query)
+  const groups = PROGRAM_GROUPS
+    .map((g) => ({ ...g, programs: g.ids.map((id) => TEMPLATE_BY_ID[id]).filter((t) => t && visible(t)) }))
+    .filter((g) => g.programs.length > 0 || (g.skillTree && (filter === 'all' || filter === 'bodyweight') && !query))
+  const narrowed = filter !== 'all' || query.trim() !== ''
 
-  const use = (t, isWizard) => {
-    if (isWizard) { navigate(t.setupPath); return }
-    const program = instantiateTemplate(t.templateId)
-    if (!program) return
-
-    // Prefill scheme-based starting weights from any saved 1RMs.
-    const inc = incrementForUnits(loadSettings().units)
-    for (const day of program.days) {
-      for (const ex of day.exercises) {
-        if (!ex.progression) continue
-        const max = getMax(ex.id)
-        if (!max) continue
-        if (ex.progression.scheme === '531') {
-          // 5/3/1 runs off a training max — deliberately 90% of a true 1RM, not
-          // the 1RM itself. Everything else is a percentage of that.
-          ex.progression.tm = trainingMaxFrom(max.oneRM, loadSettings().units)
-        } else {
-          const repsTarget = TIER_START_REPS[ex.progression.scheme] || ex.repHigh
-          ex.progression.weight = weightForReps(max.oneRM, repsTarget, inc)
-          ex.startWeight = ex.progression.weight
-        }
-      }
-    }
-
-    addProgram(program) // becomes active
-    navigate('/schedule') // let them set their training days
+  const use = (t) => {
+    if (t.setupPath) { navigate(t.setupPath); return }
+    setSetupId(t.templateId)
   }
 
   return (
     <section className="page">
       <header className="page-header">
-        <h1>Templates</h1>
+        <h1>Find a program</h1>
         <p className="muted">
-          Proven programs, ready to load. Tap one to see the full details — you can tweak everything after.
+          Proven programs, grouped by what they&apos;re for. Tap one for the details — you can change anything after.
         </p>
       </header>
+
+      <div className="card notice help-choose">
+        <div>
+          <p className="choice-title">Not sure which?</p>
+          <p className="muted small">Answer five quick questions and we&apos;ll pick one for you.</p>
+        </div>
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => navigate('/onboarding')}>Help me choose</button>
+      </div>
+
+      <div className="program-search">
+        <input
+          type="search"
+          className="text-input"
+          placeholder="Search by name — e.g. 5/3/1, StrongLifts"
+          aria-label="Search programs"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpenId(null) }}
+        />
+      </div>
 
       <div className="filter-chips" role="group" aria-label="Filter by equipment">
         {EQUIP_FILTERS.map((f) => (
@@ -174,22 +165,48 @@ export default function Templates() {
         ))}
       </div>
 
-      {shown.map((t) => (
-        <TemplateCard
-          key={t.templateId}
-          t={t}
-          open={openId === t.templateId}
-          // One open at a time keeps the page scannable.
-          onToggle={() => setOpenId((id) => (id === t.templateId ? null : t.templateId))}
-          onUse={use}
-        />
-      ))}
+      {groups.map((g) => [
+        <div className="program-group-head" key={`h-${g.id}`}>
+          <h2 className="group-label">{g.label}</h2>
+          {!narrowed && <p className="muted small">{g.blurb}</p>}
+        </div>,
+        ...g.programs.map((t) => (
+          <TemplateCard
+            key={t.templateId}
+            t={t}
+            open={openId === t.templateId}
+            // One open at a time keeps the page scannable.
+            onToggle={() => setOpenId((id) => (id === t.templateId ? null : t.templateId))}
+            onUse={use}
+          />
+        )),
+        g.skillTree && (filter === 'all' || filter === 'bodyweight') && !query ? <SkillTreeCard key="skill-tree" /> : null,
+      ])}
 
-      {shown.length === 0 && (
-        <p className="muted small">No templates use only that equipment. Try “All”.</p>
+      {groups.length === 0 && (
+        <p className="muted small">Nothing matches that. Try another search, or “All”.</p>
       )}
 
-      {(filter === 'all' || filter === 'bodyweight') && <SkillTreeCard />}
+      <div className="program-group-head">
+        <h2 className="group-label">Make your own</h2>
+        <p className="muted small">
+          <button type="button" className="link-btn" onClick={() => navigate('/builder')}>Build a program from scratch</button>
+          {' · '}
+          <button type="button" className="link-btn" onClick={() => navigate('/import-program')}>Import one (share code or pasted text)</button>
+        </p>
+      </div>
+
+      {setupId && (
+        <ProgramSetupSheet
+          templateId={setupId}
+          onCancel={() => setSetupId(null)}
+          onStarted={(p) => {
+            setSetupId(null)
+            toast.show(`${p.name} is ready — it’s your active program`)
+            navigate('/today')
+          }}
+        />
+      )}
     </section>
   )
 }

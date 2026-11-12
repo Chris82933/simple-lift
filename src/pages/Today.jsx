@@ -13,7 +13,6 @@ import { sessionMuscleHeat, describeHeat } from '../lib/muscleHeat.js'
 import MuscleMap from '../components/MuscleMap.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import FocusTiles from '../components/FocusTiles.jsx'
-import ThemeToggle from '../components/ThemeToggle.jsx'
 import Icon from '../components/Icon.jsx'
 
 // Short "how long ago" label for an in-progress session's last save.
@@ -86,45 +85,42 @@ export default function Today() {
   const program = programs.find((p) => p.id === activeId) || programs[0] || null
 
   if (!program) {
+    // Wait for a signed-in user's saved session before offering setup — their
+    // programs may be on their way down from the cloud.
+    if (auth?.configured && auth?.authReady === false) {
+      return (
+        <section className="page full-flow">
+          <p className="muted" role="status">Loading…</p>
+        </section>
+      )
+    }
+    // Nothing on this screen writes anything: a returning user who restores
+    // or signs in next must not look like a device with its own new data.
     return (
       <section className="page full-flow">
         <header className="page-header">
-          <p className="eyebrow">Welcome</p>
-          <h1>Set up your training</h1>
+          <p className="eyebrow">Welcome to Simple Lift</p>
+          <h1>Let&apos;s get you lifting</h1>
         </header>
         <div className="card welcome-hero">
           <MuscleMap pattern="squat" size={128} />
           <p className="muted">
-            Simple Lift builds you a plan, tracks every set, and shows a clear demo for each
-            move. Choose how you&apos;d like to start:
+            Answer five quick questions and you&apos;ll have a plan for today — with a clear demo for every move and the weights worked out for you.
           </p>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/onboarding')}>
+            Get started
+          </button>
         </div>
         <div className="welcome-choices">
-          {/* Guided setup leads, matching the "Recommended" steer this same
-              choice gets one screen later in Onboarding.jsx — a nervous
-              first-timer should be pointed somewhere, not handed a list of
-              10+ unfamiliar program names first (see fix #3). */}
-          <button
-            type="button"
-            className="card choice-card"
-            style={{ borderColor: 'var(--accent)' }}
-            onClick={() => navigate('/onboarding', { state: { guided: true } })}
-          >
-            <span className="choice-title">
-              Answer a few questions <span className="rec-badge">Recommended</span>
-            </span>
-            <span className="muted small">We&apos;ll tailor a program to your goals, equipment, and schedule.</span>
-          </button>
           <button type="button" className="card choice-card" onClick={() => navigate('/templates')}>
-            <span className="choice-title">Browse templates</span>
-            <span className="muted small">Proven programs — GZCLP, bodyweight, and more. Best if you already know what you want.</span>
+            <span className="choice-title">I know which program I want</span>
+            <span className="muted small">StrongLifts, 5/3/1, PPL, bodyweight and more — or build your own.</span>
           </button>
-          <button type="button" className="card choice-card" onClick={() => navigate('/builder')}>
-            <span className="choice-title">Build your own</span>
-            <span className="muted small">Design a custom program, exercise by exercise.</span>
+          <button type="button" className="card choice-card" onClick={() => navigate('/profile', { state: { scrollTo: 'account-card' } })}>
+            <span className="choice-title">I&apos;ve used Simple Lift before</span>
+            <span className="muted small">Sign in, or paste a backup code, to bring your programs and history back.</span>
           </button>
         </div>
-        <ThemeToggle label="Prefer light or dark?" />
       </section>
     )
   }
@@ -320,22 +316,13 @@ export default function Today() {
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
       </div>
 
-      {/* U7: Recovery, the Skill Tree, and the 1RM finder otherwise live only
-          inside the Plans hub's Extras/Tools sections and a Settings link, so
-          anyone who never digs in there never finds them. A compact row here
-          surfaces them from the main screen without competing with the
-          primary "start workout" action above. Inline style: index.css is
-          off-limits for this change; reuses .card/.group-label/.btn classes
-          for everything but the row layout itself. */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p className="group-label" style={{ margin: 0 }}>Tools</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/recovery')}>Recovery &amp; Strength</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/bone-density')}>Bone Strength</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/skills')}>Skill Tree</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/one-rep-max')}>1RM finder</button>
-        </div>
-      </div>
+      {/* Recovery, the Skill Tree and the 1RM finder live under Plans → More
+          (one tap away). A single quiet link here instead of a row of four
+          buttons that mixed program builders with a calculator. */}
+      <p className="muted small today-more">
+        Recovery, the Skill Tree and the 1RM finder are under{' '}
+        <Link to="/programs" state={{ scrollTo: 'more' }}>Plans → More</Link>.
+      </p>
 
       {Object.keys(weekHeat).length > 0 && (
         // Feature #9: nothing else on Today answers "did I actually train

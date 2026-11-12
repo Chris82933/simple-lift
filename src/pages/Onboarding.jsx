@@ -1,405 +1,197 @@
-import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { REGIONS, EQUIPMENT_GROUPS, SESSION_OPTIONS } from '../data/options.js'
 import {
-  REGIONS,
-  EQUIPMENT_GROUPS,
-  GOALS,
-  DAYS_OPTIONS,
-  SESSION_OPTIONS,
-} from '../data/options.js'
-import { saveProfile, addProgram, loadProfile, logBodyweight, loadSettings, saveSettings, saveMax } from '../lib/storage.js'
+  saveProfile, addProgram, loadProfile, loadSettings, saveSettings, saveMax,
+  loadPrograms, loadHistory, loadMaxes, setSkillTreeAdded,
+} from '../lib/storage.js'
 import { generateProgram, EXPERIENCE_LEVELS } from '../lib/generator.js'
-import { PROGRESSION_METHODS, DEFAULT_METHOD } from '../lib/progressionMethods.js'
-import { saveProfileEquipment } from '../lib/equipment.js'
+import { DEFAULT_METHOD } from '../lib/progressionMethods.js'
+import { saveProfileEquipment, setActiveProfile } from '../lib/equipment.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
-import ThemeToggle from '../components/ThemeToggle.jsx'
-import { acceptNumber, maxWeight, maxBodyweight } from '../lib/limits.js'
+import { TEMPLATE_BY_ID, instantiateTemplate } from '../data/templates.js'
+import { seedProgramWeights, usesBarbell } from '../lib/seedWeights.js'
+import {
+  ONBOARDING_GOALS, GOAL_BY_ID, DEFAULT_GOAL, TRAIN_PLACES, HOME_GEAR, DEFAULT_HOME_GEAR,
+  equipmentFor, recommendPlan, whyLine, generatedName,
+} from '../lib/recommend.js'
+import { WEEKDAY_SHORT, WEEKDAY_ORDER, WEEKDAY_LABELS } from '../lib/schedule.js'
+import { acceptNumber, maxWeight } from '../lib/limits.js'
+import { useToast } from '../components/Toast.jsx'
 
-const toggle = (arr, val) =>
-  arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]
+// Five questions, each with an answer already picked, then one recommended
+// plan. It used to be nine steps — body-part focus before goals, a whole screen
+// for "train the other areas too?", a 25-item equipment checklist, and a
+// choice between four progression methods a beginner can't judge. Those now
+// default sensibly (everything, yes, by where you train, by experience) and
+// stay changeable later.
+const STEPS = ['goal', 'experience', 'place', 'days', 'plan']
 
-const STEPS = ['experience', 'focus', 'balance', 'equipment', 'schedule', 'goals', 'progression', 'strength', 'bodyweight']
-
-// The main barbell lifts we ask about for starting weights — also the ones
-// STRENGTH_RATIOS (in oneRepMax.js) can extrapolate from to seed everything
-// else loadable (front squat, RDL, rows, hip thrusts…).
 const STRENGTH_LIFTS = [
-  { key: 'squat', id: 'back_squat', label: 'Squat' },
-  { key: 'bench', id: 'bench_press', label: 'Bench press' },
-  { key: 'deadlift', id: 'deadlift', label: 'Deadlift' },
-  { key: 'ohp', id: 'overhead_press', label: 'Overhead press' },
+  { id: 'back_squat', label: 'Squat' },
+  { id: 'bench_press', label: 'Bench press' },
+  { id: 'deadlift', label: 'Deadlift' },
+  { id: 'overhead_press', label: 'Overhead press' },
 ]
 
-const DEFAULT_DRAFT = {
-  experienceLevel: '',
-  focusAreas: [],
-  trainOthers: true,
-  equipment: [],
-  daysPerWeek: 3,
-  sessionLength: 45,
-  goals: [],
-  progressionMethod: DEFAULT_METHOD,
-  strength: { squat: '', bench: '', deadlift: '', ohp: '' }, // optional — see the strength step
-  bodyweight: '', // optional — see the bodyweight step for why we ask
+const DAYS_FOR_COUNT = { 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6] }
+const ALL_REGIONS = REGIONS.map((r) => r.id)
+const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
+const byWeekOrder = (days) => [...days].sort((a, b) => WEEKDAY_ORDER.indexOf(a) - WEEKDAY_ORDER.indexOf(b))
+
+// Builds the program an option stands for. Never writes anything.
+function buildOption(option, a) {
+  if (!option) return null
+  if (option.kind === 'template') {
+    const t = TEMPLATE_BY_ID[option.templateId]
+    if (!t) return null
+    if (t.setupPath) return { setupPath: t.setupPath, name: t.name, info: t.progressionInfo, titles: t.days.map((d) => d.title), setupLabel: t.setupLabel }
+    const p = instantiateTemplate(option.templateId)
+    return {
+      program: { ...p, schedule: { ...(p.schedule || {}), mode: 'rotation', trainingDays: byWeekOrder(a.days), pointer: 0 } },
+      name: t.name, info: t.progressionInfo, titles: p.days.map((d) => d.title),
+    }
+  }
+  if (option.kind === 'bone') {
+    return { setupPath: '/bone-density', name: 'Bone Strength', info: 'Heavy-but-safe lifting, impact and balance, built from your answers to a few safety questions.', titles: [] }
+  }
+  const p = generateProgram(a.profile)
+  const order = byWeekOrder(a.days)
+  const days = p.days.map((d, i) => ({ ...d, weekday: order[i], dayLabel: WEEKDAY_LABELS[order[i]] }))
+  return {
+    program: { ...p, name: generatedName({ goal: a.goal, days: a.days.length }), days },
+    name: generatedName({ goal: a.goal, days: a.days.length }),
+    info: a.experience === 'new'
+      ? 'Add a little weight each time you finish every rep. The app tells you when.'
+      : 'Hit the top of the rep range on every set, then add weight. The app tells you when.',
+    titles: days.map((d) => `${WEEKDAY_SHORT[d.weekday]} · ${d.title}`),
+  }
 }
 
 export default function Onboarding() {
   const navigate = useNavigate()
-  const location = useLocation()
-  // `started` false = the "how do you want to start?" path picker;
-  // true = the guided, assisted wizard for beginner/intermediate lifters.
-  // When the caller already chose "answer a few questions" (Today's empty state,
-  // the Plans hub), jump straight into the wizard so nobody picks a path twice.
-  const [started, setStarted] = useState(() => !!location.state?.guided)
+  const toast = useToast()
+  const existing = useMemo(() => loadProfile(), [])
+  // A first-timer may still choose units here; anyone with saved data changes
+  // units in Settings, where stored weights are converted rather than relabelled.
+  const fresh = useMemo(() => !loadPrograms().length && !loadHistory().length && !Object.keys(loadMaxes()).length, [])
   const [step, setStep] = useState(0)
-  // Prefill from an existing profile when re-running setup.
-  const [draft, setDraft] = useState(() => {
-    const existing = loadProfile()
-    return existing ? { ...DEFAULT_DRAFT, ...existing } : DEFAULT_DRAFT
+  const [goal, setGoal] = useState(DEFAULT_GOAL)
+  const [experience, setExperience] = useState(existing?.experienceLevel || 'some')
+  const [place, setPlace] = useState('gym')
+  const [picks, setPicks] = useState(DEFAULT_HOME_GEAR)
+  const [gymCustom, setGymCustom] = useState(null) // null = a full gym
+  const [days, setDays] = useState(DAYS_FOR_COUNT[existing?.daysPerWeek] || DAYS_FOR_COUNT[3])
+  const [sessionLength, setSessionLength] = useState(existing?.sessionLength || 45)
+  const [units, setUnits] = useState(() => {
+    const saved = loadSettings().units
+    if (saved === 'kg' || saved === 'lbs') return saved
+    return /^en-(US|LR|MM)/i.test(navigator.language || '') ? 'lbs' : 'kg'
   })
-  // Strength step: a true beginner defaults to "just the bar" (no number
-  // required) with the numeric inputs tucked behind this toggle, rather than
-  // a blank-looking required field being the first thing they see. Declared
-  // up front with the other hooks — must never sit after the early return below.
-  const [knowStrength, setKnowStrength] = useState(false)
-  // Declared up here with the other hooks: there is an early return below.
-  const [units, setUnitsState] = useState(() => (loadSettings().units === 'kg' ? 'kg' : 'lbs'))
+  const [strength, setStrength] = useState({})
+  const [chosen, setChosen] = useState(null) // null = the recommendation
 
-  const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
-  // Functional toggle so rapid successive clicks don't read stale state.
-  const toggleField = (field, val) =>
-    setDraft((d) => ({ ...d, [field]: toggle(d[field], val) }))
-
-  const isValid = {
-    experience: !!draft.experienceLevel,
-    focus: draft.focusAreas.length >= 1,
-    balance: true,
-    equipment: true, // none selected = bodyweight only
-    schedule: !!draft.daysPerWeek && !!draft.sessionLength,
-    goals: draft.goals.length >= 1,
-    progression: !!draft.progressionMethod,
-    strength: true, // always skippable — "not sure" still yields a safely light program
-    bodyweight: true, // always skippable — never block setup on a weight
-  }[STEPS[step]]
-  // Said under a disabled Next, so it is never a dead button with no reason.
-  const needs = {
-    experience: 'Pick the option that fits you best to continue.',
-    focus: 'Pick at least one area to continue.',
-    schedule: 'Choose how many days and how long to continue.',
-    goals: 'Pick at least one goal to continue.',
-    progression: 'Pick how you want to progress to continue.',
-  }[STEPS[step]]
-  // The method that suits the level picked on step one. The badge follows the
-  // person, not a fixed method — a beginner was shown Linear preselected with
-  // "Recommended" sitting on a different card.
-  const recommendedMethod = draft.experienceLevel === 'new' ? 'linear' : DEFAULT_METHOD
-  const ALL_EQUIPMENT = EQUIPMENT_GROUPS.flatMap((g) => g.items.map((i) => i.id))
-
-  const isLast = step === STEPS.length - 1
-
-  const next = () => {
-    if (!isValid) return
-    if (isLast) {
-      const profile = { ...draft, createdAt: new Date().toISOString() }
-      saveProfile(profile)
-      // The gear picked here IS the gym setup. Without this the Gym profile
-      // stayed at "everything", so the app offered exercises the lifter had
-      // just said they could not do. Nothing picked means bodyweight only.
-      saveProfileEquipment('gym', draft.equipment)
-      if (Number(draft.bodyweight) > 0) logBodyweight(Number(draft.bodyweight))
-      // Seed real 1RMs from the strength step so generateProgram (and the 1RM
-      // tool later) has something to work from instead of leaving every
-      // loaded lift blank. Assumes the number given is roughly a 5-rep set.
-      STRENGTH_LIFTS.forEach(({ key, id, label }) => {
-        const raw = Number(draft.strength?.[key])
-        if (raw > 0) {
-          const oneRM = Math.round(estimate1RM(raw, 5))
-          if (oneRM > 0) saveMax(id, { oneRM, weight: raw, reps: 5, rir: 0, units, name: label, fromOnboarding: true })
-        }
-      })
-      // Carry the chosen progression style onto the generated program so the
-      // after-workout screen recommends the right next step.
-      const program = generateProgram(profile)
-      addProgram({ ...program, progressionMethod: draft.progressionMethod })
-      navigate('/today')
-    } else {
-      setStep((s) => s + 1)
-    }
+  const equipment = place === 'gym' ? (gymCustom ?? equipmentFor('gym', [], goal)) : equipmentFor(place, picks, goal)
+  const profile = {
+    experienceLevel: experience,
+    focusAreas: ALL_REGIONS,
+    trainOthers: true,
+    equipment,
+    daysPerWeek: days.length,
+    sessionLength,
+    goals: GOAL_BY_ID[goal]?.goals || ['general'],
+    progressionMethod: experience === 'new' ? 'linear' : DEFAULT_METHOD,
   }
-
-  const back = () => {
-    if (step === 0) setStarted(false)
-    else setStep((s) => s - 1)
-  }
-
-  // Expert escape hatches — skip the questions entirely.
-  const buildOwn = () => navigate('/builder')
-  const useTemplate = () => navigate('/templates')
-  const startGuided = () => { setStep(0); setStarted(true) }
-  // Leaving the guided flow abandons every answer given so far and drops the
-  // user in the blank expert Builder — confirm so a "skip this one question"
-  // tap can't accidentally land them there (see fix #1).
-  const confirmBuildOwn = () => {
-    if (window.confirm("Leave the guided setup and build your program from scratch? You'll pick every exercise yourself.")) {
-      buildOwn()
-    }
-  }
-
-  // Steps with no default answer — safe to skip outright without steering
-  // someone into re-answering something the app already defaulted for them.
-  const OPTIONAL_STEPS = new Set(['strength', 'bodyweight'])
-
-  // One-tap "train everything" so users who don't want to choose can keep moving.
-  const selectAllFocus = () => set({ focusAreas: REGIONS.map((r) => r.id) })
-
-  // ---- Path picker: choose your starting point ----
-  if (!started) {
-    return (
-      <section className="page full-flow">
-        <header className="page-header">
-          <p className="eyebrow">Welcome to Simple Lift</p>
-          <h1>How do you want to start?</h1>
-          <p className="muted">Pick the path that fits you. You can always rebuild or switch programs later.</p>
-        </header>
-
-        <div className="step-body">
-          <ThemeToggle label="First up — light or dark?" />
-          <button type="button" className="path-card is-primary" onClick={startGuided}>
-            <div className="path-card-top">
-              <span className="path-title">Guided setup</span>
-              <span className="rec-badge">Recommended</span>
-            </div>
-            <span className="muted small">
-              Answer a few quick questions and we&apos;ll build a balanced program and set up how it
-              progresses each week. Best if you&apos;re a beginner or intermediate lifter.
-            </span>
-          </button>
-
-          <button type="button" className="path-card" onClick={useTemplate}>
-            <span className="path-title">Choose a proven program</span>
-            <span className="muted small">
-              Start from a tried-and-tested plan — StrongLifts 5×5, Starting Strength, Push/Pull/Legs,
-              GZCLP and more — each with the right progression already built in.
-            </span>
-          </button>
-
-          <button type="button" className="path-card" onClick={buildOwn}>
-            <span className="path-title">Build my own</span>
-            <span className="muted small">
-              Design every day and exercise yourself and pick your progression style. For experts who
-              already know exactly what they want.
-            </span>
-          </button>
-        </div>
-
-        <div className="flow-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/today')}>Cancel</button>
-        </div>
-      </section>
-    )
-  }
-
-  const selectedMethod = PROGRESSION_METHODS.find((m) => m.id === draft.progressionMethod)
-  // Asked here, where the first weights are typed. Before this the only way to
-  // use kilograms was to finish setup in pounds and find the setting later.
-  const setUnits = (u) => {
-    if (u === units) return
-    setUnitsState(u)
-    saveSettings({ ...loadSettings(), units: u })
-    // Numbers already typed were in the other unit; clear rather than relabel.
-    set({ strength: Object.fromEntries(Object.keys(draft.strength || {}).map((k) => [k, ''])), bodyweight: '' })
-  }
-  const unitToggle = (
-    <div className="seg seg-sm" role="group" aria-label="Weight units" style={{ alignSelf: 'flex-start' }}>
-      {['lbs', 'kg'].map((u) => (
-        <button key={u} type="button" className={'seg-item' + (units === u ? ' is-selected' : '')} aria-pressed={units === u} onClick={() => setUnits(u)} style={{ minWidth: 64 }}>
-          {u}
-        </button>
-      ))}
-    </div>
+  const answers = { goal, experience, place, days, picks, profile }
+  const rec = useMemo(() => recommendPlan({ goal, experience, place, days: days.length, picks }), [goal, experience, place, days.length, picks])
+  const option = chosen || rec.primary
+  const isPlan = STEPS[step] === 'plan'
+  const built = useMemo(
+    () => (isPlan ? buildOption(option, answers) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isPlan, option, goal, experience, place, days, picks, sessionLength, gymCustom],
   )
 
+  const canNext = STEPS[step] !== 'days' || (days.length >= 2 && days.length <= 6)
+  const next = () => { if (canNext) setStep((s) => Math.min(STEPS.length - 1, s + 1)) }
+  const back = () => {
+    if (step === 0) navigate(loadPrograms().length ? '/programs' : '/today')
+    else setStep((s) => s - 1)
+  }
+  // A single tap answers the question and moves on.
+  const answerAndGo = (setter) => (v) => { setter(v); setChosen(null); setStep((s) => s + 1) }
+
+  // Starting weights are worth asking only when the plan has barbell lifts and
+  // the person isn't brand new (who starts at the bar regardless).
+  const asksWeights = experience !== 'new' && !!built?.program?.days?.some((d) => d.exercises.some((e) => e.load !== false && usesBarbell(e)))
+
+  const start = () => {
+    if (!built) return
+    if (built.setupPath) {
+      navigate(built.setupPath, { state: { level: experience, days: days.length } })
+      return
+    }
+    saveProfile({ ...profile, createdAt: existing?.createdAt || new Date().toISOString() })
+    if (fresh && loadSettings().units !== units) saveSettings({ ...loadSettings(), units })
+    const profileId = place === 'gym' ? 'gym' : 'home'
+    saveProfileEquipment(profileId, equipment)
+    setActiveProfile(profileId)
+    if (asksWeights) {
+      for (const l of STRENGTH_LIFTS) {
+        const w = Number(strength[l.id])
+        if (w > 0) saveMax(l.id, { oneRM: Math.round(estimate1RM(w, 5)), weight: w, reps: 5, rir: 0, units, name: l.label, fromOnboarding: true })
+      }
+    }
+    if (goal === 'skills') setSkillTreeAdded(true)
+    // Rebuild now that any numbers are saved, so the weights use them.
+    const fresher = buildOption(option, answers)
+    const program = seedProgramWeights({ ...fresher.program, progressionMethod: profile.progressionMethod }, { maxes: loadMaxes(), units })
+    const made = addProgram(program)
+    toast.show(`${made.name} is ready — your first workout is on Today`)
+    navigate('/today')
+  }
+
+  const startLightCopy = place === 'none'
+    ? 'Everything uses your bodyweight, with easier versions of the harder moves to start.'
+    : place === 'home'
+      ? 'We’ll start with light weights. The first week should feel easy — that’s on purpose.'
+      : `We’ll start at the empty bar (${units === 'kg' ? 20 : 45} ${units}) and light dumbbells. The first week should feel easy — that’s on purpose.`
+
+  const optionLabel = (o) => (o.kind === 'template' ? TEMPLATE_BY_ID[o.templateId]?.name
+    : o.kind === 'bone' ? 'Bone Strength' : `${generatedName({ goal, days: days.length })} (made for you)`)
+  const optionHint = (o) => (o.kind === 'template' ? TEMPLATE_BY_ID[o.templateId]?.bestFor
+    : o.kind === 'bone' ? 'For osteopenia, osteoporosis and healthy bones'
+      : 'Built for exactly your days, time and equipment')
+
   return (
-    <section className="page full-flow">
+    <section className="page full-flow onboarding">
       <header className="page-header">
         <div className="onb-head-row">
-          <p className="eyebrow">Step {step + 1} of {STEPS.length}</p>
-          {OPTIONAL_STEPS.has(STEPS[step]) && (
-            <button type="button" className="skip-link" onClick={next}>
-              Skip this question →
+          <p className="eyebrow">{isPlan ? 'Your plan' : `Question ${step + 1} of ${STEPS.length - 1}`}</p>
+          {step === 0 && (
+            <button type="button" className="skip-link" onClick={() => navigate('/templates')}>
+              I know which program I want →
             </button>
           )}
         </div>
         <div className="progress-track" aria-hidden="true">
-          <div
-            className="progress-fill"
-            style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
-          />
+          <div className="progress-fill" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
         </div>
       </header>
 
       <div className="step-body">
-        {STEPS[step] === 'experience' && (
+        {STEPS[step] === 'goal' && (
           <>
-            <h1>How long have you been lifting?</h1>
-            <p className="muted">This sets how much work we start you with, whether we walk you through lighter warm-up sets, and how quickly the weights go up.</p>
+            <h1>What do you want from training?</h1>
+            <p className="muted">Pick the closest. You can change your plan any time.</p>
             <div className="choice-list">
-              {EXPERIENCE_LEVELS.map((lvl) => (
-                <button
-                  key={lvl.id}
-                  type="button"
-                  className={'choice-row' + (draft.experienceLevel === lvl.id ? ' is-selected' : '')}
-                  aria-pressed={draft.experienceLevel === lvl.id}
-                  onClick={() => set({
-                    experienceLevel: lvl.id,
-                    // Steer the progression default toward what suits the level —
-                    // the progression step still lets them pick anything.
-                    progressionMethod: lvl.id === 'new' ? 'linear' : DEFAULT_METHOD,
-                  })}
-                >
-                  <span className="choice-title">{lvl.label}</span>
-                  <span className="muted small">{lvl.hint}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {STEPS[step] === 'focus' && (
-          <>
-            <h1>What do you want to focus on?</h1>
-            <p className="muted">Pick one or more, or just train everything. We&apos;ll balance the rest of your week around your choices.</p>
-            <div className="region-grid">
-              {REGIONS.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  className={'region-tile' + (draft.focusAreas.includes(r.id) ? ' is-selected' : '')}
-                  aria-pressed={draft.focusAreas.includes(r.id)}
-                  onClick={() => toggleField('focusAreas', r.id)}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-            <button type="button" className="link-btn full-body-link" onClick={selectAllFocus}>
-              Full body — select everything
-            </button>
-          </>
-        )}
-
-        {STEPS[step] === 'balance' && (
-          <>
-            <h1>Train the other areas too?</h1>
-            <p className="muted">
-              We can spread the muscle groups you didn&apos;t pick across other days to keep your
-              body balanced — or keep things focused on just your picks.
-            </p>
-            <div className="choice-list">
-              <button
-                type="button"
-                className={'choice-row' + (draft.trainOthers ? ' is-selected' : '')}
-                aria-pressed={draft.trainOthers}
-                onClick={() => set({ trainOthers: true })}
-              >
-                <span className="choice-title">Yes, balance my week</span>
-                <span className="muted small">Recommended — hit everything across the week</span>
-              </button>
-              <button
-                type="button"
-                className={'choice-row' + (!draft.trainOthers ? ' is-selected' : '')}
-                aria-pressed={!draft.trainOthers}
-                onClick={() => set({ trainOthers: false })}
-              >
-                <span className="choice-title">No, just my focus areas</span>
-                <span className="muted small">Concentrate volume on what I picked</span>
-              </button>
-            </div>
-          </>
-        )}
-
-        {STEPS[step] === 'equipment' && (
-          <>
-            <h1>What equipment do you have?</h1>
-            <p className="muted">Tick everything you can use. Nothing selected = bodyweight only.</p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => set({ equipment: ALL_EQUIPMENT })}>
-                I train at a full gym — select everything
-              </button>
-              {draft.equipment.length > 0 && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => set({ equipment: [] })}>Clear</button>
-              )}
-            </div>
-            {EQUIPMENT_GROUPS.map((g) => (
-              <div className="equip-group" key={g.group}>
-                <p className="group-label">{g.group}</p>
-                <div className="check-grid">
-                  {g.items.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={'check-pill' + (draft.equipment.includes(item.id) ? ' is-selected' : '')}
-                      aria-pressed={draft.equipment.includes(item.id)}
-                      onClick={() => toggleField('equipment', item.id)}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-
-        {STEPS[step] === 'schedule' && (
-          <>
-            <h1>How often can you train?</h1>
-            <p className="muted">We&apos;ll fit your program to this.</p>
-
-            <p className="group-label">Days per week</p>
-            <div className="seg">
-              {DAYS_OPTIONS.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={'seg-item' + (draft.daysPerWeek === d ? ' is-selected' : '')}
-                  aria-pressed={draft.daysPerWeek === d}
-                  onClick={() => set({ daysPerWeek: d })}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-
-            <p className="group-label">Session length</p>
-            <div className="seg">
-              {SESSION_OPTIONS.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  className={'seg-item' + (draft.sessionLength === m ? ' is-selected' : '')}
-                  aria-pressed={draft.sessionLength === m}
-                  onClick={() => set({ sessionLength: m })}
-                >
-                  {m}m
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {STEPS[step] === 'goals' && (
-          <>
-            <h1>What are you training for?</h1>
-            <p className="muted">Pick one or more. This shapes your sets, reps, and rest.</p>
-            <div className="choice-list">
-              {GOALS.map((g) => (
+              {ONBOARDING_GOALS.map((g) => (
                 <button
                   key={g.id}
                   type="button"
-                  className={'choice-row' + (draft.goals.includes(g.id) ? ' is-selected' : '')}
-                  aria-pressed={draft.goals.includes(g.id)}
-                  onClick={() => toggleField('goals', g.id)}
+                  className={'choice-row' + (goal === g.id ? ' is-selected' : '')}
+                  aria-pressed={goal === g.id}
+                  onClick={() => answerAndGo(setGoal)(g.id)}
                 >
                   <span className="choice-title">{g.label}</span>
                   <span className="muted small">{g.hint}</span>
@@ -409,166 +201,238 @@ export default function Onboarding() {
           </>
         )}
 
-        {STEPS[step] === 'progression' && (
+        {STEPS[step] === 'experience' && (
           <>
-            <h1>How should your program progress?</h1>
-            <p className="muted">This decides what the app recommends after each workout — add reps, add weight, or hold. Not sure? Go with our pick.</p>
+            <h1>How long have you been lifting?</h1>
+            <p className="muted">This sets how much work you start with and how quickly the weights go up.</p>
             <div className="choice-list">
-              {PROGRESSION_METHODS.map((m) => (
+              {EXPERIENCE_LEVELS.map((lvl) => (
                 <button
-                  key={m.id}
+                  key={lvl.id}
                   type="button"
-                  className={'choice-row' + (draft.progressionMethod === m.id ? ' is-selected' : '')}
-                  aria-pressed={draft.progressionMethod === m.id}
-                  onClick={() => set({ progressionMethod: m.id })}
+                  className={'choice-row' + (experience === lvl.id ? ' is-selected' : '')}
+                  aria-pressed={experience === lvl.id}
+                  onClick={() => answerAndGo(setExperience)(lvl.id)}
                 >
-                  <span className="choice-title">
-                    {m.name}{m.id === recommendedMethod && <span className="rec-badge">Recommended for you</span>}
-                  </span>
-                  <span className="muted small">{m.tagline}</span>
+                  <span className="choice-title">{lvl.label}</span>
+                  <span className="muted small">{lvl.hint}</span>
                 </button>
               ))}
             </div>
-            {selectedMethod && (
-              <div className="method-detail">
-                <p className="muted small">{selectedMethod.how}</p>
-                <div className="proscons">
-                  <ul className="pros">{selectedMethod.pros.map((p, i) => <li key={i}>{p}</li>)}</ul>
-                  <ul className="cons">{selectedMethod.cons.map((c, i) => <li key={i}>{c}</li>)}</ul>
+          </>
+        )}
+
+        {STEPS[step] === 'place' && (
+          <>
+            <h1>Where will you train?</h1>
+            <div className="choice-list">
+              {TRAIN_PLACES.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={'choice-row' + (place === p.id ? ' is-selected' : '')}
+                  aria-pressed={place === p.id}
+                  onClick={() => { setPlace(p.id); setChosen(null) }}
+                >
+                  <span className="choice-title">{p.label}</span>
+                  <span className="muted small">{p.hint}</span>
+                </button>
+              ))}
+            </div>
+
+            {place !== 'gym' && (
+              <div>
+                <p className="group-label">{place === 'home' ? 'What do you have?' : 'Anything at all?'}</p>
+                <div className="check-grid">
+                  {(place === 'home' ? HOME_GEAR : HOME_GEAR.filter((g) => g.id === 'pullup_bar' || g.id === 'bands')).map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className={'check-pill' + (picks.includes(g.id) ? ' is-selected' : '')}
+                      aria-pressed={picks.includes(g.id)}
+                      onClick={() => { setPicks((x) => toggle(x, g.id)); setChosen(null) }}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
-            <p className="muted small">You can change this anytime, and after every workout you still choose what to do.</p>
+
+            <details className="equip-more">
+              <summary>{place === 'gym' ? 'Not a full gym? Edit the equipment list' : 'Something else? Full equipment list'}</summary>
+              {EQUIPMENT_GROUPS.map((g) => (
+                <div className="equip-group" key={g.group}>
+                  <p className="group-label">{g.group}</p>
+                  <div className="check-grid">
+                    {g.items.map((item) => {
+                      const on = equipment.includes(item.id)
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={'check-pill' + (on ? ' is-selected' : '')}
+                          aria-pressed={on}
+                          onClick={() => {
+                            setChosen(null)
+                            if (place === 'gym') setGymCustom((c) => toggle(c ?? equipment, item.id))
+                            else setPicks((x) => toggle(x, item.id))
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </details>
           </>
         )}
 
-        {STEPS[step] === 'strength' && (
+        {STEPS[step] === 'days' && (
           <>
-            <h1>Roughly what can you lift?</h1>
-            {unitToggle}
-            {draft.experienceLevel === 'new' && !knowStrength ? (
-              // A true beginner usually can't produce this number at all — lead
-              // with the safe default instead of a blank-looking required field
-              // (see fix #2). "I know my numbers" reveals the normal inputs below.
+            <h1>Which days can you train?</h1>
+            <p className="muted">Two to four days is plenty to get stronger. Pick the days that usually work.</p>
+            <div className="check-grid weekday-chips" role="group" aria-label="Training days">
+              {WEEKDAY_ORDER.map((wd) => (
+                <button
+                  key={wd}
+                  type="button"
+                  className={'check-pill' + (days.includes(wd) ? ' is-selected' : '')}
+                  aria-pressed={days.includes(wd)}
+                  onClick={() => { setDays((d) => toggle(d, wd)); setChosen(null) }}
+                >
+                  {WEEKDAY_SHORT[wd]}
+                </button>
+              ))}
+            </div>
+            <p className="muted small" role="status">
+              {days.length < 2 ? 'Pick at least two days.' : days.length > 6 ? 'Pick six days or fewer — your body needs a rest day.' : `${days.length} days a week.`}
+            </p>
+
+            <p className="group-label">About how long per session?</p>
+            <div className="seg">
+              {SESSION_OPTIONS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={'seg-item' + (sessionLength === m ? ' is-selected' : '')}
+                  aria-pressed={sessionLength === m}
+                  onClick={() => setSessionLength(m)}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+
+            {fresh && (
               <>
-                <p className="muted">
-                  Most people just starting out don&apos;t know this yet — that&apos;s completely
-                  fine. We&apos;ll start every barbell lift at the empty bar ({units === 'kg' ? 20 : 45}{' '}
-                  {units}) and it&apos;ll feel light and easy on purpose. You add weight fast from there.
-                </p>
-                <div className="choice-list">
-                  <button type="button" className="choice-row is-selected" aria-pressed="true" onClick={next}>
-                    <span className="choice-title">Start at the bar</span>
-                    <span className="muted small">Recommended — safe, and the app builds your real numbers up from here.</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="choice-row"
-                    aria-pressed="false"
-                    onClick={() => setKnowStrength(true)}
-                  >
-                    <span className="choice-title">I know my numbers</span>
-                    <span className="muted small">Enter what you can comfortably lift for about 5 reps.</span>
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="muted">
-                  Optional, lift by lift — skip any you don&apos;t know. Without this, new barbell lifts
-                  start with a blank weight box; with it, we set a real starting weight for you. Enter
-                  what you can comfortably lift for about 5 reps.
-                </p>
-                <div className="choice-list">
-                  {STRENGTH_LIFTS.map((lift) => (
-                    <div className="strength-row" key={lift.key}>
-                      <label className="strength-label" htmlFor={`sw-${lift.key}`}>{lift.label}</label>
-                      <div className="strength-input-row">
-                        <input
-                          id={`sw-${lift.key}`}
-                          type="number"
-                          inputMode="decimal"
-                          className="text-input"
-                          placeholder={`${units}, ~5 reps`}
-                          value={draft.strength[lift.key]}
-                          min="0"
-                          onChange={(e) => set({ strength: { ...draft.strength, [lift.key]: acceptNumber(e.target.value, draft.strength[lift.key], { max: maxWeight() }) } })}
-                          aria-label={`${lift.label} weight in ${units}, for about 5 reps`}
-                        />
-                        <button
-                          type="button"
-                          className="link-btn"
-                          onClick={() => set({ strength: { ...draft.strength, [lift.key]: String(units === 'kg' ? 20 : 45) } })}
-                        >
-                          Not sure? Just the bar
-                        </button>
-                      </div>
-                    </div>
+                <p className="group-label">Weights in</p>
+                <div className="seg seg-sm" role="group" aria-label="Weight units" style={{ alignSelf: 'flex-start' }}>
+                  {['lbs', 'kg'].map((u) => (
+                    <button key={u} type="button" className={'seg-item' + (units === u ? ' is-selected' : '')} aria-pressed={units === u} onClick={() => setUnits(u)} style={{ minWidth: 64 }}>
+                      {u}
+                    </button>
                   ))}
                 </div>
-                <p className="muted small">
-                  Anything left blank starts light (near the empty bar) instead of blank — never a dead
-                  end. Fine-tune anytime with the one-rep max (1RM) tool in Settings.
-                </p>
               </>
             )}
           </>
         )}
 
-        {STEPS[step] === 'bodyweight' && (
+        {isPlan && built && (
           <>
-            <h1>What do you weigh?</h1>
-            <p className="muted">
-              Optional — skip it and everything still works. Here&apos;s what the app does with it,
-              so you can decide:
-            </p>
-            <ul className="why-list">
-              <li><strong>Charts your weight over time</strong> next to your lifts on the Progress tab.</li>
-              <li><strong>Strength-to-weight</strong> — the number that decides most climbing and calisthenics moves.</li>
-              <li>
-                <strong>Scores weighted pull-ups and dips properly.</strong> A 25 {units} belt on a
-                180 {units} lifter is a 205 {units} lift. Without your weight, the app can only see
-                the 25 and your progress there looks flat.
-              </li>
-            </ul>
-            <input
-              type="number"
-              inputMode="decimal"
-              className="text-input"
-              placeholder={`Your weight in ${units}`}
-              value={draft.bodyweight}
-              min="0"
-              onChange={(e) => set({ bodyweight: acceptNumber(e.target.value, draft.bodyweight, { max: maxBodyweight() }) })}
-              aria-label={`Bodyweight in ${units}`}
-            />
+            <h1>{built.name}</h1>
+            <p className="muted">{whyLine({ goal, experience, place, days: days.length })}</p>
+
+            <div className="card plan-summary">
+              {built.titles.length > 0 && (
+                <>
+                  <p className="group-label">Your week</p>
+                  <ul className="plan-week">
+                    {built.titles.map((t, i) => <li key={i}>{t}</li>)}
+                  </ul>
+                  {built.program?.schedule?.mode === 'rotation' && (
+                    <p className="muted small">
+                      These take turns on {byWeekOrder(days).map((d) => WEEKDAY_SHORT[d]).join(', ')}. Miss a day and the next workout just waits for you.
+                    </p>
+                  )}
+                </>
+              )}
+              {built.info && <p className="muted small"><strong>How it progresses:</strong> {built.info}</p>}
+            </div>
+
+            {!built.setupPath && (
+              asksWeights ? (
+                <div className="card setup-weights">
+                  <p className="group-label">Starting weights <span className="muted">(optional, {units})</span></p>
+                  <p className="muted small">A weight you could lift about 5 times. Not sure? Leave it blank and we&apos;ll start light — you can change any weight mid-workout.</p>
+                  {STRENGTH_LIFTS.map((l) => (
+                    <div className="strength-row" key={l.id}>
+                      <label className="strength-label" htmlFor={`onb-${l.id}`}>{l.label}</label>
+                      <input
+                        id={`onb-${l.id}`}
+                        type="number"
+                        inputMode="decimal"
+                        className="text-input"
+                        min="0"
+                        placeholder="blank = start light"
+                        value={strength[l.id] ?? ''}
+                        onChange={(e) => setStrength((s) => ({ ...s, [l.id]: acceptNumber(e.target.value, s[l.id] ?? '', { max: maxWeight() }) }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted small">{startLightCopy}</p>
+              )
+            )}
+
+            {rec.alts.length > 0 && (
+              <div className="plan-alts">
+                <p className="group-label">Your options</p>
+                <div className="choice-list">
+                  {[rec.primary, ...rec.alts].map((o) => {
+                    const key = o.templateId || o.kind
+                    const on = (option.templateId || option.kind) === key
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        className={'choice-row' + (on ? ' is-selected' : '')}
+                        aria-pressed={on}
+                        onClick={() => setChosen(o)}
+                      >
+                        <span className="choice-title">
+                          {optionLabel(o)}{o === rec.primary && <span className="rec-badge">Our pick</span>}
+                        </span>
+                        <span className="muted small">{optionHint(o)}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
             <p className="muted small">
-              Stays on your device (or your own cloud backup). The app never sets a target weight,
-              never compares you to anyone, and never mentions it unprompted. You can add or change
-              it later in Settings.
+              Rather pick for yourself?{' '}
+              <button type="button" className="link-btn" onClick={() => navigate('/templates')}>Browse all programs</button>
+              {' · '}
+              <button type="button" className="link-btn" onClick={() => navigate('/builder')}>Build my own</button>
             </p>
           </>
         )}
       </div>
 
-      {/* Kept BEFORE .flow-actions, not after: .full-flow > .flow-actions:last-child
-          is how the Back/Next bar stays pinned to the thumb zone, so this can't
-          become flow-actions' next sibling without breaking that on every step. */}
-      <button
-        type="button"
-        className="link-btn"
-        style={{ alignSelf: 'center' }}
-        onClick={confirmBuildOwn}
-      >
-        Not for me — leave the guided setup and build my own program
-      </button>
-      {!isValid && needs && <p className="muted small" role="status" style={{ textAlign: 'center', margin: 0 }}>{needs}</p>}
       <div className="flow-actions">
-        <button type="button" className="btn btn-ghost" onClick={back}>
-          Back
-        </button>
-        <button type="button" className="btn btn-primary" onClick={next} disabled={!isValid}>
-          {isLast ? 'Build my program' : 'Next'}
-        </button>
+        <button type="button" className="btn btn-ghost" onClick={back}>{step === 0 ? 'Cancel' : 'Back'}</button>
+        {isPlan ? (
+          <button type="button" className="btn btn-primary" onClick={start} disabled={!built}>
+            {built?.setupPath ? (built.setupLabel || 'Continue setup') : 'Start my plan'}
+          </button>
+        ) : (
+          <button type="button" className="btn btn-primary" onClick={next} disabled={!canNext}>Next</button>
+        )}
       </div>
     </section>
   )

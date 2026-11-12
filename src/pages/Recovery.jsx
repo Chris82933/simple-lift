@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { addProgram } from '../lib/storage.js'
+import { addProgram, getActiveProgramId, setActiveProgramId, loadPrograms } from '../lib/storage.js'
+import { useToast } from '../components/Toast.jsx'
 import { RECOVERY_AREAS, RECOVERY_DISCLAIMER, buildRecoveryProgram } from '../data/recovery.js'
 import { EXERCISE_BY_ID, measureUnit } from '../data/exercises.js'
 import MuscleMap from '../components/MuscleMap.jsx'
@@ -16,10 +17,22 @@ export default function Recovery() {
 
   const chosen = RECOVERY_AREAS.filter((a) => selected.includes(a.id))
 
-  const create = () => {
+  const toast = useToast()
+  // Rehab usually runs alongside someone's main training, not instead of it.
+  // It used to always become the active program, quietly replacing the plan
+  // they were following. Now they choose.
+  const current = loadPrograms().find((p) => p.id === getActiveProgramId()) || null
+
+  const create = (makeMain) => {
     const program = buildRecoveryProgram(selected)
     if (!program) return
-    addProgram(program) // new program, becomes active — never overwrites
+    const made = addProgram(program) // never overwrites anything
+    if (current && !makeMain) {
+      setActiveProgramId(current.id)
+      toast.show(`Added ${made.name}. Pick it on Today when you do your rehab.`)
+    } else {
+      toast.show(`${made.name} is now your active program`)
+    }
     navigate('/today')
   }
 
@@ -132,19 +145,32 @@ export default function Recovery() {
           <p className="muted small">Select an area above to preview its routine.</p>
         )}
 
-        {selected.length > 0 && (
+        {selected.length > 0 && current && (
           <p className="muted small">
-            Creating this makes it your active program. Your current program is kept —
-            switch back anytime under Plans.
+            <strong>Alongside my plan</strong> keeps {current.name} as your main program — switch to the rehab routine on Today when you do it.
+            {' '}<strong>Make it my main plan</strong> puts it first instead; {current.name} is kept and you can switch back under Plans.
           </p>
         )}
       </div>
 
       <div className="flow-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => navigate('/programs')}>Cancel</button>
-        <button type="button" className="btn btn-primary" onClick={create} disabled={selected.length === 0}>
-          Create &amp; make active
-        </button>
+        {current ? (
+          <>
+            <button type="button" className="btn btn-ghost" onClick={() => create(true)} disabled={selected.length === 0}>
+              Make it my main plan
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => create(false)} disabled={selected.length === 0}>
+              Add alongside my plan
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="btn btn-ghost" onClick={() => navigate('/programs')}>Cancel</button>
+            <button type="button" className="btn btn-primary" onClick={() => create(true)} disabled={selected.length === 0}>
+              Create my routine
+            </button>
+          </>
+        )}
       </div>
     </section>
   )

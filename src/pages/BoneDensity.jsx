@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { addProgram, loadPrograms, updateProgram, setActiveProgramId, getActiveProgramId } from '../lib/storage.js'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { addProgram, loadPrograms, updateProgram, setActiveProgramId, getActiveProgramId, loadMaxes, loadSettings } from '../lib/storage.js'
+import { seedProgramWeights } from '../lib/seedWeights.js'
 import {
   BONE_LEVELS, BONE_TIMES, BONE_PHASES, BONE_SAFETY_POINTS, BONE_EVIDENCE, BONE_SOURCES, BONE_HOME_ROUTINE,
   BONE_PRACTICE_SOURCE, buildBoneProgram, rebuildBoneProgram, startPhaseFor,
@@ -58,8 +59,12 @@ export default function BoneDensity() {
   const toast = useToast()
   const [fracture, setFracture] = useState(null)
   const [falls, setFalls] = useState(null)
-  const [level, setLevel] = useState(null)
-  const [time, setTime] = useState(null)
+  // Coming from "Help me choose", experience is already answered — don't ask
+  // twice. Three days a week there means the three-session option.
+  const location = useLocation()
+  const fromSetup = location.state || {}
+  const [level, setLevel] = useState(() => (['new', 'some', 'experienced'].includes(fromSetup.level) ? fromSetup.level : null))
+  const [time, setTime] = useState(() => (Number(fromSetup.days) >= 3 ? '3x60' : null))
   const [phase, setPhase] = useState(null) // null = the recommended start
   const [cleared, setCleared] = useState(false)
   const [pendingPhase, setPendingPhase] = useState(null) // { program, to }
@@ -94,7 +99,7 @@ export default function BoneDensity() {
 
   const create = () => {
     if (!preview || !cleared) return
-    addProgram(preview)
+    addProgram(seedProgramWeights(preview, { maxes: loadMaxes(), units: loadSettings().units === 'kg' ? 'kg' : 'lbs' }))
     toast.show(`${preview.name} is ready — it’s now your active program`)
     navigate('/today')
   }
