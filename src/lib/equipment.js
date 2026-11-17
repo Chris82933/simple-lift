@@ -6,6 +6,7 @@
 // can. Profiles live in settings, so they ride along with export/import and
 // cloud sync automatically.
 
+import { scaleLoad } from './swapTranslate.js'
 import { EQUIPMENT_GROUPS } from '../data/options.js'
 import { EXERCISES, EXERCISE_BY_ID } from '../data/exercises.js'
 import { loadSettings, saveSettings } from './storage.js'
@@ -159,6 +160,26 @@ export function bestSubstitute(ex, available) {
   return candidates[0]
 }
 
+// A stand-in chosen for the gear inherits the original's numbers, which were
+// for the original: a 225 lb barbell squat copied onto a goblet squat. Scale
+// them through the swap table when the two lifts compare; otherwise blank the
+// weight (the lifter picks one) rather than show a number that is wrong.
+function withTranslatedLoad(entry, fromId, units = 'lbs') {
+  const scale = (v) => scaleLoad(fromId, entry.id, v, units)
+  const out = { ...entry }
+  const sw = Number(entry.startWeight)
+  if (sw > 0) out.startWeight = scale(sw) ?? ''
+  const p = entry.progression
+  if (p) {
+    const q = { ...p }
+    if (Number(p.weight) > 0) q.weight = scale(p.weight)
+    if (Number(p.tm) > 0) q.tm = scale(p.tm)
+    // Can't be compared: drop the progression so no barbell number leaks in.
+    out.progression = (Number(p.weight) > 0 && q.weight == null) || (Number(p.tm) > 0 && q.tm == null) ? undefined : q
+  }
+  return out
+}
+
 // Resolve a program exercise to the best variant the user can actually do. If
 // the exercise isn't doable but declares an ordered `alts` list (curated,
 // same-purpose fallbacks), swap in the first alternative that IS doable —
@@ -175,7 +196,7 @@ export function resolveForEquipment(ex, available, opts = {}) {
       // Carry over the program-side fields (sets/reps/rest/progression/
       // supersetNext/…) from the pre-swap entry; identity/metadata come from
       // the alt's library definition. `swappedFrom` notes why it changed.
-      return exerciseEntryFromLibrary(lib, { ...ex, swappedFrom: ex.name })
+      return withTranslatedLoad(exerciseEntryFromLibrary(lib, { ...ex, swappedFrom: ex.name }), ex.id, opts.units)
     }
   }
   return ex // nothing doable — leave the original (the workout will flag it)

@@ -36,6 +36,8 @@ import { lastWeightFromHistory, fillDownRows } from '../lib/logging.js'
 import { sessionMuscleHeat, plannedMuscleHeat, describeHeat } from '../lib/muscleHeat.js'
 import { buildShareCard, shareImage, canShareImage } from '../lib/shareCard.js'
 import StretchPanel from '../components/StretchPanel.jsx'
+import StationTakenSheet from '../components/StationTakenSheet.jsx'
+import { swapOptions, stationOf, usableHere, feelerWeight, adjustAfterFeeler } from '../lib/swapTranslate.js'
 import Icon from '../components/Icon.jsx'
 import SessionDateRow from '../components/SessionDate.jsx'
 import { clampToNow, sameLocalDay } from '../lib/sessionDate.js'
@@ -118,6 +120,29 @@ function buildCustomDay(persistedExercises, liveExercises) {
     return rest
   })
 }
+
+// The workout as the PROGRAM sees it: a busy-gym stand-in counts as the lift
+// it replaced, a finished-early card is the same lift, and a lift moved to the
+// end goes back to its slot. Without this, swapping the squat for a leg press
+// looked like a structural edit, and "Update this program" would replace the
+// squat — and its saved progression — with the leg press.
+function programView(list) {
+  const out = []
+  const seen = new Set()
+  const moved = []
+  for (const e of list) {
+    const base = e.swappedFromEntry || e
+    if (seen.has(base.id)) continue
+    seen.add(base.id)
+    const { partial, movedFrom, swap, swappedFromEntry, swappedFromRows, ...clean } = base
+    if (e.movedFrom && !e.swappedFromEntry) moved.push([e.movedFrom - 1, clean])
+    else out.push(clean)
+  }
+  for (const [i, e] of moved.sort((a, b) => a[0] - b[0])) out.splice(Math.min(i, out.length), 0, e)
+  return out
+}
+
+const clampN = (n, lo, hi) => Math.min(hi, Math.max(lo, n))
 
 function defaultDayIndex(program, stateIndex) {
   if (Number.isInteger(stateIndex)) return stateIndex
@@ -360,6 +385,10 @@ export default function Workout() {
   // U4: when this session started — restored from the saved active session on
   // resume, else the first mount. Used to compute durationSec at finish.
   const [startedAt, setStartedAt] = useState(() => (resumed?.startedAt) || Date.now())
+  // Busy-gym: stations marked taken this session ("rack", "barbell_bench"…),
+  // and which exercise's "Taken?" sheet is open.
+  const [busy, setBusy] = useState(() => (Array.isArray(resumed?.busy) ? resumed.busy : []))
+  const [takenFor, setTakenFor] = useState(null)
   // When this session will be logged. null = the moment Finish is tapped. A
   // session resumed on a later day than it was started defaults to the day it
   // was started — that's when the workout happened — and says so on screen.
@@ -419,10 +448,10 @@ export default function Workout() {
   useEffect(() => {
     if (!session || finished) return
     const t = setTimeout(() => {
-      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, startedAt, logDate, savedAt: Date.now() })
+      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, startedAt, logDate, busy, savedAt: Date.now() })
     }, 500)
     return () => clearTimeout(t)
-  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt, logDate])
+  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt, logDate, busy])
 
   // R6: the debounce above can drop the last sub-500ms of edits if the tab is
   // backgrounded or a service-worker update swaps the page out from under it.
@@ -431,7 +460,7 @@ export default function Workout() {
   useEffect(() => {
     if (!session || finished) return
     const flush = () => {
-      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, startedAt, logDate, savedAt: Date.now() })
+      saveActiveSession({ programId: program.id, dayIndex, sessionTitle: session.title, exercises, sets, cardio: loggedCardio, startedAt, logDate, busy, savedAt: Date.now() })
     }
     const onVisibility = () => { if (document.visibilityState === 'hidden') flush() }
     document.addEventListener('visibilitychange', onVisibility)
@@ -440,7 +469,7 @@ export default function Workout() {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', flush)
     }
-  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt, logDate])
+  }, [exercises, sets, loggedCardio, finished, program, dayIndex, session, startedAt, logDate, busy])
 
   // Discard a resumed session and start this day fresh. Sits right next to the
   // "Resumed your in-progress session" banner, so a stray tap here can wipe out
@@ -518,50 +547,146 @@ export default function Workout() {
   const availableSet = new Set(equip.profiles[activeProfile])
   const switchProfile = (id) => { storeSetActiveProfile(id); setActiveProfileState(id) }
 
-  // Replace an exercise you can't do here with a doable same-pattern alternative,
-  // for this session only (marked adhoc, so it never touches program progression).
-  const swapExercise = (exId, sub) => {
-    const old = exercises.find((e) => e.id === exId)
-    const logged = (sets[exId] || []).filter((r) => r.done).length
-    withUndo(
-      logged
-        ? `Swapped to ${sub.name} — ${logged} logged set${logged === 1 ? '' : 's'} of ${old?.name} cleared`
-        : `Swapped to ${sub.name}`,
-      () => swapExerciseNow(exId, sub),
-    )
+  // ---- Busy gym: "Taken?" — swap to a stand-in with the weight translated,
+  // do it later, or mark the station busy. All for this session only. ----
+  const capacity = activeCapacity()
+  const usable = (ex) => usableHere(ex, availableSet, busy)
+  const rootOf = (ex) => ex.swappedFromEntry || ex
+  // The set being replaced: what the lift was planned at. For a stand-in that
+  // is itself being swapped, translate from the ORIGINAL plan, not the guess.
+  const plannedFor = (ex) => {
+    if (ex.swap) return { weight: Number(ex.swap.plannedW) || 0, reps: Number(ex.swap.plannedReps) || Number(ex.repHigh) || 0 }
+    const rows = (sets[ex.id] || []).filter((r) => !r.warmup)
+    const next = rows.find((r) => !r.done) || rows[0]
+    return { weight: Number(next?.weight) || 0, reps: Number(next?.reps) || Number(ex.repHigh) || 0 }
   }
-  const swapExerciseNow = (exId, sub) => {
-    // C4: keep this exercise's superset link (if any) alive through the swap.
+  const swapChoicesFor = (ex, extraTaken = []) => swapOptions(ex, {
+    available: availableSet, busy, units, capacity,
+    inSession: [...exercises.map((e) => e.id), ...extraTaken],
+    planned: plannedFor(ex), fromId: rootOf(ex).id,
+  })
+
+  const swapTo = (exId, option) => {
+    const ex = exercises.find((e) => e.id === exId)
+    if (!ex) return
+    setTakenFor(null)
+    // Picking the original from the list is a swap back, not a new stand-in.
+    if (ex.swappedFromEntry && option.lib.id === ex.swappedFromEntry.id) { swapBack(exId); return }
+    withUndo(`Swapped to ${option.lib.name}`, () => swapExerciseNow(exId, option.lib, option.t))
+  }
+
+  const swapExerciseNow = (exId, sub, t = null) => {
     const old = exercises.find((e) => e.id === exId)
+    if (!old) return
+    const oldRows = sets[exId] || []
+    const working = oldRows.filter((r) => !r.warmup)
+    const doneRows = working.filter((r) => r.done)
+    const root = rootOf(old)
+    const planned = plannedFor(old)
     const p = prescriptionFor(sub, schemeForGoals(goals))
+    const sameMeasure = exMeasure(old).type === exMeasure(sub).type
+    // A GZCLP stage (10 × 1) or a 5/3/1 week is a barbell scheme — don't copy
+    // it onto a leg press. Straight sets of 5–15 instead.
+    const schemeLocked = ['t1', 't2', 't3', '531'].includes(root.progression?.scheme)
+    const reps = t?.reps || (sameMeasure ? clampN(Number(old.repHigh) || p.repHigh, schemeLocked ? 5 : 1, 30) : p.repHigh)
+    const planCount = sameMeasure ? (schemeLocked ? clampN(working.length || Number(old.sets) || 3, 3, 5) : (working.length || Number(old.sets) || p.sets)) : p.sets
+    const count = doneRows.length ? Math.max(1, working.length - doneRows.length) : planCount
+    const w = t?.weight ?? null
+    // On a guess (anything but a close barbell match) the first set is a
+    // lighter feeler; the rest adjust once it's logged.
+    const feeler = w != null && t.conf !== 'H'
+    const rows = Array.from({ length: count }, (_, i) => ({
+      weight: w == null ? '' : String(feeler && i === 0 ? feelerWeight(w, sub.id, units) : w),
+      reps: String(reps), done: false, auto: w != null,
+      ...(feeler && i === 0 ? { feeler: true } : {}),
+    }))
+    const rootRows = (old.swappedFromRows || working.filter((r) => !r.done)).slice(0, count)
     const entry = exerciseEntryFromLibrary(sub, {
-      // The rest time is the lifter's own choice for this slot (they may have
-      // changed it in Edit mode) — it carries over; sets/reps follow the new move.
-      // A program entry's sets and reps ARE the plan (a bone program's phase,
-      // a template's 5 × 5) — keep them when the movement is measured the same
-      // way. Only a one-off add, or a rep ↔ time change, takes fresh defaults.
-      ...(old && !old.adhoc && exMeasure(old).type === exMeasure(sub).type
-        ? { sets: old.sets, repLow: old.repLow, repHigh: old.repHigh }
-        : { sets: p.sets, repLow: p.repLow, repHigh: p.repHigh }),
-      restSec: old?.restSec ?? p.restSec,
-      startWeight: '', adhoc: true, supersetNext: old?.supersetNext,
+      sets: count,
+      repLow: sameMeasure && !t ? Math.min(Number(old.repLow) || reps, reps) : reps,
+      repHigh: reps,
+      restSec: old.restSec ?? p.restSec,
+      startWeight: '', adhoc: true, supersetNext: old.supersetNext,
       // Records what this replaced, so the card says "Alternate" rather than
       // looking like an unrelated exercise added on a whim.
-      swappedFrom: old?.name,
+      swappedFrom: root.name,
+      swap: { fromId: root.id, fromName: root.name, plannedW: planned.weight, plannedReps: planned.reps, conf: t?.conf || 'feel' },
+      swappedFromEntry: root,
+      swappedFromRows: rootRows,
     })
+    // Sets already done on the original are real work: they stay, on a
+    // finished-early ("Partial") card, and the stand-in takes the rest.
+    const frozen = doneRows.length ? { ...old, partial: true } : null
     setExercises((list) => {
-      if (list.some((e) => e.id === sub.id)) return list.filter((e) => e.id !== exId) // avoid dup id
-      return list.map((e) => (e.id === exId ? entry : e))
+      const i = list.findIndex((e) => e.id === exId)
+      if (i < 0 || list.some((e) => e.id === sub.id)) return list
+      const next = [...list]
+      next.splice(i, 1, ...(frozen ? [frozen, entry] : [entry]))
+      return next
     })
-    setSets((s) => {
-      const n = { ...s }
-      delete n[exId]
-      const keep = old && !old.adhoc && exMeasure(old).type === exMeasure(sub).type
-      n[sub.id] = Array.from({ length: keep ? Number(old.sets) || p.sets : p.sets }, () => ({ weight: '', reps: String(keep ? old.repHigh : p.repHigh), done: false }))
+    setSets((st) => {
+      const n = { ...st }
+      if (frozen) n[exId] = (st[exId] || []).filter((r) => r.done)
+      else delete n[exId]
+      n[sub.id] = rows
       return n
     })
   }
 
+  // The station's free again: put the original back for the sets that are
+  // left. Sets already done on the stand-in stay as a finished-early card.
+  const swapBack = (exId) => {
+    const sub = exercises.find((e) => e.id === exId)
+    const root = sub?.swappedFromEntry
+    if (!root) return
+    const subRows = sets[exId] || []
+    const subDone = subRows.filter((r) => r.done && !r.warmup)
+    const left = Math.max(1, subRows.filter((r) => !r.warmup && !r.done).length)
+    const src = sub.swappedFromRows?.length ? sub.swappedFromRows : [{ weight: String(sub.swap?.plannedW || ''), reps: String(sub.swap?.plannedReps || root.repHigh || '') }]
+    const backRows = Array.from({ length: left }, (_, i) => ({ ...(src[i] || src[src.length - 1]), done: false }))
+    const rootThere = exercises.some((e) => e.id === root.id)
+    withUndo(`Back to ${root.name}`, () => {
+      setExercises((list) => {
+        const next = [...list]
+        const si = next.findIndex((e) => e.id === exId)
+        if (si < 0) return list
+        if (subDone.length) next[si] = { ...sub, partial: true }
+        else next.splice(si, 1)
+        const ri = next.findIndex((e) => e.id === root.id)
+        if (ri >= 0) next[ri] = { ...root, supersetNext: subDone.length ? next[ri].supersetNext : sub.supersetNext }
+        else next.splice(subDone.length ? si + 1 : si, 0, { ...root, supersetNext: sub.supersetNext })
+        return next
+      })
+      setSets((st) => {
+        const n = { ...st }
+        if (subDone.length) n[exId] = (st[exId] || []).filter((r) => r.done)
+        else delete n[exId]
+        n[root.id] = [...(rootThere ? (st[root.id] || []) : []), ...backRows]
+        return n
+      })
+    })
+  }
+
+  // Move it to the end of the session — often the right call at a busy gym.
+  const doLater = (exId) => {
+    setTakenFor(null)
+    const ex = exercises.find((e) => e.id === exId)
+    if (!ex) return
+    withUndo(`Moved ${ex.name} to the end`, () => {
+      setExercises((list) => {
+        const i = list.findIndex((e) => e.id === exId)
+        if (i < 0 || i === list.length - 1) return list
+        // Remember the slot in PROGRAM terms (a finished-early card or a
+        // stand-in isn't a slot of its own), so the program view puts it back.
+        const slot = programView(list).findIndex((e) => e.id === rootOf(list[i]).id)
+        return [...list.slice(0, i), ...list.slice(i + 1), { ...list[i], movedFrom: list[i].movedFrom || (slot >= 0 ? slot : i) + 1 }]
+      })
+    })
+    // The "same exercise twice in a row" rest heuristic relies on order.
+    lastDoneExRef.current = null
+  }
+
+  const toggleBusy = (key) => setBusy((b) => (b.includes(key) ? b.filter((k) => k !== key) : [...b, key]))
   // Manually move a laddered bodyweight move up (harder) or down (easier) a
   // level, on demand — no target required. Keeps the current sets/reps/rest.
   const stepLadder = (exId, dir) => {
@@ -593,12 +718,19 @@ export default function Workout() {
   }
 
   const swapAllUnavailable = () => {
-    // One snapshot and one Undo for the whole batch.
+    // One snapshot and one Undo for the whole batch. Each pick is kept out of
+    // the next one's options so two lifts never land on the same stand-in.
+    setTakenFor(null)
     withUndo('Swapped to what you can do here', () => {
+      const picked = []
       exercises.forEach((ex) => {
-        if (isDoable(ex, availableSet)) return
-        const sub = bestSubstitute(ex, availableSet)
-        if (sub) swapExerciseNow(ex.id, sub)
+        if (usable(ex) || ex.partial) return
+        const best = swapChoicesFor(ex, picked)[0]
+        if (best) { picked.push(best.lib.id); swapExerciseNow(ex.id, best.lib, best.t) }
+        else {
+          const sub = bestSubstitute(ex, availableSet)
+          if (sub && !picked.includes(sub.id)) { picked.push(sub.id); swapExerciseNow(ex.id, sub) }
+        }
       })
     })
   }
@@ -673,7 +805,7 @@ export default function Workout() {
     setSets((s) => ({
       ...s,
       [exId]: (s[exId] || []).map((row, i) => (
-        i === idx ? { ...row, [field]: acceptNumber(value, row[field], { max: fieldMax(field) }) } : row
+        i === idx ? { ...row, [field]: acceptNumber(value, row[field], { max: fieldMax(field) }), ...(field === 'weight' ? { auto: false } : {}) } : row
       )),
     }))
 
@@ -684,7 +816,7 @@ export default function Workout() {
       [exId]: (s[exId] || []).map((row, i) => {
         if (i !== idx) return row
         const next = Math.min(fieldMax(field), Math.max(0, (Number(row[field]) || 0) + delta))
-        return { ...row, [field]: String(Math.round(next * 100) / 100) }
+        return { ...row, [field]: String(Math.round(next * 100) / 100), ...(field === 'weight' ? { auto: false } : {}) }
       }),
     }))
 
@@ -743,6 +875,16 @@ export default function Workout() {
     // 30-second impact work needs the press's rest, not the jumps'.
     const roundRest = Math.max(Number(restSec) || 0, ...supersetMembersFor(exId).map((m) => Number(m.restSec) || 0))
     setSets((s) => ({ ...s, [exId]: (s[exId] || []).map((r, i) => (i === idx ? { ...r, done: nowDone } : r)) }))
+    // Feeler set on a swapped-in lift: if it clearly missed or flew, move the
+    // remaining sets' suggested weight — never one the lifter typed.
+    if (nowDone && rows[idx]?.feeler && ex) {
+      const nextRow = rows.find((r, i) => i > idx && !r.done && !r.warmup && r.auto)
+      const adj = nextRow && adjustAfterFeeler({ toId: exId, feelerW: Number(rows[idx].weight), feelerReps: Number(rows[idx].reps), targetReps: Number(ex.repHigh), current: Number(nextRow.weight), units })
+      if (adj) {
+        setSets((s) => ({ ...s, [exId]: (s[exId] || []).map((r, i) => (i > idx && !r.done && !r.warmup && r.auto ? { ...r, weight: String(adj) } : r)) }))
+        toast.show(`${Number(rows[idx].reps) < Number(ex.repHigh) ? 'Heavier than expected' : 'Lighter than expected'} — the rest are now ${adj} ${units}`)
+      }
+    }
     // Start rest AFTER the state update (never inside the updater — StrictMode
     // double-invokes updaters, which would spawn duplicate timers).
     if (nowDone) lastDoneExRef.current = exId
@@ -855,10 +997,10 @@ export default function Workout() {
   const saveEdits = () => {
     const fresh = loadActiveProgram()
     if (fresh) {
-      const newExercises = buildCustomDay(fresh.days[dayIndex].exercises, exercises)
+      const newExercises = buildCustomDay(fresh.days[dayIndex].exercises, programView(exercises))
       const days = fresh.days.map((d, i) => (i === dayIndex ? { ...d, exercises: newExercises } : d))
       updateProgram({ ...fresh, days })
-      setBaseline(exercises)
+      setBaseline(programView(exercises))
     }
     setEditMode(false)
     setEditSnapshot(null)
@@ -906,7 +1048,14 @@ export default function Workout() {
     }
 
     const wanted = logDate ? clampToNow(logDate) : new Date().toISOString()
-    const entries = exercises.map((ex) => ({ exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, swappedFrom: ex.swappedFrom || undefined, sets: sets[ex.id] || [] }))
+    const entries = exercises.map((ex) => ({
+      exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, swappedFrom: ex.swappedFrom || undefined,
+      // Busy-gym metadata: what a stand-in replaced and the plan it was
+      // translated from (kept so personal ratios can be learned later), and
+      // a finished-early card.
+      swap: ex.swap ? { ...ex.swap } : undefined, partial: ex.partial || undefined,
+      sets: sets[ex.id] || [],
+    }))
     // U4: session length, from first mount (or the resumed session's original
     // start) to now.
     // A session left open for hours (overnight, or across days) has no
@@ -924,7 +1073,12 @@ export default function Workout() {
     // history record below (contract with the auto-deload-explanations UI:
     // field name must be exactly `autoNotes`).
     const programIds = new Set(program.days[dayIndex].exercises.map((e) => e.id))
-    const result = reviewSession({ ...session, exercises }, sets, goals, units, method, { bone: program.boneDensity })
+    // A finished-early card is paused, not judged: two sets of five out of five
+    // isn't a miss when the rest were done on a stand-in.
+    // Any lift that was swapped out for part of the session is paused too —
+    // four sets of five plus one on a hack squat isn't a missed 5 × 5.
+    const swappedRoots = new Set(exercises.filter((e) => e.swap).map((e) => e.swap.fromId))
+    const result = reviewSession({ ...session, exercises: exercises.filter((e) => !e.partial && !swappedRoots.has(e.id)) }, sets, goals, units, method, { bone: program.boneDensity })
     result.persist = result.persist.filter((p) => programIds.has(p.exId))
     result.suggestions = result.suggestions.filter((s) => programIds.has(s.exId))
 
@@ -944,7 +1098,10 @@ export default function Workout() {
     // Technique phase of the bone program: light learning sets are not a
     // strength test, so don't offer to update a one-rep max from them.
     const learning = Number(program.boneDensity?.phase) === 1
-    setRmUpdates(learning ? [] : oneRMUpdates.filter((u) => !rehabIds.has(u.exId)))
+    // No 1RM offers from stand-ins: a leg press or Smith machine number says
+    // little about a real max, and would skew every estimate built on it.
+    const swappedIds = new Set(exercises.filter((e) => e.swap).map((e) => e.id))
+    setRmUpdates(learning ? [] : oneRMUpdates.filter((u) => !rehabIds.has(u.exId) && !swappedIds.has(u.exId)))
     setRmDone({})
     setFinishedAt(date)
     setDurationSec(sessionDurationSec)
@@ -955,7 +1112,7 @@ export default function Workout() {
     advanceRotation(program.id, dayIndex)
 
     // Did they restructure the workout since the last save? If so, offer to save.
-    setCustomized(isCustomized(baseline, exercises))
+    setCustomized(isCustomized(baseline, programView(exercises)))
 
     // C7: seed to the recommended option for auto-progression (GZCLP/LP/GSLP
     // schemes, or a linear/RPE method) — manual/double still default to 'keep'.
@@ -977,7 +1134,7 @@ export default function Workout() {
     if (customized && saveChoice !== 'none') {
       const fresh = loadActiveProgram()
       if (fresh) {
-        const newExercises = buildCustomDay(fresh.days[dayIndex].exercises, exercises)
+        const newExercises = buildCustomDay(fresh.days[dayIndex].exercises, programView(exercises))
         if (saveChoice === 'update') {
           const days = fresh.days.map((d, i) => (i === dayIndex ? { ...d, exercises: newExercises } : d))
           updateProgram({ ...fresh, days })
@@ -1349,8 +1506,11 @@ export default function Workout() {
           // (pull-ups/dips with a belt, reverse lunges with dumbbells…).
           const showWeight = tracksLoad(ex)
           const optionalLoad = loadIsOptional(ex)
-          const doable = isDoable(ex, availableSet)
-          const sub = doable ? null : bestSubstitute(ex, availableSet)
+          const doable = usable(ex)
+          const station = stationOf(ex)
+          const markedBusy = !!station && busy.includes(station.key) && isDoable(ex, availableSet)
+          const best = doable ? null : swapChoicesFor(ex)[0] || null
+          const sub = doable || best ? null : bestSubstitute(ex, availableSet)
           const plateTarget = showPlates && loaded && isBarbellLift(ex) ? nextSetTarget(ex, sets[ex.id]) : null
           // The set row the plate math is loaded for, so we can highlight it.
           const activePlateIdx = plateTarget ? plateTarget.setNumber - 1 : -1
@@ -1412,8 +1572,10 @@ export default function Workout() {
                       The status tag says in words why an exercise isn't part of
                       the normal program — it used to be a bare "＋". Most cards
                       carry none, so the colour is what you notice. */}
-                  {(ex.swappedFrom || ex.adhoc || dimmed || (inSuperset && ssSize > 2)) && (
+                  {(ex.swappedFrom || ex.adhoc || dimmed || ex.partial || ex.movedFrom || (inSuperset && ssSize > 2)) && (
                     <div className="ex-tags">
+                      {ex.partial && <span className="ex-status-chip is-partial" title="Finished on a stand-in — these sets are kept">Partial</span>}
+                      {ex.movedFrom && !ex.partial && <span className="ex-status-chip is-later" title={`Moved from #${ex.movedFrom}`}>Later</span>}
                       {ex.swappedFrom
                         ? <span className="ex-status-chip is-alternate" title={`Standing in for ${ex.swappedFrom} — this session only`}>Alternate</span>
                         : ex.adhoc && <span className="ex-status-chip is-temporary" title="Added for this session only — not part of your program">Temporary</span>}
@@ -1423,12 +1585,39 @@ export default function Workout() {
                       {dimmed && <span className="ex-done-chip"><span aria-hidden="true">✓</span> Done</span>}
                     </div>
                   )}
-                  <p className="muted small">
-                    {setCountLabel(sets[ex.id]?.filter((r) => !r.warmup).length ?? ex.sets)} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {ex.countLabel || measureUnit(ex)}{ex.perSide ? ` ${ex.perSide}` : ''} · {ex.restSec}s rest
-                    {sets[ex.id]?.some((r) => r.warmup) ? ' · + warm-ups' : ''}
-                  </p>
-                  {ex.swappedFrom && (
+                  <div className="ex-meta-row">
+                    <p className="muted small">
+                      {setCountLabel(sets[ex.id]?.filter((r) => !r.warmup).length ?? ex.sets)} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {ex.countLabel || measureUnit(ex)}{ex.perSide ? ` ${ex.perSide}` : ''} · {ex.restSec}s rest
+                      {sets[ex.id]?.some((r) => r.warmup) ? ' · + warm-ups' : ''}
+                    </p>
+                    {!editMode && !dimmed && doable && station && !ex.partial && (
+                      <button
+                        type="button"
+                        className="taken-btn"
+                        onClick={() => setTakenFor(ex.id)}
+                        aria-label={`${station.label} taken? Swap or do ${ex.name} later`}
+                      >
+                        Taken?
+                      </button>
+                    )}
+                  </div>
+                  {ex.swap && !ex.partial ? (
+                    <p className="muted small swapped-note">
+                      ↔ Standing in for {ex.swap.fromName}
+                      {ex.swappedFromEntry && (
+                        <>
+                          {' · '}
+                          <button type="button" className="link-btn" onClick={() => swapBack(ex.id)}>
+                            {stationOf(ex.swappedFromEntry)?.label || ex.swap.fromName}&apos;s free
+                          </button>
+                        </>
+                      )}
+                    </p>
+                  ) : ex.swappedFrom && !ex.partial && (
                     <p className="muted small swapped-note">↔ swapped from {ex.swappedFrom} for your gear</p>
+                  )}
+                  {ex.swap && !ex.partial && (sets[ex.id] || []).some((r) => r.feeler && !r.done) && (
+                    <p className="muted small feeler-note">First set is a lighter feeler — machines vary. The rest adjust once it&apos;s logged.</p>
                   )}
                   {lastTime[ex.id] && (
                     <p className="muted small last-time"><span aria-hidden="true">↩︎</span> Last time: {lastTime[ex.id]}</p>
@@ -1447,13 +1636,23 @@ export default function Workout() {
                 </div>
               )}
 
-              {!doable && (
+              {!doable && !ex.partial && (
                 <div className="swap-note">
                   <span className="muted small">
-                    <span aria-hidden="true">🏠</span> Needs {missingEquipment(ex, availableSet).join(', ')} — not in {profileMeta(activeProfile).name}.
+                    {markedBusy
+                      ? <>{station.label} marked busy.</>
+                      : <><span aria-hidden="true">🏠</span> Needs {missingEquipment(ex, availableSet).join(', ')} — not in {profileMeta(activeProfile).name}.</>}
                   </span>
-                  {sub
-                    ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => swapExercise(ex.id, sub)}>Swap → {sub.name}</button>
+                  {best || sub
+                    ? (
+                      <>
+                        {best
+                          ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => swapTo(ex.id, best)}>Swap → {best.lib.name}</button>
+                          : <button type="button" className="btn btn-ghost btn-sm" onClick={() => withUndo(`Swapped to ${sub.name}`, () => swapExerciseNow(ex.id, sub))}>Swap → {sub.name}</button>}
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setTakenFor(ex.id)}>More options</button>
+                        {markedBusy && <button type="button" className="link-btn" onClick={() => toggleBusy(station.key)}>It&apos;s free now</button>}
+                      </>
+                    )
                     : (
                       <>
                         <span className="muted small">No alternative with your current gear.</span>
@@ -1542,7 +1741,8 @@ export default function Workout() {
                     <div className={'set-line' + (row.done ? ' done' : '') + (row.warmup ? ' is-warmup' : '') + (idx === activePlateIdx ? ' is-plate-target' : '')} key={idx}>
                       <span className="set-num" title={row.warmup ? 'Warm-up set' : isAmrapSet ? 'AMRAP — as many reps as possible' : undefined}>
                         {row.warmup ? 'W' : workingN}{isAmrapSet ? '+' : ''}
-                        <span className="sr-only">{setLabel}</span>
+                        {row.feeler && <span className="feeler-tag" aria-hidden="true">F</span>}
+                        <span className="sr-only">{setLabel}{row.feeler ? ', a lighter feeler set' : ''}</span>
                       </span>
                       {showWeight && (
                         <div className="set-field">
@@ -1755,6 +1955,42 @@ export default function Workout() {
       </div>
 
 
+      {takenFor && (() => {
+        const ex = exercises.find((e) => e.id === takenFor)
+        if (!ex) return null
+        const station = stationOf(ex)
+        const rows = (sets[ex.id] || []).filter((r) => !r.warmup)
+        const doneN = rows.filter((r) => r.done).length
+        const idx = exercises.findIndex((e) => e.id === ex.id)
+        const inSs = !!ex.supersetNext || !!exercises[idx - 1]?.supersetNext
+        const isBusy = !!station && busy.includes(station.key)
+        const busyOthers = station
+          ? exercises.filter((e) => e.id !== ex.id && !e.partial && stationOf(e)?.key === station.key
+            && (sets[e.id] || []).some((r) => !r.warmup && !r.done)).map((e) => e.name)
+          : []
+        return (
+          <StationTakenSheet
+            ex={ex}
+            station={station}
+            rootName={rootOf(ex).name}
+            planned={plannedFor(ex)}
+            remaining={Math.max(1, rows.length - doneN)}
+            done={doneN}
+            units={units}
+            options={swapChoicesFor(ex)}
+            canLater={!inSs && idx < exercises.length - 1}
+            inSuperset={inSs}
+            isBusy={isBusy}
+            busyOthers={busyOthers}
+            onLater={() => doLater(ex.id)}
+            onSwap={(o) => swapTo(ex.id, o)}
+            onToggleBusy={() => station && toggleBusy(station.key)}
+            onSwapAll={() => { swapAllUnavailable() }}
+            onSkip={() => { setTakenFor(null); removeExercise(ex.id) }}
+            onClose={() => setTakenFor(null)}
+          />
+        )
+      })()}
       {pickerOpen && (
         <ExercisePicker onPick={addExercise} onClose={() => setPickerOpen(false)} />
       )}

@@ -34,6 +34,9 @@ const PROGRAM_FIELDS = [
   // Bone Strength: which slot an entry fills (so a phase change can rewrite
   // just the main lifts) and how a set is counted ("each leg", "steps").
   'boneSlot', 'perSide', 'countLabel',
+  // Busy-gym swaps: what a stand-in replaced (and how to put it back), a
+  // finished-early card, and an exercise moved to the end of the session.
+  'swap', 'swappedFromEntry', 'swappedFromRows', 'partial', 'movedFrom',
 ]
 
 export function exerciseEntryFromLibrary(lib, overrides = {}) {
