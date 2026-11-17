@@ -178,7 +178,11 @@ function SessionEntry({ workout, units, onDelete, onEditSaved, dayCardio = [] })
   // ---- Sharing a past session (same card the completion screen produces) ----
   // The heatmap is rebuilt from the stored entries, so any logged session can be
   // shared later, not just the one you've just finished.
-  const heat = useMemo(() => sessionMuscleHeat(entries), [entries])
+  // dayCardio is a fresh array on every render; key the map on what's in it,
+  // or the share-card effect below (which sets state) would loop.
+  const cardioKey = dayCardio.map((c) => c.id || c.date).join('|')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const heat = useMemo(() => sessionMuscleHeat(entries, dayCardio), [entries, cardioKey])
   const shareMapRef = useRef(null)
   const [shareBlob, setShareBlob] = useState(null)
   const [shareStatus, setShareStatus] = useState(null)

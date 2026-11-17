@@ -138,18 +138,24 @@ export function buildSessionSummary(title, entries, { units, cardio } = {}) {
     }
     body.push(`${e.name} — ${detail}`)
   }
-  // Any cardio logged this session (treadmill, bike, etc.).
+  // Cardio gets its own section, and its total minutes go in the headline.
+  const cardioLines = []
+  let cardioMin = 0
   for (const c of cardio || []) {
     const bits = []
-    if (Number(c.durationMin) > 0) bits.push(`${c.durationMin} min`)
-    if (Number(c.distance) > 0) bits.push(`${c.distance}${c.distanceUnit || ''}`)
+    if (Number(c.durationMin) > 0) { bits.push(`${c.durationMin} min`); cardioMin += Number(c.durationMin) }
+    if (Number(c.distance) > 0) bits.push(`${c.distance} ${c.distanceUnit || ''}`.trim())
     if (Number(c.avgHr) > 0) bits.push(`${c.avgHr} bpm`)
     if (Number(c.calories) > 0) bits.push(`${c.calories} cal`)
-    if (bits.length) body.push(`${c.machineName || 'Cardio'} — ${bits.join(' · ')}`)
+    if (bits.length) cardioLines.push(`${c.machineName || 'Cardio'} — ${bits.join(' · ')}`)
   }
   const lines = [`${title} 🏋️`]
-  if (volume > 0) lines.push(`${Math.round(volume).toLocaleString()} ${wunit} volume`)
-  lines.push('', ...body)
+  const headline = []
+  if (volume > 0) headline.push(`${Math.round(volume).toLocaleString()} ${wunit} lifted`)
+  if (cardioMin > 0) headline.push(`${Math.round(cardioMin)} min cardio`)
+  if (headline.length) lines.push(headline.join(' · '))
+  if (body.length) lines.push('', ...body)
+  if (cardioLines.length) lines.push('', 'Cardio 🏃', ...cardioLines)
   lines.push('', 'Tracked with Simple Lift')
   return lines.join('\n')
 }

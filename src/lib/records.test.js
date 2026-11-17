@@ -141,7 +141,16 @@ describe('share text', () => {
       units: 'lbs',
       cardio: [{ machineName: 'Treadmill', durationMin: 20, distance: 2.1, distanceUnit: 'mi' }],
     })
-    expect(text).toContain('Treadmill — 20 min · 2.1mi')
+    expect(text).toContain('Treadmill — 20 min · 2.1 mi')
+    expect(text).toContain('925 lb lifted · 20 min cardio')
+    expect(text).toMatch(/Squat — .*\n\nCardio 🏃\nTreadmill/)
+  })
+
+  it('reads well for a cardio-only session', () => {
+    const text = summary([], { cardio: [{ machineName: 'Outdoor Run', durationMin: 30, distance: 5, distanceUnit: 'km' }] })
+    expect(text).toContain('30 min cardio')
+    expect(text).not.toContain('lifted')
+    expect(text).toContain('Outdoor Run — 30 min · 5 km')
   })
 
   it('leaves timed work out of the volume total', () => {

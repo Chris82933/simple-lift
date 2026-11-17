@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sessionMuscleHeat, plannedMuscleHeat } from './muscleHeat.js'
+import { sessionMuscleHeat, plannedMuscleHeat, cardioSetEquivalent } from './muscleHeat.js'
 
 const doneSet = (reps = 5) => ({ done: true, reps, weight: 100 })
 
@@ -81,5 +81,33 @@ describe('plannedMuscleHeat (builder / program view)', () => {
   it('is empty for a day with no exercises or no sets', () => {
     expect(plannedMuscleHeat([])).toEqual({})
     expect(plannedMuscleHeat([{ id: 'plank', pattern: 'core', sets: 0 }])).toEqual({})
+  })
+})
+
+describe('cardio on the muscle map', () => {
+  it('credits the muscles a cardio machine works', () => {
+    const heat = sessionMuscleHeat([], [{ machine: 'rower', durationMin: 20 }])
+    expect(heat.lats).toBe(1)
+    expect(heat.quads).toBe(1)
+    expect(heat.biceps).toBeGreaterThan(0)
+    expect(heat.chest).toBeUndefined()
+  })
+
+  it('weighs cardio by length, so a short walk does not swamp a lifting session', () => {
+    const squat = { exerciseId: 'back_squat', sets: Array(5).fill({ done: true, reps: 5, weight: 100 }) }
+    const bench = { exerciseId: 'bench_press', sets: Array(5).fill({ done: true, reps: 5, weight: 100 }) }
+    const heat = sessionMuscleHeat([squat, bench], [{ machine: 'walk', durationMin: 10 }])
+    // 10 minutes counts as 1 set — next to 10 sets of lifting.
+    expect(heat.chest).toBeGreaterThan(0.6)
+    expect(heat.calves).toBeGreaterThan(0)
+    expect(heat.calves).toBeLessThan(heat.chest)
+  })
+
+  it('ignores cardio it knows nothing about, and empty entries', () => {
+    expect(sessionMuscleHeat([], [{ machine: 'other', durationMin: 30 }])).toEqual({})
+    expect(sessionMuscleHeat([], [{ machine: 'bike' }])).toEqual({})
+    expect(cardioSetEquivalent({ durationMin: 300 })).toBe(4)
+    expect(cardioSetEquivalent({ durationMin: 20 })).toBe(2)
+    expect(cardioSetEquivalent({ distance: 5 })).toBe(1)
   })
 })

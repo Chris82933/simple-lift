@@ -948,7 +948,7 @@ export default function Workout() {
     setRmDone({})
     setFinishedAt(date)
     setDurationSec(sessionDurationSec)
-    setMuscleHeat(sessionMuscleHeat(entries))
+    setMuscleHeat(sessionMuscleHeat(entries, loggedCardio))
 
     const fresh = loadActiveProgram()
     if (fresh) updateProgram(syncSharedWeights(applyPersist(fresh, dayIndex, result.persist, units), dayIndex))

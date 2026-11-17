@@ -6,6 +6,7 @@
 // It's a deliberately simple proxy for "what did I emphasize today", built on
 // the same pattern-based muscle data as the exercise icons (see musclesFor).
 import { musclesFor } from '../data/exercises.js'
+import { CARDIO_MUSCLES } from '../data/cardio.js'
 
 const SECONDARY_WEIGHT = 0.5
 
@@ -47,12 +48,26 @@ export function describeHeat(heat = {}) {
   return `Muscles worked, most to least: ${ranked.join(', ')}.`
 }
 
-// A FINISHED session: weight each exercise by its completed working sets.
-export function sessionMuscleHeat(entries = []) {
+// How much a cardio entry counts, in "working sets": one per 10 minutes (it's
+// lower effort per minute than a hard set), at least one when anything was
+// logged, capped at four so a long run doesn't wash out the lifting on the map.
+export function cardioSetEquivalent(c) {
+  const min = Number(c?.durationMin) || 0
+  if (min > 0) return Math.min(4, Math.max(1, Math.round(min / 10)))
+  return Number(c?.distance) > 0 || Number(c?.calories) > 0 ? 1 : 0
+}
+
+// A FINISHED session: weight each exercise by its completed working sets, and
+// any cardio logged with it by its length.
+export function sessionMuscleHeat(entries = [], cardio = []) {
   const score = {}
   for (const e of entries) {
     const sets = (e.sets || []).filter((s) => s.done && !s.warmup && (Number(s.reps) || 0) > 0).length
     credit(score, { id: e.exerciseId }, sets)
+  }
+  for (const c of cardio || []) {
+    const m = CARDIO_MUSCLES[c?.machine]
+    if (m) credit(score, { muscles: m }, cardioSetEquivalent(c))
   }
   return normalize(score)
 }
