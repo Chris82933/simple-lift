@@ -36,11 +36,29 @@ const BASE_EXERCISES = [
   { id: 'barbell_hack_squat', name: 'Barbell Hack Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell'], compound: true, cues: 'The original, invented by strongman George Hackenschmidt: stand with a barbell on the floor behind your heels, grip it behind you, and stand up — heels down, torso tall, knees forward. A quad-dominant deadlift-in-reverse. Heels on a small plate helps depth.' },
   { id: 'hack_squat', name: 'Hack Squat (Machine)', pattern: 'squat', regions: ['legs'], requires: ['machines'], compound: true, cues: 'Shoulders and back against the pad, feet mid-platform. Lower under control to ~90° (or below), knees tracking over the toes, and drive through the whole foot. The fixed path lets you push the quads hard with little balance demand.' },
   { id: 'zercher_squat', name: 'Zercher Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell'], compound: true, cues: 'Named after strongman Ed Zercher: cradle the barbell in the crooks of your elbows against your torso. Sit straight down, elbows inside the knees, chest tall. The front-loaded position hammers the quads, upper back, and core and forces an upright posture.' },
+  // Squat variations of similar popularity to the Zercher
+  { id: 'box_squat', name: 'Box Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell', 'rack', 'flat_bench'], compound: true, cues: 'Set a box or bench so your hips sit at or just below knee height. Push your hips back and sit onto it under control, pause for a moment without relaxing, then drive up hard. Teaches consistent depth and hip drive — a powerlifting staple.' },
+  { id: 'pause_squat', name: 'Pause Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell', 'rack'], compound: true, cues: 'Squat to your normal depth and hold a dead stop for 2–3 seconds, staying braced — no bouncing — then drive up. Use about 70–80% of your usual squat. Builds strength out of the hole and tightens up technique.' },
+  { id: 'pin_squat', name: 'Pin Squat', pattern: 'squat', regions: ['legs', 'core'], requires: ['barbell', 'rack'], compound: true, cues: 'Also called the Anderson squat. Set the safety pins at your sticking point and get under the bar while it rests on them. Brace hard and stand up from a dead stop — no stretch reflex to help. Lower it back to the pins under control between reps.' },
+  { id: 'overhead_squat', name: 'Overhead Squat', pattern: 'squat', regions: ['legs', 'shoulders', 'core'], requires: ['barbell'], compound: true, cues: 'Hold the bar overhead with a wide (snatch) grip, elbows locked, armpits facing forward. Sit straight down keeping the bar over the middle of your foot. Start with an empty bar or a broomstick — it is a mobility and stability lift first.' },
+  { id: 'sissy_squat', name: 'Sissy Squat', pattern: 'squat', regions: ['legs'], requires: [], compound: false, load: false, cues: 'Hold a post or rack for balance and rise onto the balls of your feet. Let your knees travel forward as you lean back, keeping a straight line from knees to shoulders, then squeeze your quads to come up. Start with a short range — it is hard on the knees until you are used to it.' },
+  { id: 'cossack_squat', name: 'Cossack Squat', pattern: 'lunge', regions: ['legs'], requires: [], compound: true, load: false, cues: 'Take a wide stance. Shift your weight onto one leg and sit down into it while the other leg stays straight with the toes pointing up. Keep the working heel down and chest up, then push back to the middle. Holding a light weight in front helps your balance.' },
 
   // ---- Hinge ----
   { id: 'deadlift', name: 'Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell'], compound: true, tags: ['climbing'], cues: 'Flat back, push the floor away, lock out with glutes. If you can’t reach the bar with a flat back, pull it from blocks or a rack set at shin height.' },
   { id: 'romanian_dl', name: 'Romanian Deadlift', pattern: 'hinge', regions: ['legs', 'back'], requires: ['barbell'], compound: true, cues: 'Soft knees, push hips back, feel the hamstring stretch.' },
   { id: 'jefferson_deadlift', name: 'Jefferson Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell'], compound: true, cues: 'An old-time strongman lift (the Jefferson, a.k.a. straddle deadlift): stand over the bar with it between your legs, one foot ahead of the other, and stand up. The straddle stance is easy on the lower back and builds legs, glutes, and grip. Alternate the lead leg across sets.' },
+  // Zercher family — the bar cradled in the crooks of the elbows
+  { id: 'zercher_deadlift', name: 'Zercher Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell'], compound: true, cues: 'An old strongman lift. Squat down and hook the bar into the crooks of your elbows (start from low blocks or pins if the floor is too low), hands clasped. Brace hard and stand up tall, keeping the bar tight to your body. Brutal on the upper back and core; wrap the bar or wear sleeves if it digs in.' },
+  { id: 'zercher_good_morning', name: 'Zercher Good Morning', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell', 'rack'], compound: true, cues: 'Cradle the bar in your elbows against your torso. Soften the knees and push your hips back with a flat back until you feel the hamstrings stretch, then drive the hips forward to stand. Easier on the shoulders than a bar on the back.' },
+  { id: 'zercher_reverse_lunge', name: 'Zercher Reverse Lunge', pattern: 'lunge', regions: ['legs', 'core'], requires: ['barbell', 'rack'], compound: true, cues: 'Unrack the bar in the crooks of your elbows. Step one foot back and lower the back knee toward the floor, chest tall, then push through the front foot to return. The front-loaded bar keeps you upright and works your core hard.' },
+  { id: 'zercher_carry', name: 'Zercher Carry', pattern: 'core', regions: ['core', 'arms', 'back'], requires: ['barbell', 'rack'], compound: true, hold: true, unit: 'sec', cues: 'Take the bar from the rack in the crooks of your elbows, hands clasped, and walk tall with short, quick steps — ribs down, no leaning back. Carry for time. A strongman favourite for core and upper back.' },
+  // Deadlift variations of similar popularity
+  { id: 'sumo_deadlift', name: 'Sumo Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell'], compound: true, cues: 'Wide stance with toes turned out, hands inside the knees. Push the knees out over the toes, chest up, and push the floor apart as you stand. A more upright back than conventional — many people with long legs pull more this way.' },
+  { id: 'deficit_deadlift', name: 'Deficit Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell', 'plates'], compound: true, cues: 'Stand on a weight plate or low platform (2–5 cm) so the bar starts lower. Keep the same flat back as a normal deadlift — the extra range builds speed off the floor. Use about 10–20% less than your deadlift.' },
+  { id: 'rack_pull', name: 'Rack Pull', pattern: 'hinge', regions: ['back', 'legs'], requires: ['barbell', 'rack'], compound: true, cues: 'Set the pins (or blocks) so the bar starts just below or above the knee. Brace, pull the slack out, then drive the hips through to lock out. A partial deadlift — heavier than your full pull, great for the upper back and lockout.' },
+  { id: 'snatch_grip_deadlift', name: 'Snatch-Grip Deadlift', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['barbell'], compound: true, cues: 'Take a very wide grip (about where your hands would be for a snatch). That puts you deeper at the start, so the hips sit lower. Keep your chest up and back flat as you stand. Builds the upper back and pulling from the floor; straps help.' },
+  { id: 'stiff_leg_deadlift', name: 'Stiff-Leg Deadlift', pattern: 'hinge', regions: ['legs', 'back'], requires: ['barbell'], compound: true, cues: 'Like a Romanian deadlift, but each rep starts from the floor with the knees only slightly bent. Push your hips back with a flat back and keep the bar close. Stop where your back would start to round.' },
   { id: 'db_rdl', name: 'Dumbbell RDL', pattern: 'hinge', regions: ['legs', 'back'], requires: ['dumbbells'], compound: true, cues: 'Hinge at the hips, bells close to your legs, neutral spine.' },
   { id: 'kb_swing', name: 'Kettlebell Swing', pattern: 'hinge', regions: ['legs', 'back', 'core'], requires: ['kettlebells'], compound: true, tags: ['running'], cues: 'Snap the hips, the bell floats — it’s a hinge, not a squat.' },
   { id: 'hip_thrust', name: 'Barbell Hip Thrust', pattern: 'hinge', regions: ['legs'], requires: ['barbell', 'flat_bench'], compound: true, cues: 'Shoulders on bench, drive hips up, squeeze at the top.' },
@@ -419,6 +437,11 @@ export const ISO_HOLDS = {
   barbell_hack_squat: 'Hold at the bottom or at ~90° for 20–40s, heels down and torso tall.',
   hack_squat: 'Pause and hold at ~90° (or the bottom) for 20–45s — a very knee- and back-friendly loaded quad hold.',
   zercher_squat: 'Hold at the bottom or at ~90° for 20–40s, elbows cradling the bar and chest tall.',
+  box_squat: 'Hold just above the box (not sitting) for 15–30s — trains the bottom position.',
+  pause_squat: 'Already a pause — lengthen it to a 10–20s hold at the bottom.',
+  overhead_squat: 'Hold at the bottom for 10–20s with the bar locked overhead — builds the stability the lift needs.',
+  rack_pull: 'Hold the lockout (or just above the knee) for 10–20s — big grip and upper-back work.',
+  zercher_good_morning: 'Hold halfway down, flat back, for 10–20s.',
   bench_press: 'Hold at the mid-range sticking point (elbows ~90°, a few inches off the chest) or at lockout for 15–30s. Use a spotter/rack.',
   db_bench: 'Hold at the bottom stretch or the mid-range sticking point for 15–30s.',
   overhead_press: 'Hold at the overhead lockout, or at the ~90° sticking point off the shoulders, for 15–30s.',
@@ -529,6 +552,18 @@ export const PATTERN_MUSCLES = {
   conditioning: M_([], ['quads', 'calves', 'core']),
 }
 const MUSCLE_OVERRIDES = {
+  // Zercher family + barbell variations: the elbow-cradled bar adds biceps and
+  // upper back; a wide grip adds traps; sumo shifts the work to the quads.
+  zercher_squat: M_(['quads', 'glutes'], ['core', 'biceps', 'traps', 'lower_back']),
+  zercher_deadlift: M_(['hamstrings', 'glutes', 'lower_back'], ['quads', 'biceps', 'traps', 'core']),
+  zercher_good_morning: M_(['hamstrings', 'glutes', 'lower_back'], ['core', 'biceps']),
+  zercher_reverse_lunge: M_(['quads', 'glutes'], ['hamstrings', 'core', 'biceps']),
+  zercher_carry: M_(['core', 'traps'], ['biceps', 'lower_back', 'forearms']),
+  overhead_squat: M_(['quads', 'glutes', 'shoulders'], ['core', 'traps', 'lower_back']),
+  sissy_squat: M_(['quads'], ['core']),
+  sumo_deadlift: M_(['glutes', 'quads', 'hamstrings'], ['lower_back', 'traps', 'forearms']),
+  rack_pull: M_(['traps', 'lower_back', 'glutes'], ['hamstrings', 'forearms', 'lats']),
+  snatch_grip_deadlift: M_(['hamstrings', 'glutes', 'lower_back', 'traps'], ['quads', 'forearms', 'lats']),
   // traps, not lats
   db_shrug: M_(['traps'], ['forearms']), barbell_shrug: M_(['traps'], ['forearms']),
   // rear delts / scapular
@@ -620,6 +655,21 @@ const ALIASES = {
   barbell_hack_squat: ['barbell hack squat', 'hack squat', 'hackenschmidt squat', 'hack lift', 'behind-the-back squat'],
   hack_squat: ['hack squat', 'machine hack squat', 'hack squat machine', 'hack press'],
   zercher_squat: ['zercher squat', 'zercher', 'elbow squat'],
+  box_squat: ['box squats', 'powerlifting box squat', 'squat to box', 'squat to bench'],
+  pause_squat: ['paused squat', 'pause squats', 'pausing squat'],
+  pin_squat: ['anderson squat', 'dead stop squat', 'squat from pins', 'bottom up squat', 'bottoms up squat'],
+  overhead_squat: ['ohs', 'snatch squat', 'barbell overhead squat'],
+  sissy_squat: ['sissy squats', 'knee over toes squat'],
+  cossack_squat: ['cossack', 'side squat', 'lateral squat'],
+  zercher_reverse_lunge: ['zercher lunge', 'zercher split squat', 'zercher lunges'],
+  zercher_deadlift: ['zercher dl', 'zercher pull', 'zercher lift'],
+  zercher_good_morning: ['zercher gm', 'zercher good mornings'],
+  zercher_carry: ['zercher walk', 'bear hug carry', 'barbell carry'],
+  sumo_deadlift: ['sumo', 'sumo dl', 'sumo pull', 'wide stance deadlift'],
+  deficit_deadlift: ['deficit pull', 'deficit dl', 'deficit deadlifts'],
+  rack_pull: ['rack pulls', 'block pull', 'block pulls', 'partial deadlift', 'pin pull'],
+  snatch_grip_deadlift: ['snatch grip dl', 'wide grip deadlift', 'snatch grip pull'],
+  stiff_leg_deadlift: ['sldl', 'stiff legged deadlift', 'straight leg deadlift', 'stiff leg dl'],
   leg_extension: ['quad extension', 'knee extension'],
   // Hinge
   deadlift: ['conventional deadlift', 'barbell deadlift', 'dead lift'],

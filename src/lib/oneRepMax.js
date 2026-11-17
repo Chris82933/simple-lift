@@ -108,6 +108,18 @@ export const STRENGTH_RATIOS = {
   bench_press: 0.75,
   overhead_press: 0.45,
   barbell_row: 0.65,
+  // Variations, as a share of the back squat (typical gym ratios)
+  box_squat: 0.95,
+  pause_squat: 0.85,
+  pin_squat: 0.85,
+  zercher_squat: 0.8,
+  overhead_squat: 0.55,
+  sumo_deadlift: 1.2,
+  deficit_deadlift: 1.1,
+  rack_pull: 1.35,
+  snatch_grip_deadlift: 1.0,
+  stiff_leg_deadlift: 0.85,
+  zercher_deadlift: 0.95,
 }
 
 // Estimate a lift's 1RM from any saved maxes, via the ratio table. Converts each

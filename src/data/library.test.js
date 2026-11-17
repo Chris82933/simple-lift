@@ -1,7 +1,8 @@
 // Whole-library integrity. These are the invariants that are easy to break by
 // adding one exercise and impossible to notice by reading the diff.
 import { describe, it, expect } from 'vitest'
-import { EXERCISES, EXERCISE_BY_ID, matchInfo, musclesFor, tracksLoad } from './exercises.js'
+import { EXERCISES, EXERCISE_BY_ID, matchInfo, musclesFor, tracksLoad, matchesQuery } from './exercises.js'
+import { generateProgram } from '../lib/generator.js'
 import { EQUIPMENT_GROUPS } from './options.js'
 
 const EQUIPMENT_IDS = new Set(EQUIPMENT_GROUPS.flatMap((g) => g.items.map((i) => i.id)))
@@ -48,10 +49,10 @@ describe('every equipment option leads somewhere', () => {
   // machine was exactly that until the machine exercises were added: offered in
   // the list, zero exercises requiring it.
   //
-  // These three are still empty and are listed here deliberately, so the gap is
+  // These two are still empty and are listed here deliberately, so the gap is
   // visible and a NEW one fails the test rather than going unnoticed. Delete an
   // entry from this list the moment that equipment gets an exercise.
-  const KNOWN_EMPTY = ['plates', 'trx', 'med_ball']
+  const KNOWN_EMPTY = ['trx', 'med_ball']
 
   const countFor = (id) => EXERCISES.filter((e) => (e.requires || []).includes(id)).length
 
@@ -129,5 +130,28 @@ describe('gym machines', () => {
     for (const id of ['chest_press_machine', 'seated_row_machine', 'smith_squat', 'smith_bench']) {
       expect(EXERCISE_BY_ID[id].compound, id).toBe(true)
     }
+  })
+})
+
+describe('Zercher family and barbell variations', () => {
+  const find = (q) => EXERCISES.filter((e) => matchesQuery(e, q)).map((e) => e.id)
+
+  it('finds every Zercher lift by the one word', () => {
+    expect(find('zercher')).toEqual(expect.arrayContaining([
+      'zercher_squat', 'zercher_deadlift', 'zercher_good_morning', 'zercher_reverse_lunge', 'zercher_carry',
+    ]))
+  })
+
+  it.each([
+    ['anderson squat', 'pin_squat'], ['sldl', 'stiff_leg_deadlift'], ['sumo', 'sumo_deadlift'],
+    ['block pull', 'rack_pull'], ['ohs', 'overhead_squat'], ['paused squat', 'pause_squat'],
+    ['zercher lunge', 'zercher_reverse_lunge'], ['bear hug carry', 'zercher_carry'],
+  ])('"%s" finds %s', (q, id) => { expect(find(q)).toContain(id) })
+
+  it('keeps specialist lifts out of a brand-new lifter\'s generated program', () => {
+    const specialist = new Set(['zercher_squat', 'zercher_deadlift', 'zercher_good_morning', 'zercher_reverse_lunge', 'zercher_carry', 'pin_squat', 'overhead_squat', 'snatch_grip_deadlift', 'deficit_deadlift', 'rack_pull'])
+    const p = generateProgram({ experienceLevel: 'new', equipment: ['barbell', 'rack', 'flat_bench', 'dumbbells', 'plates'], daysPerWeek: 3, sessionLength: 60, goals: ['strength'], focusAreas: ['legs', 'back', 'chest', 'shoulders', 'arms', 'core'] })
+    const used = p.days.flatMap((d) => d.exercises.map((e) => e.id))
+    expect(used.filter((id) => specialist.has(id))).toEqual([])
   })
 })

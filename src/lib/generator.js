@@ -116,6 +116,9 @@ function availableFor(equipment) {
 const SPECIALIST = new Set([
   'jefferson_deadlift', 'pendlay_row', 'zercher_squat', 'barbell_hack_squat', 'meadows_row',
   'good_morning', 'paused_bench', 'iso_mid_thigh_pull',
+  'zercher_deadlift', 'zercher_good_morning', 'zercher_reverse_lunge', 'zercher_carry',
+  'box_squat', 'pause_squat', 'pin_squat', 'overhead_squat', 'sissy_squat',
+  'sumo_deadlift', 'deficit_deadlift', 'rack_pull', 'snatch_grip_deadlift', 'stiff_leg_deadlift',
 ])
 
 // Pick the best exercise for a pattern, given focus/goals and prior usage.
