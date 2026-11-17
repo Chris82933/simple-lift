@@ -22,7 +22,7 @@ const gearText = (lib) => (lib.requires || []).filter((r) => !['flat_bench', 'ad
 // Station taken: do it later, swap to an equivalent with the weight
 // translated, or mark the station busy for the rest of the session.
 export default function StationTakenSheet({
-  ex, station, rootName, planned, remaining, done, units, options,
+  ex, station, rootName, planned, current, remaining, done, units, options,
   canLater, inSuperset, isBusy, busyOthers, onLater, onSwap, onToggleBusy, onSwapAll, onSkip, onClose,
 }) {
   const ref = useRef(null)
@@ -30,9 +30,10 @@ export default function StationTakenSheet({
   const [more, setMore] = useState(false)
   const shown = more ? options : options.slice(0, 4)
   const title = `${station?.label || 'Equipment'} taken?`
-  const planLine = planned.weight > 0
-    ? `${ex.name} · ${remaining} × ${planned.reps} @ ${planned.weight} ${units}`
-    : `${ex.name} · ${remaining} × ${planned.reps}`
+  // A stand-in shows its OWN target, not the original's barbell number.
+  const shown0 = ex.swap && current ? current : planned
+  const w0 = Number(shown0.weight) || 0
+  const planLine = `${ex.name} · ${remaining} × ${shown0.reps}${w0 > 0 ? ` @ ${w0} ${units}` : ''}${ex.swap ? ` (for ${rootName})` : ''}`
   const estimated = options.some((o) => o.t.weight != null && o.t.conf !== 'H')
 
   return (
@@ -74,7 +75,8 @@ export default function StationTakenSheet({
               {!more && options.length > 4 && (
                 <button type="button" className="link-btn taken-more" onClick={() => setMore(true)}>Show {options.length - 4} more</button>
               )}
-              {estimated && <p className="muted small taken-foot">~ is an estimate from your {rootName}. Machines vary — the first set is a lighter feeler.</p>}
+              {estimated && <p className="muted small taken-foot">~ is an estimate from your {rootName}. Equipment varies, so set 1 is a lighter feel set.</p>}
+              <button type="button" className="link-btn taken-skip" onClick={onSkip}>Skip it today instead</button>
             </>
           ) : (
             <div className="taken-empty">

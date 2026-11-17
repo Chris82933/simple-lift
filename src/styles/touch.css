@@ -226,3 +226,14 @@ h2.bone-q { font-size: var(--fs-sm); line-height: 1.35; text-transform: none; le
 .taken-busy { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .taken-busy .btn { align-self: flex-start; }
 .taken-empty { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+/* Review fixes: rows must not shrink inside the scrolling sheet (their text
+   overflowed onto the next row), a bigger pill, a readable feeler marker. */
+.taken-list > * { flex-shrink: 0; }
+.taken-btn { min-height: 36px; }
+.feeler-tag {
+  display: inline-block; margin-left: 3px; padding: 0 4px; border-radius: 4px;
+  font-size: 0.7em; line-height: 1.4; vertical-align: middle;
+  background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text);
+}
+.paused-note { margin: 0; padding: 0 4px; }
+.taken-skip { align-self: flex-start; }

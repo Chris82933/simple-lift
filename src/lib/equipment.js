@@ -177,6 +177,16 @@ function withTranslatedLoad(entry, fromId, units = 'lbs') {
     // Can't be compared: drop the progression so no barbell number leaks in.
     out.progression = (Number(p.weight) > 0 && q.weight == null) || (Number(p.tm) > 0 && q.tm == null) ? undefined : q
   }
+  // A 5/3/1 entry also carries this week's per-set weights (and AMRAP). Scale
+  // them with the rest, or drop them with the progression.
+  if (Array.isArray(entry.setWeights)) {
+    const scaled = entry.setWeights.map((v) => (Number(v) > 0 ? scale(v) : v))
+    if (!out.progression || scaled.some((v) => v == null)) {
+      delete out.setWeights
+      delete out.setReps
+      if (entry.progression?.scheme === '531') delete out.amrap
+    } else out.setWeights = scaled
+  }
   return out
 }
 

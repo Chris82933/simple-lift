@@ -134,8 +134,9 @@ function programView(list) {
     const base = e.swappedFromEntry || e
     if (seen.has(base.id)) continue
     seen.add(base.id)
-    const { partial, movedFrom, swap, swappedFromEntry, swappedFromRows, ...clean } = base
-    if (e.movedFrom && !e.swappedFromEntry) moved.push([e.movedFrom - 1, clean])
+    const { partial, movedFrom, swap, swappedFromEntry, swappedFromRows, hidden, ...clean } = base
+    const mf = e.movedFrom || base.movedFrom
+    if (mf) moved.push([mf - 1, clean])
     else out.push(clean)
   }
   for (const [i, e] of moved.sort((a, b) => a[0] - b[0])) out.splice(Math.min(i, out.length), 0, e)
@@ -389,6 +390,7 @@ export default function Workout() {
   // and which exercise's "Taken?" sheet is open.
   const [busy, setBusy] = useState(() => (Array.isArray(resumed?.busy) ? resumed.busy : []))
   const [takenFor, setTakenFor] = useState(null)
+  const [paused, setPaused] = useState([]) // program lifts swapped/skipped today (finish screen)
   // When this session will be logged. null = the moment Finish is tapped. A
   // session resumed on a later day than it was started defaults to the day it
   // was started — that's when the workout happened — and says so on screen.
@@ -552,19 +554,29 @@ export default function Workout() {
   const capacity = activeCapacity()
   const usable = (ex) => usableHere(ex, availableSet, busy)
   const rootOf = (ex) => ex.swappedFromEntry || ex
-  // The set being replaced: what the lift was planned at. For a stand-in that
-  // is itself being swapped, translate from the ORIGINAL plan, not the guess.
+  const hasSetsLeft = (ex) => (sets[ex.id] || []).some((r) => !r.warmup && !r.done)
+  // A GZCLP stage (10 × 1) or a 5/3/1 week is a barbell scheme — it isn't
+  // copied onto a leg press; stand-ins work in straight sets of 5+.
+  const schemeLockedFor = (ex) => ['t1', 't2', 't3', '531'].includes(rootOf(ex).progression?.scheme)
+  // The set being replaced: what the lift was planned at — the heaviest set
+  // still to do (a 5/3/1 week climbs to its top set). For a stand-in being
+  // swapped again, translate from the ORIGINAL plan, not the guess.
   const plannedFor = (ex) => {
     if (ex.swap) return { weight: Number(ex.swap.plannedW) || 0, reps: Number(ex.swap.plannedReps) || Number(ex.repHigh) || 0 }
     const rows = (sets[ex.id] || []).filter((r) => !r.warmup)
-    const next = rows.find((r) => !r.done) || rows[0]
-    return { weight: Number(next?.weight) || 0, reps: Number(next?.reps) || Number(ex.repHigh) || 0 }
+    const left = rows.filter((r) => !r.done)
+    const pool = left.length ? left : rows
+    const top = pool.reduce((best, r) => (Number(r.weight) > Number(best?.weight || 0) ? r : best), pool[0])
+    return { weight: Number(top?.weight) || 0, reps: Number(top?.reps) || Number(ex.repHigh) || 0 }
   }
   const swapChoicesFor = (ex, extraTaken = []) => swapOptions(ex, {
     available: availableSet, busy, units, capacity,
     inSession: [...exercises.map((e) => e.id), ...extraTaken],
     planned: plannedFor(ex), fromId: rootOf(ex).id,
+    minReps: schemeLockedFor(ex) ? 5 : 0,
   })
+  // First member of the superset group `i` belongs to.
+  const groupStartIn = (list, i) => { let s = i; while (s > 0 && list[s - 1]?.supersetNext) s--; return s }
 
   const swapTo = (exId, option) => {
     const ex = exercises.find((e) => e.id === exId)
@@ -575,26 +587,27 @@ export default function Workout() {
     withUndo(`Swapped to ${option.lib.name}`, () => swapExerciseNow(exId, option.lib, option.t))
   }
 
+  // Returns false (and changes nothing) when it can't: the stand-in is already
+  // in this session, or there's nothing left to do on this lift.
   const swapExerciseNow = (exId, sub, t = null) => {
     const old = exercises.find((e) => e.id === exId)
-    if (!old) return
+    if (!old || exercises.some((e) => e.id === sub.id)) return false
     const oldRows = sets[exId] || []
     const working = oldRows.filter((r) => !r.warmup)
     const doneRows = working.filter((r) => r.done)
+    if (working.length && doneRows.length === working.length) return false
     const root = rootOf(old)
     const planned = plannedFor(old)
     const p = prescriptionFor(sub, schemeForGoals(goals))
     const sameMeasure = exMeasure(old).type === exMeasure(sub).type
-    // A GZCLP stage (10 × 1) or a 5/3/1 week is a barbell scheme — don't copy
-    // it onto a leg press. Straight sets of 5–15 instead.
-    const schemeLocked = ['t1', 't2', 't3', '531'].includes(root.progression?.scheme)
-    const reps = t?.reps || (sameMeasure ? clampN(Number(old.repHigh) || p.repHigh, schemeLocked ? 5 : 1, 30) : p.repHigh)
+    const schemeLocked = schemeLockedFor(old)
+    const reps = (sameMeasure && t?.reps) || (sameMeasure ? clampN(Number(old.repHigh) || p.repHigh, schemeLocked ? 5 : 1, 30) : p.repHigh)
     const planCount = sameMeasure ? (schemeLocked ? clampN(working.length || Number(old.sets) || 3, 3, 5) : (working.length || Number(old.sets) || p.sets)) : p.sets
-    const count = doneRows.length ? Math.max(1, working.length - doneRows.length) : planCount
+    const count = doneRows.length ? working.length - doneRows.length : planCount
     const w = t?.weight ?? null
     // On a guess (anything but a close barbell match) the first set is a
     // lighter feeler; the rest adjust once it's logged.
-    const feeler = w != null && t.conf !== 'H'
+    const feeler = w != null && t.conf !== 'H' && count > 1
     const rows = Array.from({ length: count }, (_, i) => ({
       weight: w == null ? '' : String(feeler && i === 0 ? feelerWeight(w, sub.id, units) : w),
       reps: String(reps), done: false, auto: w != null,
@@ -615,13 +628,16 @@ export default function Workout() {
       swappedFromRows: rootRows,
     })
     // Sets already done on the original are real work: they stay, on a
-    // finished-early ("Partial") card, and the stand-in takes the rest.
-    const frozen = doneRows.length ? { ...old, partial: true } : null
+    // finished-early ("Partial") card. It sits just before the lift's superset
+    // group (if any) and out of the chain, so the stand-in takes the
+    // original's exact place in it.
+    const frozen = doneRows.length ? { ...old, partial: true, supersetNext: undefined } : null
     setExercises((list) => {
       const i = list.findIndex((e) => e.id === exId)
       if (i < 0 || list.some((e) => e.id === sub.id)) return list
       const next = [...list]
-      next.splice(i, 1, ...(frozen ? [frozen, entry] : [entry]))
+      next.splice(i, 1, entry)
+      if (frozen) next.splice(groupStartIn(next, i), 0, frozen)
       return next
     })
     setSets((st) => {
@@ -631,6 +647,7 @@ export default function Workout() {
       n[sub.id] = rows
       return n
     })
+    return true
   }
 
   // The station's free again: put the original back for the sets that are
@@ -644,24 +661,28 @@ export default function Workout() {
     const left = Math.max(1, subRows.filter((r) => !r.warmup && !r.done).length)
     const src = sub.swappedFromRows?.length ? sub.swappedFromRows : [{ weight: String(sub.swap?.plannedW || ''), reps: String(sub.swap?.plannedReps || root.repHigh || '') }]
     const backRows = Array.from({ length: left }, (_, i) => ({ ...(src[i] || src[src.length - 1]), done: false }))
-    const rootThere = exercises.some((e) => e.id === root.id)
+    const rootThere = exercises.some((e) => e.id === root.id && !e.hidden)
     withUndo(`Back to ${root.name}`, () => {
       setExercises((list) => {
-        const next = [...list]
+        let next = list.filter((e) => !(e.id === root.id && e.hidden))
         const si = next.findIndex((e) => e.id === exId)
         if (si < 0) return list
-        if (subDone.length) next[si] = { ...sub, partial: true }
-        else next.splice(si, 1)
         const ri = next.findIndex((e) => e.id === root.id)
-        if (ri >= 0) next[ri] = { ...root, supersetNext: subDone.length ? next[ri].supersetNext : sub.supersetNext }
-        else next.splice(subDone.length ? si + 1 : si, 0, { ...root, supersetNext: sub.supersetNext })
+        // The original takes the stand-in's place (and its superset link);
+        // the stand-in's done sets go on a Partial card before the group.
+        const restored = { ...root, supersetNext: sub.supersetNext }
+        next = [...next]
+        if (ri >= 0) next.splice(ri, 1)
+        const at = next.findIndex((e) => e.id === exId)
+        next.splice(at, 1, restored)
+        if (subDone.length) next.splice(groupStartIn(next, at), 0, { ...sub, partial: true, supersetNext: undefined })
         return next
       })
       setSets((st) => {
         const n = { ...st }
         if (subDone.length) n[exId] = (st[exId] || []).filter((r) => r.done)
         else delete n[exId]
-        n[root.id] = [...(rootThere ? (st[root.id] || []) : []), ...backRows]
+        n[root.id] = [...(rootThere ? (st[root.id] || []).filter((r) => r.done) : []), ...backRows]
         return n
       })
     })
@@ -684,6 +705,36 @@ export default function Workout() {
     })
     // The "same exercise twice in a row" rest heuristic relies on order.
     lastDoneExRef.current = null
+  }
+
+  // Skip it today: it disappears from the session but stays in the PROGRAM
+  // (a hidden marker), so finishing never offers to delete it — or its
+  // progression — from the program, and its progression is simply paused.
+  const skipToday = (exId) => {
+    setTakenFor(null)
+    const ex = exercises.find((e) => e.id === exId)
+    if (!ex) return
+    const root = rootOf(ex)
+    const done = (sets[exId] || []).some((r) => r.done && !r.warmup)
+    const rootElsewhere = exercises.some((e) => e.id !== exId && rootOf(e).id === root.id)
+    withUndo(`Skipped ${ex.name} today`, () => {
+      setExercises((list) => {
+        const i = list.findIndex((e) => e.id === exId)
+        if (i < 0) return list
+        // Its superset partner now links to whatever came after it.
+        const next = list.map((e, j) => (j === i - 1 && e.supersetNext ? { ...e, supersetNext: ex.supersetNext } : e))
+        if (done) next[i] = { ...ex, partial: true, supersetNext: undefined } // keep the real sets
+        else if (rootElsewhere) next.splice(i, 1) // a Partial card already stands for it
+        else next[i] = { ...root, hidden: true, supersetNext: undefined }
+        return next
+      })
+      setSets((st) => {
+        const n = { ...st }
+        if (done) n[exId] = (st[exId] || []).filter((r) => r.done)
+        else delete n[exId]
+        return n
+      })
+    })
   }
 
   const toggleBusy = (key) => setBusy((b) => (b.includes(key) ? b.filter((k) => k !== key) : [...b, key]))
@@ -717,22 +768,27 @@ export default function Workout() {
     else change()
   }
 
-  const swapAllUnavailable = () => {
-    // One snapshot and one Undo for the whole batch. Each pick is kept out of
-    // the next one's options so two lifts never land on the same stand-in.
+  // Swap everything that can't be done here — or, given a station, only the
+  // lifts that need it ("Swap both off the barbell"). Finished lifts are left
+  // alone. One snapshot and one Undo; each pick is kept out of the next one's
+  // options so two lifts never land on the same stand-in.
+  const swapAllUnavailable = (stationKey) => {
     setTakenFor(null)
-    withUndo('Swapped to what you can do here', () => {
-      const picked = []
-      exercises.forEach((ex) => {
-        if (usable(ex) || ex.partial) return
-        const best = swapChoicesFor(ex, picked)[0]
-        if (best) { picked.push(best.lib.id); swapExerciseNow(ex.id, best.lib, best.t) }
-        else {
-          const sub = bestSubstitute(ex, availableSet)
-          if (sub && !picked.includes(sub.id)) { picked.push(sub.id); swapExerciseNow(ex.id, sub) }
-        }
-      })
+    const plan = []
+    const picked = []
+    exercises.forEach((ex) => {
+      if (ex.partial || ex.hidden || !hasSetsLeft(ex)) return
+      if (stationKey ? stationOf(ex)?.key !== stationKey : usable(ex)) return
+      const best = swapChoicesFor(ex, picked)[0]
+      if (best) { picked.push(best.lib.id); plan.push([ex, best.lib, best.t]) }
+      else {
+        const sub = bestSubstitute(ex, availableSet)
+        if (sub && !picked.includes(sub.id) && !exercises.some((e) => e.id === sub.id)) { picked.push(sub.id); plan.push([ex, sub, null]) }
+      }
     })
+    if (!plan.length) { toast.show('Nothing left to swap'); return }
+    const names = plan.map(([ex, sub]) => `${ex.name} → ${sub.name}`).join(', ')
+    withUndo(`Swapped ${names}`, () => plan.forEach(([ex, sub, t]) => swapExerciseNow(ex.id, sub, t)))
   }
 
   const adjustRest = (exId, delta) =>
@@ -822,8 +878,9 @@ export default function Workout() {
 
   // Copy the first working set's weight & reps into every later working set
   // that isn't done yet — one tap for straight sets instead of retyping.
+  // (Filling down is the lifter's own choice, so those weights are theirs now.)
   const fillDown = (exId) =>
-    setSets((s) => ({ ...s, [exId]: fillDownRows(s[exId] || []) }))
+    setSets((s) => ({ ...s, [exId]: fillDownRows(s[exId] || []).map((r) => ({ ...r, auto: false })) }))
 
   // Every exercise in the superset group that `exId` closes, in order. A group
   // is a run of consecutive entries linked by `supersetNext`, so walk back from
@@ -881,8 +938,12 @@ export default function Workout() {
       const nextRow = rows.find((r, i) => i > idx && !r.done && !r.warmup && r.auto)
       const adj = nextRow && adjustAfterFeeler({ toId: exId, feelerW: Number(rows[idx].weight), feelerReps: Number(rows[idx].reps), targetReps: Number(ex.repHigh), current: Number(nextRow.weight), units })
       if (adj) {
-        setSets((s) => ({ ...s, [exId]: (s[exId] || []).map((r, i) => (i > idx && !r.done && !r.warmup && r.auto ? { ...r, weight: String(adj) } : r)) }))
-        toast.show(`${Number(rows[idx].reps) < Number(ex.repHigh) ? 'Heavier than expected' : 'Lighter than expected'} — the rest are now ${adj} ${units}`)
+        const prevW = nextRow.weight
+        const touch = (w) => (s) => ({ ...s, [exId]: (s[exId] || []).map((r, i) => (i > idx && !r.done && !r.warmup && r.auto ? { ...r, weight: String(w) } : r)) })
+        setSets(touch(adj))
+        toast.show(`${adj < Number(prevW) ? 'Set 1 was heavy' : 'Set 1 flew'} — the rest are now ${adj} ${units}`, {
+          actionLabel: 'Undo', onAction: () => setSets(touch(prevW)),
+        })
       }
     }
     // Start rest AFTER the state update (never inside the updater — StrictMode
@@ -1032,7 +1093,7 @@ export default function Workout() {
   }
 
   // Working sets only — warm-ups don't count toward the session's progress.
-  const totalSets = exercises.reduce((n, ex) => n + (sets[ex.id]?.filter((r) => !r.warmup).length || ex.sets), 0)
+  const totalSets = exercises.reduce((n, ex) => (ex.hidden ? n : n + (sets[ex.id]?.filter((r) => !r.warmup).length || ex.sets)), 0)
   const doneSets = Object.values(sets).flat().filter((r) => r.done && !r.warmup).length
 
   const finish = () => {
@@ -1048,13 +1109,14 @@ export default function Workout() {
     }
 
     const wanted = logDate ? clampToNow(logDate) : new Date().toISOString()
-    const entries = exercises.map((ex) => ({
+    const entries = exercises.filter((ex) => !ex.hidden).map((ex) => ({
       exerciseId: ex.id, name: ex.name, adhoc: !!ex.adhoc, swappedFrom: ex.swappedFrom || undefined,
       // Busy-gym metadata: what a stand-in replaced and the plan it was
       // translated from (kept so personal ratios can be learned later), and
       // a finished-early card.
       swap: ex.swap ? { ...ex.swap } : undefined, partial: ex.partial || undefined,
-      sets: sets[ex.id] || [],
+      // auto/feeler are in-session hints, not part of the record.
+      sets: (sets[ex.id] || []).map(({ auto, feeler, ...r }) => (feeler ? { ...r, feeler: true } : r)),
     }))
     // U4: session length, from first mount (or the resumed session's original
     // start) to now.
@@ -1078,7 +1140,11 @@ export default function Workout() {
     // Any lift that was swapped out for part of the session is paused too —
     // four sets of five plus one on a hack squat isn't a missed 5 × 5.
     const swappedRoots = new Set(exercises.filter((e) => e.swap).map((e) => e.swap.fromId))
-    const result = reviewSession({ ...session, exercises: exercises.filter((e) => !e.partial && !swappedRoots.has(e.id)) }, sets, goals, units, method, { bone: program.boneDensity })
+    const result = reviewSession({ ...session, exercises: exercises.filter((e) => !e.partial && !e.hidden && !swappedRoots.has(e.id)) }, sets, goals, units, method, { bone: program.boneDensity })
+    // Said on the finish screen, so "why no progression for my squat?" has an answer.
+    const programIdSet = new Set(program.days[dayIndex].exercises.map((e) => e.id))
+    setPaused([...new Set(exercises.filter((e) => programIdSet.has(e.id) && (e.partial || e.hidden || swappedRoots.has(e.id)))
+      .map((e) => e.name).concat(exercises.filter((e) => e.swap && programIdSet.has(e.swap.fromId) && !exercises.some((x) => x.id === e.swap.fromId)).map((e) => e.swap.fromName)))])
     result.persist = result.persist.filter((p) => programIds.has(p.exId))
     result.suggestions = result.suggestions.filter((s) => programIds.has(s.exId))
 
@@ -1307,6 +1373,11 @@ export default function Workout() {
           />
         </div>
 
+        {paused.length > 0 && (
+          <p className="muted small paused-note">
+            <strong>Progression paused</strong> for {paused.join(', ')} — swapped or skipped today, so next time picks up where it left off.
+          </p>
+        )}
         {review.suggestions.length > 0 && (
           <div className="card">
             <p className="group-label">Progress next time?</p>
@@ -1500,6 +1571,7 @@ export default function Workout() {
           />
         )}
         {exercises.map((ex, exIdx) => {
+          if (ex.hidden) return null // skipped today — kept only so the program stays whole
           const loaded = ex.load !== false
           // Show a weight box whenever the move can take weight — always for
           // loaded lifts, optionally for bodyweight moves that accept it
@@ -1604,7 +1676,7 @@ export default function Workout() {
                   {ex.swap && !ex.partial ? (
                     <p className="muted small swapped-note">
                       ↔ Standing in for {ex.swap.fromName}
-                      {ex.swappedFromEntry && (
+                      {ex.swappedFromEntry && usable(ex.swappedFromEntry) && (
                         <>
                           {' · '}
                           <button type="button" className="link-btn" onClick={() => swapBack(ex.id)}>
@@ -1617,7 +1689,7 @@ export default function Workout() {
                     <p className="muted small swapped-note">↔ swapped from {ex.swappedFrom} for your gear</p>
                   )}
                   {ex.swap && !ex.partial && (sets[ex.id] || []).some((r) => r.feeler && !r.done) && (
-                    <p className="muted small feeler-note">First set is a lighter feeler — machines vary. The rest adjust once it&apos;s logged.</p>
+                    <p className="muted small feeler-note">Set 1 (F) is a lighter feel set. Log the reps you actually did and we&apos;ll tune the rest if needed.</p>
                   )}
                   {lastTime[ex.id] && (
                     <p className="muted small last-time"><span aria-hidden="true">↩︎</span> Last time: {lastTime[ex.id]}</p>
@@ -1636,7 +1708,7 @@ export default function Workout() {
                 </div>
               )}
 
-              {!doable && !ex.partial && (
+              {!doable && !ex.partial && !exComplete && (
                 <div className="swap-note">
                   <span className="muted small">
                     {markedBusy
@@ -1664,11 +1736,11 @@ export default function Workout() {
                 </div>
               )}
 
-              <p className="cue">{ex.cues}</p>
+              {!ex.partial && <p className="cue">{ex.cues}</p>}
               {ex.warmups && !(sets[ex.id] || []).some((r) => r.warmup) && (
                 <p className="muted small">Do 2–3 lighter ramp-up sets before your first working set.</p>
               )}
-              {ex.progression && <p className="suggestion">{weekNote(ex, units) || stageNote(ex, units) || extraNote(ex, units)}</p>}
+              {ex.progression && !ex.partial && <p className="suggestion">{weekNote(ex, units) || stageNote(ex, units) || extraNote(ex, units)}</p>}
               {/* Not on rehab/bone entries: a fixed-dose plank there is not
                   meant to "level up" into a harder variation. */}
               {lad && lad.length > 1 && !ex.rehab && (
@@ -1699,7 +1771,7 @@ export default function Workout() {
                   </div>
                 </div>
               )}
-              {plateTarget && (
+              {plateTarget && !ex.partial && (
                 <PlateBreakdown
                   weight={plateTarget.weight}
                   units={units}
@@ -1974,6 +2046,7 @@ export default function Workout() {
             station={station}
             rootName={rootOf(ex).name}
             planned={plannedFor(ex)}
+            current={(() => { const r = rows.find((x) => !x.done) || rows[0]; return r ? { weight: r.weight, reps: r.reps } : null })()}
             remaining={Math.max(1, rows.length - doneN)}
             done={doneN}
             units={units}
@@ -1985,8 +2058,8 @@ export default function Workout() {
             onLater={() => doLater(ex.id)}
             onSwap={(o) => swapTo(ex.id, o)}
             onToggleBusy={() => station && toggleBusy(station.key)}
-            onSwapAll={() => { swapAllUnavailable() }}
-            onSkip={() => { setTakenFor(null); removeExercise(ex.id) }}
+            onSwapAll={() => station && swapAllUnavailable(station.key)}
+            onSkip={() => skipToday(ex.id)}
             onClose={() => setTakenFor(null)}
           />
         )

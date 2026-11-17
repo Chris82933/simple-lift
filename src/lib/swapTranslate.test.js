@@ -71,20 +71,37 @@ describe('feeler set', () => {
     expect(feelerWeight(250, 'hack_squat')).toBe(220)
     expect(feelerWeight(50, 'bench_press')).toBe(45)
   })
-  it('only moves the rest when the feeler clearly missed or flew', () => {
+  it('only moves the rest when the feeler clearly missed or flew — and in that direction', () => {
     const base = { toId: 'hack_squat', feelerW: 220, targetReps: 5, current: 250 }
-    expect(adjustAfterFeeler({ ...base, feelerReps: 5 })).toBeNull()
-    expect(adjustAfterFeeler({ ...base, feelerReps: 6 })).toBeNull()
-    expect(adjustAfterFeeler({ ...base, feelerReps: 3 })).toBeLessThan(250)
-    expect(adjustAfterFeeler({ ...base, feelerReps: 10 })).toBeGreaterThan(250)
+    // Logging the planned reps (or a few more) on a lighter set says nothing.
+    for (const r of [5, 6, 7, 8, 9]) expect(adjustAfterFeeler({ ...base, feelerReps: r }), `${r} reps`).toBeNull()
+    // A miss at the lighter weight drops below the feeler itself.
+    expect(adjustAfterFeeler({ ...base, feelerReps: 3 })).toBeLessThan(220)
+    // Far more than the working weight's max allows: go up, never down.
+    for (const r of [11, 12, 15]) expect(adjustAfterFeeler({ ...base, feelerReps: r }), `${r} reps`).toBeGreaterThan(250)
   })
 })
 
 describe('swapOptions', () => {
-  it('offers squat stand-ins off the rack first when the rack is taken', () => {
+  it('never offers anything on the taken station, and puts realistic stand-ins first', () => {
     const opts = swapOptions(EXERCISE_BY_ID.back_squat, { available: GYM, planned: { weight: 225, reps: 5 } })
     expect(opts.length).toBeGreaterThan(3)
-    expect(opts[0].shares).toBe(false)
+    for (const o of opts) expect(o.lib.requires, o.lib.id).not.toContain('rack')
+    expect(opts.slice(0, 3).map((o) => o.lib.id)).toEqual(['hack_squat', 'smith_squat', 'leg_press'])
+    const dead = swapOptions(EXERCISE_BY_ID.deadlift, { available: GYM, planned: { weight: 315, reps: 5 } }).map((o) => o.lib.id)
+    expect(dead[0]).toBe('trap_bar_deadlift')
+    for (const id of dead) expect(EXERCISE_BY_ID[id].requires, id).not.toContain('barbell')
+  })
+
+  it('never offers a timed hold or the original lift itself', () => {
+    const opts = swapOptions(EXERCISE_BY_ID.lat_pulldown, { available: GYM, planned: { weight: 120, reps: 10 } })
+    for (const o of opts) expect(o.lib.hold, o.lib.id).toBeFalsy()
+    const fromStandIn = swapOptions({ ...EXERCISE_BY_ID.leg_press }, { available: GYM, fromId: 'back_squat', planned: { weight: 225, reps: 5 } })
+    expect(fromStandIn.map((o) => o.lib.id)).not.toContain('back_squat')
+  })
+
+  it('keeps a lift that needs another taken station out', () => {
+    const opts = swapOptions(EXERCISE_BY_ID.back_squat, { available: GYM, planned: { weight: 225, reps: 5 } })
     expect(opts.map((o) => o.lib.id)).toContain('leg_press')
     for (const o of opts) expect(['squat', 'lunge']).toContain(o.lib.pattern)
   })
