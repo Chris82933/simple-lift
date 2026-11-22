@@ -6,9 +6,10 @@ import {
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 import {
   areasFor, buildSession, blockInfo, testsFor, testProgress, asymmetry, sessionsThisWeek, weekStreak,
-  sorenessDue, progressMove, NOTE_TEXT, allowedMove, timeOption, BLOCK_WEEKS, doseLine, formatTest,
+  sorenessDue, progressMove, NOTE_TEXT, allowedMove, BLOCK_WEEKS, doseLine, formatTest,
+  exposuresPerWeek, planSignature,
 } from '../lib/mobility.js'
-import { loadMobility, updateMobility, removeMobility, loadSettings, loadMobilityActive } from '../lib/storage.js'
+import { loadMobility, updateMobility, removeMobility, loadSettings, loadMobilityActive, clearMobilityActive } from '../lib/storage.js'
 import { activeEquipmentIds } from '../lib/equipment.js'
 import MuscleMap from '../components/MuscleMap.jsx'
 import { useToast } from '../components/Toast.jsx'
@@ -28,8 +29,7 @@ function StepTitle({ step, total, children }) {
 // ---- Setup: what to work on --------------------------------------------
 function Picker({ draft, setDraft, onNext, onCancel }) {
   const [tab, setTab] = useState(draft.goals.length || !draft.areas.length ? 'goals' : 'areas')
-  const covered = areasFor(draft)
-  const fit = timeOption(draft.minutes).areas
+  const covered = areasFor({ ...draft, avoidAreas: [] })
   const can = covered.length > 0
   return (
     <section className="page full-flow mobility">
@@ -90,8 +90,7 @@ function Picker({ draft, setDraft, onNext, onCancel }) {
       </div>
       <p className="muted small mob-budget" role="status">
         {!can ? 'Pick a goal or an area to continue.'
-          : covered.length <= fit ? `${covered.length} area${covered.length === 1 ? '' : 's'} — every session covers ${covered.length === 1 ? 'it' : 'them all'}.`
-            : `${covered.length} areas — each session works ${fit} and rotates the rest. Fewer areas = faster results.`}
+          : `${covered.length} area${covered.length === 1 ? '' : 's'}${covered.length > 3 ? ' — fewer areas means each gets more work and faster results' : ''}.`}
       </p>
       <div className="flow-actions">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
@@ -126,7 +125,16 @@ function Setup({ draft, setDraft, onBack, onNext }) {
         <Choice label="Time per session" value={draft.minutes} onPick={(v) => setDraft((d) => ({ ...d, minutes: v }))} options={TIME_OPTIONS.map((t) => ({ v: t.min, label: t.label }))} />
         <p className="group-label">Sessions a week</p>
         <Choice label="Sessions a week" value={draft.perWeek} onPick={(v) => setDraft((d) => ({ ...d, perWeek: v }))} options={DAYS_OPTIONS.map((n) => ({ v: n, label: `${n}×` }))} />
-        <p className="muted small">Three a week is the sweet spot — how often matters more than how long.</p>
+        {(() => {
+          const n = areasFor(draft).length
+          const per = exposuresPerWeek(n, draft.minutes, draft.perWeek)
+          return (
+            <p className={'muted small' + (per < 2 ? ' mob-warn' : '')} role="status">
+              Each area about {per}× a week — aim for about 3. How often matters more than how long.
+              {per < 2 && ' Pick more time or more sessions, or fewer goals.'}
+            </p>
+          )
+        })()}
         <p className="group-label">Experience</p>
         <div className="choice-list">
           {LEVELS.map((l) => (
@@ -153,13 +161,24 @@ function Setup({ draft, setDraft, onBack, onNext }) {
           <div className="card notice rehab-redflags">
             <p className="group-label">See someone first</p>
             <p className="muted small">Loading an injured or recently operated area is a job for a physio. For a sore joint, the Recovery routines are gentler and built for exactly that.</p>
+            <p className="muted small">Which area is it? We&apos;ll leave it out.</p>
+            <div className="choice-chips">
+              {areasFor({ ...draft, avoidAreas: [] }).map((a) => {
+                const on = (draft.avoidAreas || []).includes(a)
+                return (
+                  <button key={a} type="button" className={'chip' + (on ? ' is-selected' : '')} aria-pressed={on} onClick={() => setDraft((d) => ({ ...d, avoidAreas: toggle(d.avoidAreas || [], a) }))}>
+                    {AREA_BY_ID[a].label}
+                  </button>
+                )
+              })}
+            </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => window.location.assign('#/recovery')}>Open Recovery</button>
           </div>
         )}
         {(flags.bone || flags.pregnant || flags.bendy) && (
           <p className="muted small">
             We&apos;ll adjust quietly:{' '}
-            {[flags.bone && 'no loaded rounding of the spine (bone density)', flags.pregnant && 'no loaded rounding or hard lowering work (pregnancy)', flags.bendy && 'shorter holds and more strength at the end of your range (very bendy)'].filter(Boolean).join('; ')}.
+            {[flags.bone && 'no loaded rounding or twisting of the spine (bone density)', flags.pregnant && 'gentler holds, nothing lying flat, no loaded rounding or hard lowering work (pregnancy)', flags.bendy && 'shorter stretches and more strength at the end of your range (very bendy)'].filter(Boolean).join('; ')}.
           </p>
         )}
         <label className="consent-row">
@@ -265,6 +284,7 @@ export default function Mobility() {
 
   const finishSetup = (tests) => {
     const now = new Date().toISOString()
+    clearMobilityActive() // an edited plan never resumes the old session
     updateMobility((m) => {
       const changedLevel = m.level && m.level !== draft.level
       const fresh = { v: 1, moves: {}, log: [], avoid: [], prefer: {}, notes: {}, pointer: 0 }
@@ -272,6 +292,7 @@ export default function Mobility() {
         ...fresh,
         ...m,
         ...draft,
+        avoidAreas: draft.flags?.injury ? (draft.avoidAreas || []) : [],
         rungs: changedLevel ? {} : (m.rungs || {}),
         added: true,
         startedAt: m.startedAt && m.added ? m.startedAt : now,
@@ -292,11 +313,11 @@ export default function Mobility() {
         <div className="step-body">
           <div className="card welcome-hero">
             <MuscleMap pattern="hinge" size={120} />
-            <p className="muted">Slow, loaded stretches that make you more flexible <em>and</em> stronger at the end of your range — 15 to 40 minutes, a few times a week, alongside your lifting.</p>
+            <p className="muted">Slow, weighted reps and holds that make you more flexible <em>and</em> stronger at the end of your range — 15 to 40 minutes, a few times a week, alongside your lifting.</p>
           </div>
           <ul className="why-list">
             <li><strong>Strength, not just stretch.</strong> Slow reps with a weight through your full range improve flexibility as much as holding stretches does — and build strength where you&apos;re weakest.</li>
-            <li><strong>Little and often.</strong> Three short sessions a week beat one long one.</li>
+            <li><strong>Little and often.</strong> Each area about three times a week beats one long session.</li>
             <li><strong>Honest timeline.</strong> Weeks 1–3 mostly feel easier. Real range shows up around weeks 6–8.</li>
             <li><strong>You&apos;ll see it.</strong> Quick self-checks with no tools show real progress, not day-to-day wobble.</li>
           </ul>
@@ -339,7 +360,8 @@ export default function Mobility() {
   const tests = testsFor(mob)
   const needsBaseline = tests.some((id) => !(mob.tests?.[id]?.length))
   const checkDue = block.easy && !(mob.lastCheck && Date.now() - new Date(mob.lastCheck).getTime() < 6 * 864e5)
-  const resuming = loadMobilityActive()
+  const saved = loadMobilityActive()
+  const resuming = !!(saved && saved.sig === planSignature(mob) && Date.now() - (saved.startedAt || 0) < 12 * 3600e3)
   const ready = Object.entries(mob.notes || {}).filter(([, n]) => n === 'ready_next')
 
   const answerSore = (how) => {
@@ -357,12 +379,13 @@ export default function Mobility() {
     refresh()
   }
 
+  // The area the move was trained for (shared moves belong to more than one).
   const nextRung = (id) => {
-    const area = AREAS.find((a) => a.ladder.includes(id))
+    const area = AREA_BY_ID[mob.readyArea?.[id]] || AREAS.find((a) => a.ladder.includes(id))
     if (!area) return null
     const ladder = area.ladder.filter((x) => allowedMove(x, { flags: mob.flags, equipment, avoid: mob.avoid || [] }) && MOVES[x].kind === 'reps')
     const i = ladder.indexOf(id)
-    return i >= 0 && i < ladder.length - 1 ? { area, next: ladder[i + 1] } : null
+    return i >= 0 && i < ladder.length - 1 ? { area, next: ladder[i + 1], index: i + 1 } : null
   }
   const acceptNext = (id, yes) => {
     const nr = nextRung(id)
@@ -370,8 +393,12 @@ export default function Mobility() {
       const notes = { ...(m.notes || {}) }
       delete notes[id]
       const rungs = { ...(m.rungs || {}) }
-      if (yes && nr) rungs[nr.area.id] = (rungs[nr.area.id] ?? ({ new: 0, some: 1, flexible: 2 }[m.level] ?? 1)) + 1
-      return { ...m, notes, rungs }
+      const prefer = { ...(m.prefer || {}) }
+      if (yes && nr) {
+        rungs[nr.area.id] = nr.index
+        delete prefer[`${nr.area.id}:reps`] // a swap mustn't hide the new level
+      }
+      return { ...m, notes, rungs, prefer }
     })
     refresh()
   }
@@ -511,7 +538,7 @@ export default function Mobility() {
               <li>Then a <strong>hold</strong>: a strong stretch, around 5–7 out of 10. Never sharp, pinching or tingling.</li>
               <li>Things go up <strong>one at a time</strong> — range, then time or reps, then weight — after two good sessions.</li>
               <li>Every 4th week is an <strong>easy week</strong> with a check-in.</li>
-              <li>Early gains are mostly your body accepting more stretch; they fade if you stop. Once you&apos;re happy, once a week keeps most of it.</li>
+              <li>Early gains are mostly your body accepting more stretch; they fade if you stop. Once you&apos;re happy, once or twice a week helps keep it.</li>
             </ul>
           </details>
         </div>

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { loadMobility, loadMobilityActive } from '../lib/storage.js'
-import { buildSession, blockInfo, sessionsThisWeek, BLOCK_WEEKS } from '../lib/mobility.js'
+import { buildSession, blockInfo, sessionsThisWeek, BLOCK_WEEKS, planSignature } from '../lib/mobility.js'
 import { AREA_BY_ID } from '../data/mobility.js'
 import { activeEquipmentIds } from '../lib/equipment.js'
 
@@ -14,7 +14,8 @@ export default function MobilityCard({ restDay = false }) {
   const done = sessionsThisWeek(mob.log || [])
   const target = mob.perWeek || 3
   const block = blockInfo(mob.startedAt)
-  const resuming = !!loadMobilityActive()
+  const saved = loadMobilityActive()
+  const resuming = !!(saved && saved.sig === planSignature(mob) && Date.now() - (saved.startedAt || 0) < 12 * 3600e3)
   return (
     <div className={'card mobility-card' + (restDay ? ' is-rest' : '')}>
       <div className="mob-next-head">

@@ -72,9 +72,11 @@ describe('building a session', () => {
   })
 
   it('caps holds at 30 s and prefers strength in range for very bendy people', () => {
-    expect(doseFor('dead_hang', { level: 'some', state: { dead_hang: { sec: 60 } }, flags: { bendy: true } }).sec).toBe(30)
+    expect(doseFor('couch_stretch', { level: 'some', state: { couch_stretch: { sec: 60 } }, flags: { bendy: true } }).sec).toBe(30)
+    // A strength hold (dead hang) keeps its own limit — it isn't a passive stretch.
+    expect(doseFor('dead_hang', { level: 'some', state: { dead_hang: { sec: 60 } }, flags: { bendy: true } }).sec).toBe(60)
     const s = buildSession(plan({ goals: ['toe_touch'], flags: { bendy: true } }), { equipment: GYM })
-    for (const it of s.items) if (it.kind === 'hold') expect(it.sec).toBeLessThanOrEqual(30)
+    for (const it of s.items) if (it.kind === 'hold' && !MOVES[it.id].active) expect(it.sec).toBeLessThanOrEqual(30)
   })
 
   it('makes week 4 an easy week', () => {
@@ -180,5 +182,85 @@ describe('consistency', () => {
     expect(sorenessDue({ log: [{ d: last }] })).toBeTruthy()
     expect(sorenessDue({ log: [{ d: last }], soreCheckedFor: last })).toBeNull()
     expect(sorenessDue({ log: [{ d: new Date().toISOString() }] })).toBeNull()
+  })
+})
+
+describe('review fixes', () => {
+  it('never leaves an area in the session without a move (shared moves)', () => {
+    for (const level of ['new', 'some', 'flexible']) {
+      for (const minutes of [15, 25, 40]) {
+        for (const goals of [['toe_touch'], ['splits', 'hips'], ['deep_squat', 'splits']]) {
+          const s = buildSession(plan({ goals, level, minutes }), { equipment: GYM })
+          for (const a of s.areas) expect(s.items.some((i) => i.area === a), `${goals} ${level} ${minutes}: ${a}`).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('never starts anyone on a heavy eccentric or loaded spinal rounding', () => {
+    for (const level of ['new', 'some', 'flexible']) {
+      for (const goals of [['toe_touch'], ['splits'], ['deep_squat']]) {
+        const s = buildSession(plan({ goals, level, minutes: 40 }), { equipment: GYM })
+        for (const it of s.items.filter((i) => i.main)) expect(MOVES[it.id].heavy || MOVES[it.id].flex, `${level}: ${it.id}`).toBeFalsy()
+      }
+    }
+  })
+
+  it('keeps heavy moves to twice a week, 48 h apart', () => {
+    const p = plan({ goals: ['toe_touch'], rungs: { hamstrings: 3 } })
+    const now = Date.now()
+    expect(buildSession(p, { equipment: GYM, now }).items.map((i) => i.id)).toContain('jefferson_curl')
+    const yesterday = { d: new Date(now - 20 * 3600e3).toISOString(), m: [['jefferson_curl', 5, 8, 'good']] }
+    expect(buildSession({ ...p, log: [yesterday] }, { equipment: GYM, now }).items.map((i) => i.id)).not.toContain('jefferson_curl')
+  })
+
+  it('removes pregnancy-unsafe moves and keeps holds gentle', () => {
+    for (const goals of [['splits'], ['overhead'], ['toe_touch'], ['hips']]) {
+      const s = buildSession(plan({ goals, flags: { pregnant: true }, minutes: 40 }), { equipment: GYM })
+      for (const it of s.items) {
+        expect(MOVES[it.id].noPregnancy || MOVES[it.id].heavy || MOVES[it.id].flex, it.id).toBeFalsy()
+        if (it.kind === 'hold' && !MOVES[it.id].active) expect(it.sec).toBeLessThanOrEqual(30)
+        expect(it.deeper).toBeFalsy()
+      }
+    }
+  })
+
+  it('treats strength holds as strength: own step and cap, no "go deeper"', () => {
+    let r = progressMove('hip_90_90_liftoff', { sec: 8, streak: 1 }, { feel: 'good' })
+    expect(r.state.sec).toBe(10)
+    r = progressMove('hip_90_90_liftoff', { sec: 10, streak: 1 }, { feel: 'good' })
+    expect(r.note).toBe('harder')
+    r = progressMove('copenhagen_hold', { sec: 30, streak: 1 }, { feel: 'good' })
+    expect(r.note).toBe('harder')
+    const s = buildSession(plan({ goals: ['hips'], minutes: 40 }), { equipment: GYM })
+    for (const it of s.items) if (MOVES[it.id].active) expect(it.deeper).toBeFalsy()
+  })
+
+  it('progresses depth first on range moves', () => {
+    let r = progressMove('cossack_squat', { reps: 6, streak: 1 }, { feel: 'good', more: true })
+    expect(r.note).toBe('deeper')
+    expect(r.state.reps).toBe(6)
+    r = progressMove('cossack_squat', { reps: 6, streak: 1 }, { feel: 'good', more: true, fullDepth: true })
+    expect(r.state.depth).toBe('full')
+    expect(r.state.reps).toBe(8)
+  })
+
+  it('uses small weight jumps on small moves and adds load to the Jefferson curl at most once a block', () => {
+    const r = progressMove('wrist_curl', { reps: 20, load: 10, streak: 1 }, { feel: 'good', more: true })
+    expect(r.state.load).toBe(12.5)
+    const first = progressMove('jefferson_curl', { reps: 8, load: 5, streak: 1 }, { feel: 'good', more: true }, { bodyweight: 200, block: 2 })
+    expect(first.state.load).toBe(10)
+    const again = progressMove('jefferson_curl', { ...first.state, reps: 8, streak: 1 }, { feel: 'good', more: true }, { bodyweight: 200, block: 2 })
+    expect(again.state.load).toBe(10)
+  })
+
+  it('a single "barely felt it" is not enough to progress reps', () => {
+    expect(progressMove('db_rdl', { reps: 8 }, { feel: 'easy', more: true }).note).toBeNull()
+  })
+
+  it('compares the baseline with the better of the last two check-ins', () => {
+    const e = (v) => ({ d: '2026-01-01', v })
+    expect(testProgress('toe_touch', [e(-4), e(0), e(-3)]).status).toBe('up')
+    expect(testProgress('straddle', [e(5), e(4)]).status).toBe('up') // one hand width counts
   })
 })

@@ -7,8 +7,11 @@ let wanted = false
 async function request() {
   try {
     if (typeof navigator === 'undefined' || !navigator.wakeLock) return
-    lock = await navigator.wakeLock.request('screen')
-    lock.addEventListener?.('release', () => { lock = null })
+    const l = await navigator.wakeLock.request('screen')
+    // Released (left the session) while the request was still pending.
+    if (!wanted) { l.release().catch(() => {}); return }
+    lock = l
+    l.addEventListener?.('release', () => { if (lock === l) lock = null })
   } catch {
     lock = null // battery saver, permissions, or unsupported — not an error
   }

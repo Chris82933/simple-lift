@@ -119,6 +119,8 @@ const SPECIALIST = new Set([
   'zercher_deadlift', 'zercher_good_morning', 'zercher_reverse_lunge', 'zercher_carry',
   'box_squat', 'pause_squat', 'pin_squat', 'overhead_squat', 'sissy_squat',
   'sumo_deadlift', 'deficit_deadlift', 'rack_pull', 'snatch_grip_deadlift', 'stiff_leg_deadlift',
+  // Strength-at-length moves from Mobility: great, but not a first program.
+  'deficit_pushup', 'nordic_curl', 'atg_split_squat', 'eccentric_heel_drop',
 ])
 
 // Pick the best exercise for a pattern, given focus/goals and prior usage.

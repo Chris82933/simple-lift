@@ -32,6 +32,13 @@ export default function Programs() {
   const mob = loadMobility()
 
   const refresh = () => force((n) => n + 1)
+  // Re-read when data changes elsewhere — e.g. Undo after removing Mobility
+  // from its own page lands here.
+  useEffect(() => {
+    const on = () => refresh()
+    window.addEventListener('sl-data-changed', on)
+    return () => window.removeEventListener('sl-data-changed', on)
+  }, [])
   // Today's "Plans → More" link lands on that card, not the top of the page.
   const location = useLocation()
   useEffect(() => {

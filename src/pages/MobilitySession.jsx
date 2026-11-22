@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { MOVES, AREA_BY_ID } from '../data/mobility.js'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 import {
-  buildSession, buildSteps, progressMove, blockInfo, sessionsThisWeek, NOTE_TEXT, LOAD_STEP,
+  buildSession, buildSteps, progressMove, blockInfo, sessionsThisWeek, NOTE_TEXT, loadStepFor, loadCap, planSignature,
 } from '../lib/mobility.js'
 import {
   loadMobility, updateMobility, loadSettings, loadMobilityActive, saveMobilityActive, clearMobilityActive, currentBodyweight,
@@ -26,7 +26,8 @@ function pnfPhase(elapsed, total) {
   const inCycle = elapsed % cycle
   const left = total - elapsed
   if (left <= 5) return { label: 'Relax and hold', push: false }
-  return inCycle < 5 ? { label: 'Push gently into the stretch… 30% effort', push: true } : { label: 'Relax and sink a little deeper', push: false }
+  // Contract-relax: tense the STRETCHED muscle against the stretch, then let go.
+  return inCycle < 5 ? { label: 'Gently push against the stretch — tense the stretched muscle, about 3 out of 10', push: true } : { label: 'Relax and ease a little deeper', push: false }
 }
 
 // Which phase of a paced rep we're in.
@@ -58,17 +59,18 @@ export default function MobilitySession() {
   const navigate = useNavigate()
   const units = loadSettings().units === 'kg' ? 'kg' : 'lbs'
   const soundOn = loadSettings().restSound !== false
-  const step0 = LOAD_STEP[units]
 
   // Build (or resume) the session once.
   const [run, setRun] = useState(() => {
-    const saved = loadMobilityActive()
-    if (saved?.steps?.length && Date.now() - (saved.startedAt || 0) < 12 * 3600e3) return saved
     const mob = loadMobility()
     if (!mob?.added) return null
+    const sig = planSignature(mob)
+    // Resume only the same plan (an edited plan starts fresh), within 12 h.
+    const saved = loadMobilityActive()
+    if (saved?.steps?.length && saved.sig === sig && Date.now() - (saved.startedAt || 0) < 12 * 3600e3) return saved
     const session = buildSession(mob, { state: mob.moves || {}, equipment: new Set(activeEquipmentIds()) })
     if (!session.items.length) return null
-    return { session, steps: buildSteps(session), index: 0, results: {}, startedAt: Date.now() }
+    return { session, steps: buildSteps(session), index: 0, results: {}, startedAt: Date.now(), sig, flags: mob.flags || {} }
   })
   const [now, setNow] = useState(Date.now())
   const [phaseStart, setPhaseStart] = useState(Date.now())
@@ -77,6 +79,8 @@ export default function MobilitySession() {
   const [tapReps, setTapReps] = useState(0) // self-paced counter
   const [confirm, setConfirm] = useState(null) // after a reps set: { reps, more }
   const [askSharp, setAskSharp] = useState(false)
+  const [askDepth, setAskDepth] = useState(null) // the feel picked, while asking about depth
+  const stageRef = useRef(null)
   const [summary, setSummary] = useState(null)
   const lastTick = useRef(-1)
 
@@ -95,13 +99,18 @@ export default function MobilitySession() {
   const move = item ? MOVES[item.id] : null
   const result = item ? run.results[step.item] || {} : {}
   const load = result.load ?? item?.load ?? 0
+  const step0 = item ? loadStepFor(item.id, units) : 5
+  const flags = run?.flags || {}
   const elapsed = Math.max(0, Math.floor(((paused || now) - phaseStart) / 1000))
 
   const go = (delta = 1) => {
     setRun((r) => ({ ...r, index: Math.min(r.steps.length - 1, Math.max(0, r.index + delta)) }))
-    setPhaseStart(Date.now()); setPaused(null); setSetGo(false); setTapReps(0); setConfirm(null); setAskSharp(false)
+    setPhaseStart(Date.now()); setPaused(null); setSetGo(false); setTapReps(0); setConfirm(null); setAskSharp(false); setAskDepth(null)
     lastTick.current = -1
   }
+  // Each new step: move focus to its heading so screen readers (and keyboard
+  // users) aren't left on a button that no longer exists.
+  useEffect(() => { stageRef.current?.querySelector('h1')?.focus?.() }, [run?.index, confirm, askSharp, askDepth])
   const setResult = (patch) => setRun((r) => ({ ...r, results: { ...r.results, [step.item]: { ...(r.results[step.item] || {}), ...patch } } }))
   const togglePause = () => {
     if (paused) { setPhaseStart((t) => t + (Date.now() - paused)); setPaused(null) } else setPaused(Date.now())
@@ -116,11 +125,11 @@ export default function MobilitySession() {
   useEffect(() => {
     if (!step || paused) return
     if (timed && elapsed >= total) {
-      if (step.kind === 'hold' || step.kind === 'pnf') chime(); else buzz(120)
+      if (step.kind === 'hold' || step.kind === 'pnf') { chime(); setResult({ done: true }) } else buzz(120)
       go(1)
       return
     }
-    // Count-in ticks before a hold, and the last 3 seconds of anything timed.
+    // Ticks for the last 3 seconds of anything timed, and a cue as a hold starts.
     const left = total - elapsed
     if (timed && left <= 3 && left > 0 && lastTick.current !== elapsed) { lastTick.current = elapsed; tick(false) }
     if ((step.kind === 'hold' || step.kind === 'pnf') && elapsed === ready && lastTick.current !== -2) { lastTick.current = -2; tick(true); buzz(80) }
@@ -140,26 +149,42 @@ export default function MobilitySession() {
 
   const finish = () => {
     const mob = loadMobility()
+    if (!mob) { clearMobilityActive(); navigate('/mobility'); return } // removed elsewhere
     const block = blockInfo(mob.startedAt)
     const bodyweight = currentBodyweight()
     const notes = {}
+    const cleared = []
+    const readyArea = { ...(mob.readyArea || {}) }
     const moves = { ...(mob.moves || {}) }
     const avoid = [...(mob.avoid || [])]
     const logged = []
     run.session.items.forEach((it, i) => {
       const r = run.results[i]
-      if (!r?.feel) return // skipped
-      const { state, note, remove } = progressMove(it.id, { ...(moves[it.id] || {}), reps: moves[it.id]?.reps ?? (it.kind === 'reps' ? it.reps : undefined), sec: moves[it.id]?.sec ?? (it.kind === 'hold' ? it.sec : undefined) }, { feel: r.feel, sharp: r.sharp, more: r.more, load: r.load }, { easyWeek: block.easy, units, bodyweight, block: block.block, bendy: !!mob.flags?.bendy })
+      // Skipped (no sets done, or "skipped it"): nothing changes for this move.
+      if (!r?.feel || r.skipped || !r.done) return
+      const { state, note, remove } = progressMove(it.id, { ...(moves[it.id] || {}), reps: moves[it.id]?.reps ?? (it.kind === 'reps' ? it.reps : undefined), sec: moves[it.id]?.sec ?? (it.kind === 'hold' ? it.sec : undefined) }, { feel: r.feel, sharp: r.sharp, more: r.more, fullDepth: r.fullDepth, load: r.load ?? it.load }, { easyWeek: block.easy, units, bodyweight, block: block.block, flags: mob.flags || {} })
       moves[it.id] = state
-      if (note) notes[it.id] = note
+      // "Ready for the next level" only for an area's main move — the extra
+      // one is already a preview of the next rung.
+      const n = note === 'ready_next' && !it.main ? null : note
+      if (n) notes[it.id] = n
+      else cleared.push(it.id)
+      if (n === 'ready_next') readyArea[it.id] = it.area
       if (remove && !avoid.includes(it.id)) avoid.push(it.id)
-      logged.push([it.id, Number(r.load) || 0, it.kind === 'hold' ? it.sec : (r.reps || it.reps), r.feel])
+      logged.push([it.id, Number(r.load ?? it.load) || 0, it.kind === 'hold' ? it.sec : (r.reps ?? it.reps), r.feel])
     })
-    const entry = { d: new Date().toISOString(), a: run.session.areas, min: Math.max(1, Math.round((Date.now() - run.startedAt) / 60000)), m: logged }
-    updateMobility((m) => ({
-      ...m, moves, avoid, notes: { ...(m.notes || {}), ...notes },
-      log: [...(m.log || []), entry], pointer: (m.pointer || 0) + 1,
-    }))
+    // Active minutes, not wall-clock: a session resumed hours later shouldn't
+    // log as an eight-hour session.
+    const wall = Math.round((Date.now() - run.startedAt) / 60000)
+    const entry = { d: new Date().toISOString(), a: run.session.areas, min: Math.max(1, Math.min(wall, Math.round((run.session.minutes || 30) * 1.5))), m: logged }
+    updateMobility((m) => {
+      const allNotes = { ...(m.notes || {}) }
+      for (const id of cleared) if (allNotes[id] !== 'ready_next') delete allNotes[id]
+      return {
+        ...m, moves, avoid, readyArea, notes: { ...allNotes, ...notes },
+        log: [...(m.log || []), entry], pointer: (m.pointer || 0) + 1,
+      }
+    })
     clearMobilityActive()
     const after = loadMobility()
     setSummary({ notes, min: entry.min, week: sessionsThisWeek(after.log || []), perWeek: after.perWeek || 3, moves: logged.length })
@@ -168,7 +193,7 @@ export default function MobilitySession() {
   if (!run) {
     return (
       <section className="page full-flow mobility">
-        <header className="page-header"><h1>Nothing to do yet</h1></header>
+        <header className="page-header"><h1 tabIndex={-1}>Nothing to do yet</h1></header>
         <p className="muted">Set up Mobility first, or check your equipment — nothing in your plan fits it.</p>
         <div className="flow-actions"><button type="button" className="btn btn-primary" onClick={() => navigate('/mobility')}>Open Mobility</button></div>
       </section>
@@ -180,7 +205,7 @@ export default function MobilitySession() {
       <section className="page full-flow mobility">
         <header className="page-header">
           <p className="eyebrow">Mobility</p>
-          <h1>Session done</h1>
+          <h1 tabIndex={-1}>Session done</h1>
         </header>
         <div className="step-body">
           <p className="muted">{summary.min} min · {summary.moves} moves · {summary.week} of {summary.perWeek} this week</p>
@@ -217,7 +242,14 @@ export default function MobilitySession() {
       <div className="rest-stepper">
         <button type="button" onClick={() => setResult({ load: Math.max(0, Number(load) - step0) })} aria-label="Less weight">–</button>
         <span className="mob-step-val">{Number(load) > 0 ? `${load} ${units}` : move.loadable === 'required' ? 'Pick one' : 'None'}</span>
-        <button type="button" onClick={() => setResult({ load: Number(load) + step0 })} aria-label="More weight">+</button>
+        <button
+          type="button"
+          onClick={() => {
+            const cap = loadCap(item.id, { bodyweight: currentBodyweight(), units, block: blockInfo(loadMobility()?.startedAt).block })
+            setResult({ load: Math.min(cap, Number(load) + step0) })
+          }}
+          aria-label="More weight"
+        >+</button>
       </div>
     </div>
   )
@@ -226,7 +258,7 @@ export default function MobilitySession() {
   if (step.kind === 'warmup') {
     body = (
       <>
-        <h1>Warm up</h1>
+        <h1 tabIndex={-1}>Warm up</h1>
         <Ring frac={elapsed / total}><span className="mob-big">{fmt(total - elapsed)}</span></Ring>
         <ul className="why-list">
           <li>March or jog on the spot — 1 minute</li>
@@ -241,14 +273,14 @@ export default function MobilitySession() {
     body = (
       <>
         <p className="eyebrow">{ex?.name}</p>
-        <h1>Switch to the {step.to === 'R' ? 'right' : 'left'} side</h1>
+        <h1 tabIndex={-1}>Switch to the {step.to === 'R' ? 'right' : 'left'} side</h1>
         <Ring frac={elapsed / total}><span className="mob-big">{total - elapsed}</span></Ring>
       </>
     )
   } else if (step.kind === 'rest') {
     body = (
       <>
-        <h1>Rest</h1>
+        <h1 tabIndex={-1}>Rest</h1>
         <Ring frac={elapsed / total}><span className="mob-big">{fmt(total - elapsed)}</span></Ring>
         <p className="muted">Next: {ex?.name} — set {(run.steps[run.index + 1]?.set) || ''}</p>
       </>
@@ -256,20 +288,30 @@ export default function MobilitySession() {
   } else if (step.kind === 'hold' || step.kind === 'pnf') {
     const inReady = elapsed < ready
     const holdLeft = total - elapsed
-    const breath = reducedMotion() ? 'Breathe slowly' : (Math.floor((elapsed - ready) / 5) % 2 === 0 ? 'Breathe in…' : 'Breathe out — sink a little deeper')
+    const active = !!move?.active
+    const breath = active ? 'Strong and steady — keep good position'
+      : reducedMotion() ? 'Breathe slowly' : (Math.floor((elapsed - ready) / 5) % 2 === 0 ? 'Breathe in…' : 'Breathe out — sink a little deeper')
+    // Very bendy: an ACTIVE hang (shoulders gently pulled down), not a passive one.
+    const cueText = flags.bendy && item?.id === 'dead_hang' ? 'Hang with straight arms and keep your shoulders gently pulled down, away from your ears — an active hang. Breathe.' : ex?.cues
     const pnf = step.kind === 'pnf' && !inReady ? pnfPhase(elapsed - ready, step.sec) : null
     body = (
       <>
         <p className="eyebrow">{step.side ? `${SIDE_WORD[step.side]} · ` : ''}Set {step.set} of {step.of}</p>
-        <div className="mob-title-row"><h1>{ex?.name}</h1><FormCheckButton name={ex?.name} /></div>
+        <div className="mob-title-row"><h1 tabIndex={-1}>{ex?.name}</h1><FormCheckButton name={ex?.name} /></div>
         <Ring frac={inReady ? elapsed / ready : (elapsed - ready) / step.sec}>
           {inReady ? <><span className="mob-mid">Get in position</span><span className="mob-big">{ready - elapsed}</span></>
             : <span className="mob-big" aria-live="off">{fmt(holdLeft)}</span>}
         </Ring>
-        <p className={'mob-cue' + (pnf?.push ? ' is-push' : '')} aria-live="polite">
-          {inReady ? ex?.cues : pnf ? pnf.label : breath}
+        <p className={'mob-cue' + (pnf?.push ? ' is-push' : '')} aria-live={pnf ? 'polite' : 'off'}>
+          {inReady ? cueText : pnf ? pnf.label : breath}
         </p>
-        {!inReady && <p className="muted small">A strong stretch — about 6 out of 10. Never sharp, pinching or tingling.</p>}
+        {!inReady && (
+          <p className="muted small">
+            {active ? 'Hard work, about 7 out of 10 — stop before your position breaks.'
+              : flags.pregnant ? 'A gentle stretch — about 4 out of 10. Never sharp, pinching or tingling.'
+                : 'A strong stretch — about 6 out of 10. Never sharp, pinching or tingling.'}
+          </p>
+        )}
         {loadStepper}
       </>
     )
@@ -278,7 +320,7 @@ export default function MobilitySession() {
       body = (
         <>
           <p className="eyebrow">{step.side ? `${SIDE_WORD[step.side]} · ` : ''}Set {step.set} of {step.of}</p>
-          <h1>{ex?.name}</h1>
+          <h1 tabIndex={-1}>{ex?.name}</h1>
           <div className="mob-load" role="group" aria-label="Reps done">
             <span className="muted small">Reps done</span>
             <div className="rest-stepper">
@@ -291,8 +333,8 @@ export default function MobilitySession() {
           <p className="choice-title">Could you do 2 more with good form?</p>
           <div className="mob-feel">
             {/* One "no" in any set means it isn't time to progress this move. */}
-            <button type="button" className="btn btn-ghost" onClick={() => { setResult({ more: false, reps: confirm.reps }); go(1) }}>No</button>
-            <button type="button" className="btn btn-primary" onClick={() => { setResult({ more: result.more !== false, reps: confirm.reps }); go(1) }}>Yes</button>
+            <button type="button" className="btn btn-ghost" onClick={() => { setResult({ more: false, reps: confirm.reps, done: result.done || confirm.reps > 0 }); go(1) }}>No</button>
+            <button type="button" className="btn btn-primary" onClick={() => { setResult({ more: result.more !== false, reps: confirm.reps, done: result.done || confirm.reps > 0 }); go(1) }}>Yes</button>
           </div>
         </>
       )
@@ -300,9 +342,9 @@ export default function MobilitySession() {
       body = (
         <>
           <p className="eyebrow">{step.side ? `${SIDE_WORD[step.side]} · ` : ''}Set {step.set} of {step.of}</p>
-          <div className="mob-title-row"><h1>{ex?.name}</h1><FormCheckButton name={ex?.name} /></div>
+          <div className="mob-title-row"><h1 tabIndex={-1}>{ex?.name}</h1><FormCheckButton name={ex?.name} /></div>
           <p className="muted">{ex?.cues}</p>
-          <button type="button" className="mob-tap" onClick={() => { setTapReps((n) => n + 1); buzz(40) }} aria-label="Count a rep">
+          <button type="button" className="mob-tap" onClick={() => { setTapReps((n) => n + 1); buzz(40) }} aria-label={`Count a rep, ${tapReps} of ${step.reps} so far`}>
             <span className="mob-big">{tapReps}</span>
             <span className="muted small">of {step.reps} · tap after each rep</span>
           </button>
@@ -313,7 +355,7 @@ export default function MobilitySession() {
       body = (
         <>
           <p className="eyebrow">{step.side ? `${SIDE_WORD[step.side]} · ` : ''}Set {step.set} of {step.of}</p>
-          <div className="mob-title-row"><h1>{ex?.name}</h1><FormCheckButton name={ex?.name} /></div>
+          <div className="mob-title-row"><h1 tabIndex={-1}>{ex?.name}</h1><FormCheckButton name={ex?.name} /></div>
           <MuscleMap pattern={ex?.pattern} exId={ex?.id} size={110} />
           <p className="muted">{ex?.cues}</p>
           <p className="choice-title">{step.reps} slow reps — we&apos;ll count the pace for you.</p>
@@ -325,7 +367,7 @@ export default function MobilitySession() {
       body = (
         <>
           <p className="eyebrow">{step.side ? `${SIDE_WORD[step.side]} · ` : ''}Set {step.set} of {step.of}</p>
-          <h1>{ex?.name}</h1>
+          <h1 tabIndex={-1}>{ex?.name}</h1>
           <div className="mob-reps" aria-live="polite">
             <span className="mob-big">{Math.min(p.rep + 1, step.reps)}<span className="mob-of"> / {step.reps}</span></span>
           </div>
@@ -338,36 +380,51 @@ export default function MobilitySession() {
       )
     }
   } else if (step.kind === 'feel') {
-    body = askSharp ? (
+    const pickFeel = (feel) => {
+      // Range moves: once it feels right, is the full depth under control?
+      if (move?.range && feel !== 'much') { setAskDepth(feel); return }
+      setResult({ feel, sharp: false, skipped: false }); go(1)
+    }
+    body = askDepth ? (
       <>
-        <h1>Was it sharp, pinching or tingling?</h1>
+        <h1 tabIndex={-1}>Reaching full depth with control?</h1>
+        <p className="muted">The deepest position you can own, slowly, without bouncing — that comes before more reps or weight.</p>
+        <div className="mob-feel">
+          <button type="button" className="btn btn-ghost" onClick={() => { setResult({ feel: askDepth, sharp: false, skipped: false, fullDepth: false }); go(1) }}>Not yet</button>
+          <button type="button" className="btn btn-primary" onClick={() => { setResult({ feel: askDepth, sharp: false, skipped: false, fullDepth: true }); go(1) }}>Yes</button>
+        </div>
+      </>
+    ) : askSharp ? (
+      <>
+        <h1 tabIndex={-1}>Was it sharp, pinching or tingling?</h1>
         <p className="muted">That&apos;s different from a strong stretch. If yes, we&apos;ll take {ex?.name} out of your plan and use another move.</p>
         <div className="mob-feel">
-          <button type="button" className="btn btn-ghost" onClick={() => { setResult({ feel: 'much' }); go(1) }}>No, just intense</button>
-          <button type="button" className="btn btn-primary danger" onClick={() => { setResult({ feel: 'much', sharp: true }); go(1) }}>Yes</button>
+          <button type="button" className="btn btn-ghost" onClick={() => { setResult({ feel: 'much', sharp: false, skipped: false }); go(1) }}>No, just intense</button>
+          <button type="button" className="btn btn-primary danger" onClick={() => { setResult({ feel: 'much', sharp: true, skipped: false }); go(1) }}>Yes</button>
         </div>
       </>
     ) : (
       <>
         <p className="eyebrow">{AREA_BY_ID[item?.area]?.label}</p>
-        <h1>How did {ex?.name} feel?</h1>
+        <h1 tabIndex={-1}>How did {ex?.name} feel?</h1>
         <div className="mob-feel-col">
-          <button type="button" className="choice-row" onClick={() => { setResult({ feel: 'easy' }); go(1) }}>
+          <button type="button" className="choice-row" onClick={() => pickFeel('easy')}>
             <span className="choice-title">Barely felt it</span><span className="muted small">Easy — ready for more</span>
           </button>
-          <button type="button" className="choice-row" onClick={() => { setResult({ feel: 'good' }); go(1) }}>
+          <button type="button" className="choice-row" onClick={() => pickFeel('good')}>
             <span className="choice-title">Good stretch</span><span className="muted small">Strong but fine — the target</span>
           </button>
           <button type="button" className="choice-row" onClick={() => setAskSharp(true)}>
             <span className="choice-title">Too much</span><span className="muted small">Over the line, or it hurt</span>
           </button>
+          <button type="button" className="link-btn" onClick={() => { setResult({ feel: 'skip', skipped: true, sharp: false }); go(1) }}>I skipped this one</button>
         </div>
       </>
     )
   } else if (step.kind === 'done') {
     body = (
       <>
-        <h1>That&apos;s everything</h1>
+        <h1 tabIndex={-1}>That&apos;s everything</h1>
         <p className="muted">Nice work. Save the session to see what changes next time.</p>
       </>
     )
@@ -379,7 +436,7 @@ export default function MobilitySession() {
   else if (step.kind === 'feel') actions = null
   else if (step.kind === 'reps' && confirm) actions = null
   else if (step.kind === 'reps' && !step.tempo) {
-    actions = <button type="button" className="btn btn-primary" onClick={() => setConfirm({ reps: tapReps || step.reps, more: null })}>Done</button>
+    actions = <button type="button" className="btn btn-primary" onClick={() => setConfirm({ reps: tapReps, more: null })}>Done</button>
   } else if (step.kind === 'reps' && !setGo) {
     actions = <button type="button" className="btn btn-primary" onClick={() => { setSetGo(true); setPhaseStart(Date.now()); lastTick.current = -1 }}>Start set</button>
   } else if (step.kind === 'reps') {
@@ -388,7 +445,7 @@ export default function MobilitySession() {
     actions = (
       <>
         <button type="button" className="btn btn-ghost" onClick={togglePause}>{paused ? 'Resume' : 'Pause'}</button>
-        <button type="button" className="btn btn-ghost" onClick={() => go(1)}>{step.kind === 'warmup' ? 'Skip warm-up' : step.kind === 'rest' || step.kind === 'switch' ? 'Skip' : 'Done'}</button>
+        <button type="button" className="btn btn-ghost" onClick={() => { if (step.kind === 'hold' || step.kind === 'pnf') setResult({ done: true }); go(1) }}>{step.kind === 'warmup' ? 'Skip warm-up' : step.kind === 'rest' || step.kind === 'switch' ? 'Skip' : 'Done'}</button>
       </>
     )
   }
@@ -400,7 +457,7 @@ export default function MobilitySession() {
         <div className="progress-track" aria-hidden="true"><div className="progress-fill" style={{ width: `${Math.round(progressFrac * 100)}%` }} /></div>
         {run.index > 0 && step.kind !== 'done' ? <button type="button" className="link-btn" onClick={() => go(-1)}>Back</button> : <span />}
       </div>
-      <div className="step-body mob-stage">
+      <div className="step-body mob-stage" ref={stageRef}>
         {body}
         {nextMove && step.kind !== 'feel' && step.kind !== 'done' && <p className="muted small mob-upnext">Up next: {nextMove}</p>}
       </div>

@@ -79,6 +79,14 @@ function convertProgramWeights(program, from, to) {
   return next
 }
 
+// Mobility keeps per-move weights and a session log inside settings.
+function convertMobilityWeights(mob, from, to) {
+  const conv = (w) => (Number(w) > 0 ? convertWeight(w, from, to, to === 'kg' ? 1 : 2.5) : w)
+  const moves = Object.fromEntries(Object.entries(mob.moves || {}).map(([id, st]) => [id, { ...st, load: conv(st?.load) }]))
+  const log = (mob.log || []).map((l) => ({ ...l, m: (l.m || []).map(([id, load, ...rest]) => [id, conv(load), ...rest]) }))
+  return { ...mob, moves, log }
+}
+
 // Converts every stored weight in one pass: programs, saved 1RMs, the
 // bodyweight log, and past workout history (so Progress charts stay
 // coherent). Uses only storage.js's existing exported API — no new storage
@@ -215,7 +223,10 @@ export default function Profile() {
       onConfirm: () => {
         setConfirmModal(null)
         convertStoredWeights(from, units)
-        const next = { ...settings, units }
+        // Read settings fresh (sync may have changed them since this page
+        // opened) and convert Mobility's weights with everything else.
+        const fresh = loadSettings()
+        const next = { ...fresh, units, ...(fresh.mobility ? { mobility: convertMobilityWeights(fresh.mobility, from, units) } : {}) }
         setSettings(next)
         saveSettings(next)
       },

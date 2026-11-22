@@ -315,3 +315,4 @@ h2.bone-q { font-size: var(--fs-sm); line-height: 1.35; text-transform: none; le
 @media (prefers-reduced-motion: reduce) {
   .mob-ring-fill, .mob-phase-bar span { transition: none; }
 }
+.mob-warn { color: color-mix(in srgb, var(--accent-2) 70%, var(--text)); }

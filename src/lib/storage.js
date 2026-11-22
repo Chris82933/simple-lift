@@ -153,8 +153,9 @@ export function updateMobility(fn) {
 export const isMobilityAdded = () => !!loadMobility()?.added
 export function removeMobility() {
   // Keep the history and tests (re-adding picks up where it left off); just
-  // take it out of Plans and Today.
+  // take it out of Plans and Today. A half-done session goes with it.
   updateMobility((m) => ({ ...m, added: false }))
+  clearMobilityActive()
 }
 
 // The session in progress (device-only, like the workout one: never synced).
