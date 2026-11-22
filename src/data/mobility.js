@@ -16,6 +16,8 @@
 // How a move is done in a session.
 //   kind: 'reps' (slow, paced reps) | 'hold' (timed)
 //   tempo: seconds lowering / pause in the stretch / rising — the player paces it
+//   phases: what to call those three parts when 'lower / hold / up' doesn't fit
+//   loadHint: what weight to start with
 //   paced: false → self-paced (a Nordic can't be metronomed)
 //   perSide: done left then right
 //   loadable: 'none' | 'optional' | 'required' — whether a weight belongs in it
@@ -35,14 +37,14 @@ const h = (sets, sec) => ({ sets, sec })
 
 export const MOVES = {
   // Back of the legs
-  elephant_walk: { kind: 'reps', range: true, tempo: { down: 2, pause: 1, up: 1 }, loadable: 'none', dose: { new: r(2, 10), some: r(2, 12), flexible: r(2, 12) } },
+  elephant_walk: { kind: 'reps', range: true, phases: ['Straighten one knee', 'Feel the stretch', 'Switch legs'], tempo: { down: 2, pause: 1, up: 1 }, loadable: 'none', dose: { new: r(2, 10), some: r(2, 12), flexible: r(2, 12) } },
   seated_pike_pulse: { kind: 'hold', boneNoLoad: true, loadable: 'optional', dose: { new: h(2, 30), some: h(3, 45), flexible: h(2, 30) } },
-  db_rdl: { kind: 'reps', repsCap: 12, tempo: T4, loadable: 'required', dose: { new: r(2, 8), some: r(3, 8), flexible: r(3, 8) } },
-  jefferson_curl: { kind: 'reps', repsCap: 8, loadOncePerBlock: true, tempo: { down: 5, pause: 1, up: 5 }, loadable: 'required', flex: true, heavy: true, dose: { new: r(2, 6), some: r(2, 8), flexible: r(3, 8) } },
+  db_rdl: { kind: 'reps', repsCap: 12, loadHint: { lbs: 'Per dumbbell. Start with 10–20 lb.', kg: 'Per dumbbell. Start with 5–8 kg.' }, tempo: T4, loadable: 'required', dose: { new: r(2, 8), some: r(3, 8), flexible: r(3, 8) } },
+  jefferson_curl: { kind: 'reps', repsCap: 8, loadOncePerBlock: true, phases: ['Roll down', 'Hang', 'Roll up'], loadHint: { lbs: 'Start very light: 5–10 lb.', kg: 'Start very light: 2–5 kg.' }, tempo: { down: 5, pause: 1, up: 5 }, loadable: 'required', flex: true, heavy: true, dose: { new: r(2, 6), some: r(2, 8), flexible: r(3, 8) } },
   nordic_curl: { kind: 'reps', repsCap: 6, after: 'harder', paced: false, loadable: 'none', heavy: true, dose: { new: r(2, 3), some: r(2, 4), flexible: r(3, 5) } },
   // Inner thighs & hips
-  frog_stretch_rock: { kind: 'reps', range: true, tempo: { down: 3, pause: 2, up: 1 }, loadable: 'none', dose: { new: r(2, 10), some: r(2, 12), flexible: r(2, 12) } },
-  cossack_squat: { kind: 'reps', range: true, tempo: T3, perSide: true, loadable: 'optional', dose: { new: r(2, 5), some: r(3, 6), flexible: r(3, 8) } },
+  frog_stretch_rock: { kind: 'reps', range: true, phases: ['Rock back', 'Feel the stretch', 'Rock forward'], tempo: { down: 3, pause: 2, up: 1 }, loadable: 'none', dose: { new: r(2, 10), some: r(2, 12), flexible: r(2, 12) } },
+  cossack_squat: { kind: 'reps', range: true, phases: ['Sit into one side', 'Hold the bottom', 'Back to the middle'], tempo: T3, perSide: true, loadable: 'optional', dose: { new: r(2, 5), some: r(3, 6), flexible: r(3, 8) } },
   copenhagen_hold: { kind: 'hold', active: true, holdStep: 5, holdCap: 30, after: 'harder', noPregnancy: true, perSide: true, loadable: 'none', dose: { new: h(2, 15), some: h(3, 20), flexible: h(3, 30) } },
   pancake_good_morning: { kind: 'reps', range: true, noPregnancy: true, tempo: T4, loadable: 'optional', dose: { new: r(2, 8), some: r(3, 8), flexible: r(3, 10) } },
   // Front of the hips & quads
@@ -51,15 +53,15 @@ export const MOVES = {
   atg_split_squat: { kind: 'reps', range: true, tempo: T3, perSide: true, loadable: 'optional', dose: { new: r(2, 6), some: r(3, 8), flexible: r(3, 8) } },
   reverse_nordic: { kind: 'reps', range: true, repsCap: 8, tempo: { down: 4, pause: 1, up: 2 }, loadable: 'optional', heavy: true, dose: { new: r(2, 5), some: r(3, 6), flexible: r(3, 8) } },
   // Calves & ankles
-  tibialis_raise: { kind: 'reps', smallLoad: true, repsCap: 25, tempo: { down: 2, pause: 1, up: 1 }, loadable: 'optional', dose: { new: r(2, 15), some: r(2, 20), flexible: r(3, 20) } },
-  eccentric_heel_drop: { kind: 'reps', repsCap: 20, tempo: { down: 3, pause: 2, up: 1 }, perSide: true, loadable: 'optional', dose: { new: r(2, 12), some: r(3, 12), flexible: r(3, 15) } },
-  loaded_ankle_rocker: { kind: 'reps', tempo: { down: 2, pause: 2, up: 1 }, perSide: true, loadable: 'required', dose: { new: r(2, 10), some: r(3, 10), flexible: r(3, 12) } },
-  patrick_step: { kind: 'reps', range: true, repsCap: 20, tempo: T3, perSide: true, loadable: 'optional', dose: { new: r(2, 10), some: r(3, 12), flexible: r(3, 15) } },
+  tibialis_raise: { kind: 'reps', smallLoad: true, repsCap: 25, phases: ['Toes up', 'Squeeze', 'Lower'], tempo: { down: 2, pause: 1, up: 1 }, loadable: 'optional', dose: { new: r(2, 15), some: r(2, 20), flexible: r(3, 20) } },
+  eccentric_heel_drop: { kind: 'reps', repsCap: 20, phases: ['Lower the heel', 'Hold the stretch', 'Rise on both feet'], tempo: { down: 3, pause: 2, up: 1 }, perSide: true, loadable: 'optional', dose: { new: r(2, 12), some: r(3, 12), flexible: r(3, 15) } },
+  loaded_ankle_rocker: { kind: 'reps', phases: ['Knee forward', 'Hold, heel down', 'Ease back'], loadHint: { lbs: 'A dumbbell on the knee: 15–25 lb.', kg: 'A dumbbell on the knee: 7–12 kg.' }, tempo: { down: 2, pause: 2, up: 1 }, perSide: true, loadable: 'required', dose: { new: r(2, 10), some: r(3, 10), flexible: r(3, 12) } },
+  patrick_step: { kind: 'reps', range: true, repsCap: 20, phases: ['Knee forward, tap the heel', 'Pause', 'Stand up'], tempo: T3, perSide: true, loadable: 'optional', dose: { new: r(2, 10), some: r(3, 12), flexible: r(3, 15) } },
   deep_squat_hold: { kind: 'hold', loadable: 'optional', dose: { new: h(2, 30), some: h(3, 45), flexible: h(2, 30) } },
   // Shoulders overhead
-  scap_wall_slide: { kind: 'reps', tempo: { down: 3, pause: 1, up: 2 }, loadable: 'none', dose: { new: r(2, 10), some: r(2, 12), flexible: r(2, 12) } },
+  scap_wall_slide: { kind: 'reps', phases: ['Slide up', 'Hold', 'Slide down'], tempo: { down: 3, pause: 1, up: 2 }, loadable: 'none', dose: { new: r(2, 10), some: r(2, 12), flexible: r(2, 12) } },
   dead_hang: { kind: 'hold', active: true, holdStep: 10, holdCap: 60, loadable: 'optional', dose: { new: h(3, 20), some: h(3, 40), flexible: h(3, 30) } },
-  lat_stretch_db_pullover: { kind: 'reps', smallLoad: true, noPregnancy: true, tempo: T4, loadable: 'required', dose: { new: r(2, 10), some: r(3, 10), flexible: r(3, 10) } },
+  lat_stretch_db_pullover: { kind: 'reps', smallLoad: true, noPregnancy: true, loadHint: { lbs: 'One dumbbell, 10–20 lb.', kg: 'One dumbbell, 5–8 kg.' }, tempo: T4, loadable: 'required', dose: { new: r(2, 10), some: r(3, 10), flexible: r(3, 10) } },
   overhead_squat: { kind: 'reps', tempo: T3, loadable: 'optional', dose: { new: r(2, 5), some: r(3, 5), flexible: r(3, 5) } },
   // Chest & front of shoulders
   doorway_pec_stretch: { kind: 'hold', perSide: true, loadable: 'none', dose: { new: h(2, 30), some: h(3, 45), flexible: h(2, 30) } },
@@ -67,23 +69,23 @@ export const MOVES = {
   deficit_pushup: { kind: 'reps', range: true, tempo: { down: 3, pause: 1, up: 1 }, loadable: 'optional', dose: { new: r(2, 6), some: r(3, 8), flexible: r(3, 12) } },
   cable_fly: { kind: 'reps', tempo: T4, loadable: 'required', dose: { new: r(2, 10), some: r(3, 10), flexible: r(3, 12) } },
   // Upper back twist
-  open_book: { kind: 'reps', tempo: { down: 2, pause: 3, up: 2 }, perSide: true, loadable: 'none', dose: { new: r(2, 8), some: r(2, 10), flexible: r(2, 10) } },
-  bench_t_spine_extension: { kind: 'reps', tempo: { down: 2, pause: 3, up: 1 }, loadable: 'none', dose: { new: r(2, 8), some: r(3, 8), flexible: r(3, 10) } },
+  open_book: { kind: 'reps', phases: ['Open up', 'Hold it open', 'Close'], tempo: { down: 2, pause: 3, up: 2 }, perSide: true, loadable: 'none', dose: { new: r(2, 8), some: r(2, 10), flexible: r(2, 10) } },
+  bench_t_spine_extension: { kind: 'reps', phases: ['Sink the chest', 'Hold', 'Come up'], tempo: { down: 2, pause: 3, up: 1 }, loadable: 'none', dose: { new: r(2, 8), some: r(3, 8), flexible: r(3, 10) } },
   kb_windmill: { kind: 'reps', noBone: true, tempo: T3, perSide: true, loadable: 'required', dose: { new: r(2, 5), some: r(3, 5), flexible: r(3, 6) } },
   // Spine & lower back
-  cat_cow_segmental: { kind: 'reps', tempo: { down: 3, pause: 1, up: 3 }, loadable: 'none', dose: { new: r(2, 8), some: r(2, 8), flexible: r(2, 8) } },
+  cat_cow_segmental: { kind: 'reps', phases: ['Round up', 'Pause', 'Arch down'], tempo: { down: 3, pause: 1, up: 3 }, loadable: 'none', dose: { new: r(2, 8), some: r(2, 8), flexible: r(2, 8) } },
   back_extension: { kind: 'reps', noPregnancy: true, tempo: T3, loadable: 'optional', dose: { new: r(2, 10), some: r(3, 12), flexible: r(3, 12) } },
   // Wrists & forearms
   wrist_flexor_stretch: { kind: 'hold', perSide: true, loadable: 'none', dose: { new: h(2, 30), some: h(2, 30), flexible: h(2, 30) } },
   wrist_extensor_stretch: { kind: 'hold', perSide: true, loadable: 'none', dose: { new: h(2, 30), some: h(2, 30), flexible: h(2, 30) } },
-  loaded_wrist_extension_rock: { kind: 'reps', tempo: { down: 2, pause: 2, up: 1 }, loadable: 'none', dose: { new: r(2, 10), some: r(3, 10), flexible: r(3, 12) } },
-  wrist_curl: { kind: 'reps', smallLoad: true, repsCap: 20, tempo: T3, loadable: 'required', dose: { new: r(2, 15), some: r(3, 12), flexible: r(3, 15) } },
+  loaded_wrist_extension_rock: { kind: 'reps', phases: ['Rock forward', 'Hold', 'Rock back'], tempo: { down: 2, pause: 2, up: 1 }, loadable: 'none', dose: { new: r(2, 10), some: r(3, 10), flexible: r(3, 12) } },
+  wrist_curl: { kind: 'reps', smallLoad: true, repsCap: 20, loadHint: { lbs: 'Per dumbbell. Start with 5–10 lb.', kg: 'Per dumbbell. Start with 2–4 kg.' }, tempo: T3, loadable: 'required', dose: { new: r(2, 15), some: r(3, 12), flexible: r(3, 15) } },
   eccentric_wrist_extension: { kind: 'reps', smallLoad: true, repsCap: 20, tempo: { down: 4, pause: 0, up: 1 }, loadable: 'required', dose: { new: r(2, 12), some: r(3, 12), flexible: r(3, 15) } },
   // Hip rotation
-  hip_90_90_switch: { kind: 'reps', tempo: { down: 2, pause: 1, up: 2 }, loadable: 'none', dose: { new: r(2, 6), some: r(3, 8), flexible: r(3, 10) } },
+  hip_90_90_switch: { kind: 'reps', phases: ['Rotate over', 'Settle tall', 'Rotate back'], tempo: { down: 2, pause: 1, up: 2 }, loadable: 'none', dose: { new: r(2, 6), some: r(3, 8), flexible: r(3, 10) } },
   hip_90_90_liftoff: { kind: 'hold', active: true, holdStep: 2, holdCap: 10, after: 'harder', perSide: true, loadable: 'none', dose: { new: h(2, 5), some: h(3, 8), flexible: h(3, 10) } },
   // Neck (never loaded)
-  chin_tuck: { kind: 'reps', tempo: { down: 2, pause: 3, up: 1 }, loadable: 'none', dose: { new: r(2, 10), some: r(2, 10), flexible: r(2, 10) } },
+  chin_tuck: { kind: 'reps', phases: ['Tuck the chin', 'Hold', 'Release'], tempo: { down: 2, pause: 3, up: 1 }, loadable: 'none', dose: { new: r(2, 10), some: r(2, 10), flexible: r(2, 10) } },
   upper_trap_stretch: { kind: 'hold', perSide: true, loadable: 'none', dose: { new: h(2, 20), some: h(2, 30), flexible: h(2, 20) } },
 }
 
@@ -182,6 +184,7 @@ export const SAFETY_QUESTIONS = [
 // How time maps to work. More time = more areas fit, more sets, a deeper
 // finish on the holds — never longer single holds than are useful.
 export const TIME_OPTIONS = [
+  { min: 10, label: '10 min', areas: 1, sets: 2, third: false, deeper: false },
   { min: 15, label: '15 min', areas: 2, sets: 2, third: false, deeper: false },
   { min: 25, label: '25 min', areas: 3, sets: 2, third: true, deeper: false },
   { min: 40, label: '40 min', areas: 4, sets: 3, third: true, deeper: true },

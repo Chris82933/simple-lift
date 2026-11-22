@@ -4,7 +4,7 @@ import { EXERCISE_BY_ID, exMeasure } from '../data/exercises.js'
 import { ALL_EQUIPMENT_IDS } from './equipment.js'
 import {
   areasFor, areasThisSession, buildSession, buildSteps, progressMove, blockInfo, testsFor,
-  testProgress, asymmetry, allowedMove, loadCap, sessionsThisWeek, weekStreak, sorenessDue, doseFor,
+  testProgress, asymmetry, allowedMove, loadCap, sessionsThisWeek, weekStreak, sorenessDue, doseFor, swapChoices,
 } from './mobility.js'
 
 const GYM = new Set(ALL_EQUIPMENT_IDS)
@@ -262,5 +262,25 @@ describe('review fixes', () => {
     const e = (v) => ({ d: '2026-01-01', v })
     expect(testProgress('toe_touch', [e(-4), e(0), e(-3)]).status).toBe('up')
     expect(testProgress('straddle', [e(5), e(4)]).status).toBe('up') // one hand width counts
+  })
+})
+
+describe('phone-test fixes', () => {
+  it('keeps every session within ~2 minutes of the time chosen', () => {
+    for (const level of ['new', 'some', 'flexible']) {
+      for (const minutes of [10, 15, 25, 40]) {
+        for (const goals of [['toe_touch', 'deep_squat', 'overhead'], ['splits'], ['desk', 'wrists']]) {
+          const s = buildSession(plan({ goals, level, minutes }), { equipment: GYM })
+          expect(s.minutes, `${goals} ${level} ${minutes}`).toBeLessThanOrEqual(minutes + 2)
+          for (const a of s.areas) expect(s.items.some((i) => i.area === a)).toBe(true)
+        }
+      }
+    }
+  })
+  it('offers a beginner no heavy or advanced swaps', () => {
+    const p = plan({ goals: ['toe_touch'], level: 'new' })
+    const choices = swapChoices({ id: 'elephant_walk', area: 'hamstrings', kind: 'reps' }, p, GYM)
+    expect(choices).not.toContain('jefferson_curl')
+    expect(choices).not.toContain('nordic_curl')
   })
 })

@@ -193,6 +193,8 @@ export default function Today() {
         </div>
       )}
 
+      {/* Rest day: mobility is the thing to do, so it goes first. */}
+      {!pick.isToday && <MobilityCard restDay />}
       {!pick.isToday && selectedDay == null && (
         <p className="muted" style={{ marginTop: -8 }}>
           Today&apos;s a rest day. Your next session is{' '}
@@ -317,7 +319,7 @@ export default function Today() {
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
       </div>
 
-      <MobilityCard restDay={!pick.isToday} />
+      {pick.isToday && <MobilityCard />}
 
       {/* Recovery, the Skill Tree and the 1RM finder live under Plans → More
           (one tap away). A single quiet link here instead of a row of four

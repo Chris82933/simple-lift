@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { loadMobility, loadMobilityActive } from '../lib/storage.js'
-import { buildSession, blockInfo, sessionsThisWeek, BLOCK_WEEKS, planSignature } from '../lib/mobility.js'
+import { buildSession, blockInfo, sessionsThisWeek, BLOCK_WEEKS, planSignature, mobilityEquipment } from '../lib/mobility.js'
 import { AREA_BY_ID } from '../data/mobility.js'
-import { activeEquipmentIds } from '../lib/equipment.js'
 
 // The Mobility card on Today (only once it's added). On a rest day it's the
 // thing to do, and says so.
@@ -10,7 +9,7 @@ export default function MobilityCard({ restDay = false }) {
   const navigate = useNavigate()
   const mob = loadMobility()
   if (!mob?.added || !(mob.goals?.length || mob.areas?.length)) return null
-  const session = buildSession(mob, { state: mob.moves || {}, equipment: new Set(activeEquipmentIds()) })
+  const session = buildSession(mob, { state: mob.moves || {}, equipment: mobilityEquipment(mob) })
   const done = sessionsThisWeek(mob.log || [])
   const target = mob.perWeek || 3
   const block = blockInfo(mob.startedAt)
@@ -28,12 +27,10 @@ export default function MobilityCard({ restDay = false }) {
       <p className="muted small">
         {done} of {target} this week · {block.easy ? 'easy week' : `week ${block.week} of ${BLOCK_WEEKS}`}
       </p>
-      <div className="mob-sore-row">
-        <button type="button" className={'btn btn-sm ' + (restDay || resuming ? 'btn-primary' : 'btn-ghost')} onClick={() => navigate('/mobility/session')} disabled={!session.items.length}>
-          {resuming ? 'Continue' : 'Start'}
-        </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/mobility')}>Open</button>
-      </div>
+      <button type="button" className={'btn ' + (restDay || resuming ? 'btn-primary' : 'btn-ghost')} onClick={() => navigate('/mobility/session')} disabled={!session.items.length}>
+        {resuming ? 'Continue mobility' : `Start mobility (~${session.minutes} min)`}
+      </button>
+      <button type="button" className="link-btn" onClick={() => navigate('/mobility')}>See the plan and your progress</button>
     </div>
   )
 }

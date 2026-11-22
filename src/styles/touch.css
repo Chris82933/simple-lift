@@ -316,3 +316,30 @@ h2.bone-q { font-size: var(--fs-sm); line-height: 1.35; text-transform: none; le
   .mob-ring-fill, .mob-phase-bar span { transition: none; }
 }
 .mob-warn { color: color-mix(in srgb, var(--accent-2) 70%, var(--text)); }
+/* Phone-test fixes: the player column is full width, so nothing resizes as
+   the phase label changes; the bar track shows in dark mode; lists read left. */
+.mob-player .mob-stage { align-items: stretch; }
+.mob-player .mob-stage > * { align-self: stretch; }
+.mob-player .mob-stage .mob-ring, .mob-player .mob-stage .mob-tap { align-self: center; }
+.mob-player .mob-top { grid-template-columns: 88px 1fr 88px; }
+.mob-player .mob-top > :last-child { justify-self: end; }
+.mob-player .mob-phase { width: 100%; max-width: 420px; margin: 0 auto; }
+.mob-player .flow-actions .btn { flex: 1; max-width: 420px; }
+.mob-phase-bar, .mob-ring-track { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.mob-ring-track { stroke: color-mix(in srgb, var(--text) 14%, transparent); }
+.mob-player .why-list { text-align: left; margin: 0 auto; max-width: 420px; }
+.mob-oneline { margin: 0; max-width: 40ch; align-self: center; }
+.mob-next-head > .muted { white-space: nowrap; }
+.mob-quick { margin-bottom: 6px; }
+.mobility-card .btn { width: 100%; }
+.mobility-card .link-btn { align-self: flex-start; }
+.mob-safety-row { flex-direction: column; align-items: stretch; }
+.mob-safety-row .seg { align-self: flex-start; }
+@media (min-width: 1024px) {
+  .mobility:not(.mob-player) > .step-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+  .mobility:not(.mob-player) > .step-body > .mob-next { grid-column: 1; grid-row: span 3; }
+  .mobility:not(.mob-player) > .step-body > :not(.mob-next):not(.mob-progress):not(.mob-plan) { grid-column: 1 / -1; }
+}
+/* These pages render straight into a flex row (no AppLayout), so without an
+   explicit width they shrink to their content and jump as text changes. */
+.page.mobility { width: 100%; box-sizing: border-box; }

@@ -3,21 +3,22 @@ import { useNavigate } from 'react-router-dom'
 import { MOVES, AREA_BY_ID } from '../data/mobility.js'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 import {
-  buildSession, buildSteps, progressMove, blockInfo, sessionsThisWeek, NOTE_TEXT, loadStepFor, loadCap, planSignature,
+  buildSession, buildSteps, progressMove, blockInfo, sessionsThisWeek, NOTE_TEXT, loadStepFor, loadCap, planSignature, mobilityEquipment,
 } from '../lib/mobility.js'
 import {
   loadMobility, updateMobility, loadSettings, loadMobilityActive, saveMobilityActive, clearMobilityActive, currentBodyweight,
 } from '../lib/storage.js'
-import { activeEquipmentIds } from '../lib/equipment.js'
+import { useToast } from '../components/Toast.jsx'
 import { playRestDone, playTick } from '../lib/sound.js'
 import { keepAwake, allowSleep } from '../lib/wakeLock.js'
 import MuscleMap from '../components/MuscleMap.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 
-const READY_SEC = 5 // "get into position" before a hold or a paced set
+const READY_SEC = 10 // "get into position" before a hold (3 s right after a side switch)
 const SIDE_WORD = { L: 'Left side', R: 'Right side' }
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`
-const buzz = (p) => { try { navigator.vibrate?.(p) } catch { /* no vibration */ } }
+// Browsers refuse vibration before the first tap (e.g. a resumed session).
+const buzz = (p) => { try { if (navigator.userActivation?.hasBeenActive !== false) navigator.vibrate?.(p) } catch { /* no vibration */ } }
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 // Contract-relax ("go deeper") phases inside the last hold of a long session.
@@ -40,6 +41,8 @@ function repPhase(elapsed, tempo) {
   return { rep, phase: 'up', left: len - t, frac: (t - tempo.down - tempo.pause) / tempo.up }
 }
 const PHASE_WORD = { down: 'Lower slowly', pause: 'Hold the stretch', up: 'Back up' }
+const phaseWord = (move, phase) => (move?.phases ? move.phases[{ down: 0, pause: 1, up: 2 }[phase]] : PHASE_WORD[phase])
+const firstSentence = (t = '') => (t.match(/^.*?[.!?](\s|$)/)?.[0] || t).trim()
 
 function Ring({ frac, children }) {
   const r = 88
@@ -68,7 +71,7 @@ export default function MobilitySession() {
     // Resume only the same plan (an edited plan starts fresh), within 12 h.
     const saved = loadMobilityActive()
     if (saved?.steps?.length && saved.sig === sig && Date.now() - (saved.startedAt || 0) < 12 * 3600e3) return saved
-    const session = buildSession(mob, { state: mob.moves || {}, equipment: new Set(activeEquipmentIds()) })
+    const session = buildSession(mob, { state: mob.moves || {}, equipment: mobilityEquipment(mob) })
     if (!session.items.length) return null
     return { session, steps: buildSteps(session), index: 0, results: {}, startedAt: Date.now(), sig, flags: mob.flags || {} }
   })
@@ -81,6 +84,9 @@ export default function MobilitySession() {
   const [askSharp, setAskSharp] = useState(false)
   const [askDepth, setAskDepth] = useState(null) // the feel picked, while asking about depth
   const stageRef = useRef(null)
+  const toast = useToast()
+  // A toast from the hub ("Swapped to …") would sit over Pause / Skip.
+  useEffect(() => { toast.dismiss?.() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [summary, setSummary] = useState(null)
   const lastTick = useRef(-1)
 
@@ -112,6 +118,14 @@ export default function MobilitySession() {
   // users) aren't left on a button that no longer exists.
   useEffect(() => { stageRef.current?.querySelector('h1')?.focus?.() }, [run?.index, confirm, askSharp, askDepth])
   const setResult = (patch) => setRun((r) => ({ ...r, results: { ...r.results, [step.item]: { ...(r.results[step.item] || {}), ...patch } } }))
+  // Jump straight to this move's "how did it feel", at the pain question.
+  const stoppedWrong = () => {
+    const idx = run.steps.findIndex((s2, i) => i > run.index && s2.kind === 'feel' && s2.item === step.item)
+    setResult({ done: true, early: true })
+    setRun((r) => ({ ...r, index: idx >= 0 ? idx : r.index }))
+    setPhaseStart(Date.now()); setPaused(null); setSetGo(false); setTapReps(0); setConfirm(null); setAskDepth(null)
+    setAskSharp(true)
+  }
   const togglePause = () => {
     if (paused) { setPhaseStart((t) => t + (Date.now() - paused)); setPaused(null) } else setPaused(Date.now())
   }
@@ -120,7 +134,8 @@ export default function MobilitySession() {
 
   // Timed steps: when they run out, chime and move on.
   const timed = step && ['warmup', 'switch', 'rest', 'hold', 'pnf'].includes(step.kind)
-  const ready = step && (step.kind === 'hold' || step.kind === 'pnf') ? READY_SEC : 0
+  const afterSwitch = run && run.steps[run.index - 1]?.kind === 'switch'
+  const ready = step && (step.kind === 'hold' || step.kind === 'pnf') ? (afterSwitch ? 3 : READY_SEC) : 0
   const total = step ? (step.sec || 0) + ready : 0
   useEffect(() => {
     if (!step || paused) return
@@ -162,6 +177,11 @@ export default function MobilitySession() {
       const r = run.results[i]
       // Skipped (no sets done, or "skipped it"): nothing changes for this move.
       if (!r?.feel || r.skipped || !r.done) return
+      // Ended early: logged as done, but it isn't a reason to make it harder.
+      if (r.early && r.feel !== 'much' && !r.sharp) {
+        logged.push([it.id, Number(r.load ?? it.load) || 0, it.kind === 'hold' ? (r.secDone ?? it.sec) : (r.reps ?? it.reps), r.feel])
+        return
+      }
       const { state, note, remove } = progressMove(it.id, { ...(moves[it.id] || {}), reps: moves[it.id]?.reps ?? (it.kind === 'reps' ? it.reps : undefined), sec: moves[it.id]?.sec ?? (it.kind === 'hold' ? it.sec : undefined) }, { feel: r.feel, sharp: r.sharp, more: r.more, fullDepth: r.fullDepth, load: r.load ?? it.load }, { easyWeek: block.easy, units, bodyweight, block: block.block, flags: mob.flags || {} })
       moves[it.id] = state
       // "Ready for the next level" only for an area's main move — the extra
@@ -171,7 +191,7 @@ export default function MobilitySession() {
       else cleared.push(it.id)
       if (n === 'ready_next') readyArea[it.id] = it.area
       if (remove && !avoid.includes(it.id)) avoid.push(it.id)
-      logged.push([it.id, Number(r.load ?? it.load) || 0, it.kind === 'hold' ? it.sec : (r.reps ?? it.reps), r.feel])
+      logged.push([it.id, Number(r.load ?? it.load) || 0, it.kind === 'hold' ? (r.secDone ?? it.sec) : (r.reps ?? it.reps), r.feel])
     })
     // Active minutes, not wall-clock: a session resumed hours later shouldn't
     // log as an eight-hour session.
@@ -251,6 +271,7 @@ export default function MobilitySession() {
           aria-label="More weight"
         >+</button>
       </div>
+      {!(Number(load) > 0) && move.loadHint && <span className="muted small">{move.loadHint[units]}</span>}
     </div>
   )
 
@@ -264,7 +285,7 @@ export default function MobilitySession() {
           <li>March or jog on the spot — 1 minute</li>
           <li>Arm circles and big shoulder rolls</li>
           <li>10 slow bodyweight squats or good mornings</li>
-          <li>Slow cat-cow on all fours</li>
+          <li>Slow spine waves on all fours</li>
         </ul>
         <p className="muted small">Loaded stretching goes better warm. Already warm from lifting? Skip it.</p>
       </>
@@ -303,8 +324,9 @@ export default function MobilitySession() {
             : <span className="mob-big" aria-live="off">{fmt(holdLeft)}</span>}
         </Ring>
         <p className={'mob-cue' + (pnf?.push ? ' is-push' : '')} aria-live={pnf ? 'polite' : 'off'}>
-          {inReady ? cueText : pnf ? pnf.label : breath}
+          {paused ? 'Paused' : inReady ? cueText : pnf ? pnf.label : breath}
         </p>
+        {!inReady && !paused && <p className="muted small mob-oneline">{firstSentence(cueText)}</p>}
         {!inReady && (
           <p className="muted small">
             {active ? 'Hard work, about 7 out of 10 — stop before your position breaks.'
@@ -333,9 +355,10 @@ export default function MobilitySession() {
           <p className="choice-title">Could you do 2 more with good form?</p>
           <div className="mob-feel">
             {/* One "no" in any set means it isn't time to progress this move. */}
-            <button type="button" className="btn btn-ghost" onClick={() => { setResult({ more: false, reps: confirm.reps, done: result.done || confirm.reps > 0 }); go(1) }}>No</button>
-            <button type="button" className="btn btn-primary" onClick={() => { setResult({ more: result.more !== false, reps: confirm.reps, done: result.done || confirm.reps > 0 }); go(1) }}>Yes</button>
+            <button type="button" className="btn btn-ghost" onClick={() => { setResult({ more: false, reps: confirm.reps, done: result.done || confirm.reps > 0, early: result.early || confirm.reps < step.reps }); go(1) }}>No</button>
+            <button type="button" className="btn btn-primary" onClick={() => { setResult({ more: result.more !== false, reps: confirm.reps, done: result.done || confirm.reps > 0, early: result.early || confirm.reps < step.reps }); go(1) }}>Yes</button>
           </div>
+          <button type="button" className="link-btn" onClick={stoppedWrong}>I stopped — it didn&apos;t feel right</button>
         </>
       )
     } else if (!step.tempo) {
@@ -348,6 +371,7 @@ export default function MobilitySession() {
             <span className="mob-big">{tapReps}</span>
             <span className="muted small">of {step.reps} · tap after each rep</span>
           </button>
+          <button type="button" className="link-btn" onClick={() => setTapReps((n) => Math.max(0, n - 1))} disabled={!tapReps}>− Undo a rep</button>
           {loadStepper}
         </>
       )
@@ -372,7 +396,7 @@ export default function MobilitySession() {
             <span className="mob-big">{Math.min(p.rep + 1, step.reps)}<span className="mob-of"> / {step.reps}</span></span>
           </div>
           <div className={'mob-phase is-' + p.phase}>
-            <span className="mob-phase-word">{PHASE_WORD[p.phase]}</span>
+            <span className="mob-phase-word">{phaseWord(move, p.phase)}</span>
             <div className="mob-phase-bar"><span style={{ width: `${Math.round(p.frac * 100)}%` }} /></div>
           </div>
           <p className="muted small">{p.phase === 'pause' ? (Number(load) > 0 ? 'Let the weight pull you into the stretch.' : 'Breathe out and sink into the stretch.') : 'Smooth and controlled.'}</p>
@@ -380,6 +404,7 @@ export default function MobilitySession() {
       )
     }
   } else if (step.kind === 'feel') {
+    const strengthy = !!(move?.active || move?.heavy)
     const pickFeel = (feel) => {
       // Range moves: once it feels right, is the full depth under control?
       if (move?.range && feel !== 'much') { setAskDepth(feel); return }
@@ -400,7 +425,7 @@ export default function MobilitySession() {
         <p className="muted">That&apos;s different from a strong stretch. If yes, we&apos;ll take {ex?.name} out of your plan and use another move.</p>
         <div className="mob-feel">
           <button type="button" className="btn btn-ghost" onClick={() => { setResult({ feel: 'much', sharp: false, skipped: false }); go(1) }}>No, just intense</button>
-          <button type="button" className="btn btn-primary danger" onClick={() => { setResult({ feel: 'much', sharp: true, skipped: false }); go(1) }}>Yes</button>
+          <button type="button" className="btn btn-ghost" onClick={() => { setResult({ feel: 'much', sharp: true, skipped: false }); go(1) }}>Yes</button>
         </div>
       </>
     ) : (
@@ -409,10 +434,10 @@ export default function MobilitySession() {
         <h1 tabIndex={-1}>How did {ex?.name} feel?</h1>
         <div className="mob-feel-col">
           <button type="button" className="choice-row" onClick={() => pickFeel('easy')}>
-            <span className="choice-title">Barely felt it</span><span className="muted small">Easy — ready for more</span>
+            <span className="choice-title">{strengthy ? 'Felt easy' : 'Barely felt it'}</span><span className="muted small">Easy — ready for more</span>
           </button>
           <button type="button" className="choice-row" onClick={() => pickFeel('good')}>
-            <span className="choice-title">Good stretch</span><span className="muted small">Strong but fine — the target</span>
+            <span className="choice-title">{strengthy ? 'Hard but good' : 'Good stretch'}</span><span className="muted small">{strengthy ? 'Tough, with good form — the target' : 'Strong but fine — the target'}</span>
           </button>
           <button type="button" className="choice-row" onClick={() => setAskSharp(true)}>
             <span className="choice-title">Too much</span><span className="muted small">Over the line, or it hurt</span>
@@ -440,12 +465,18 @@ export default function MobilitySession() {
   } else if (step.kind === 'reps' && !setGo) {
     actions = <button type="button" className="btn btn-primary" onClick={() => { setSetGo(true); setPhaseStart(Date.now()); lastTick.current = -1 }}>Start set</button>
   } else if (step.kind === 'reps') {
-    actions = <button type="button" className="btn btn-ghost" onClick={() => { const p = repPhase(elapsed, step.tempo); setConfirm({ reps: Math.min(step.reps, p.rep + (p.phase === 'up' ? 1 : 0)), more: null }); setSetGo(false) }}>End set early</button>
+    actions = <button type="button" className="btn btn-ghost" disabled={elapsed < 2} onClick={() => { const p = repPhase(elapsed, step.tempo); setConfirm({ reps: Math.min(step.reps, p.rep + (p.phase === 'up' ? 1 : 0)), more: null }); setSetGo(false) }}>End set early</button>
   } else {
     actions = (
       <>
         <button type="button" className="btn btn-ghost" onClick={togglePause}>{paused ? 'Resume' : 'Pause'}</button>
-        <button type="button" className="btn btn-ghost" onClick={() => { if (step.kind === 'hold' || step.kind === 'pnf') setResult({ done: true }); go(1) }}>{step.kind === 'warmup' ? 'Skip warm-up' : step.kind === 'rest' || step.kind === 'switch' ? 'Skip' : 'Done'}</button>
+        <button type="button" className="btn btn-ghost" onClick={() => {
+          if (step.kind === 'hold' || step.kind === 'pnf') {
+            const held = Math.max(0, elapsed - ready)
+            if (held > 0) setResult({ done: true, secDone: held, early: result.early || held < (step.sec || 0) - 2 })
+          }
+          go(1)
+        }}>{step.kind === 'warmup' ? 'Skip warm-up' : step.kind === 'rest' || step.kind === 'switch' ? 'Skip' : 'Done'}</button>
       </>
     )
   }
@@ -455,11 +486,11 @@ export default function MobilitySession() {
       <div className="mob-top">
         <button type="button" className="link-btn" onClick={exit}>Exit</button>
         <div className="progress-track" aria-hidden="true"><div className="progress-fill" style={{ width: `${Math.round(progressFrac * 100)}%` }} /></div>
-        {run.index > 0 && step.kind !== 'done' ? <button type="button" className="link-btn" onClick={() => go(-1)}>Back</button> : <span />}
+        {run.index > 0 && step.kind !== 'done' ? <button type="button" className="link-btn" onClick={() => go(-1)} aria-label="Go to the previous step">‹ Previous</button> : <span />}
       </div>
       <div className="step-body mob-stage" ref={stageRef}>
         {body}
-        {nextMove && step.kind !== 'feel' && step.kind !== 'done' && <p className="muted small mob-upnext">Up next: {nextMove}</p>}
+        {nextMove && !['feel', 'done', 'rest'].includes(step.kind) && <p className="muted small mob-upnext">Up next: {nextMove}</p>}
       </div>
       {actions && <div className="flow-actions">{actions}</div>}
     </section>

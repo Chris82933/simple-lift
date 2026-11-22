@@ -7,10 +7,10 @@ import { EXERCISE_BY_ID } from '../data/exercises.js'
 import {
   areasFor, buildSession, blockInfo, testsFor, testProgress, asymmetry, sessionsThisWeek, weekStreak,
   sorenessDue, progressMove, NOTE_TEXT, allowedMove, BLOCK_WEEKS, doseLine, formatTest,
-  exposuresPerWeek, planSignature,
+  exposuresPerWeek, planSignature, mobilityEquipment, swapChoices,
 } from '../lib/mobility.js'
 import { loadMobility, updateMobility, removeMobility, loadSettings, loadMobilityActive, clearMobilityActive } from '../lib/storage.js'
-import { activeEquipmentIds } from '../lib/equipment.js'
+import { getEquipment, profileMeta } from '../lib/equipment.js'
 import MuscleMap from '../components/MuscleMap.jsx'
 import { useToast } from '../components/Toast.jsx'
 
@@ -135,6 +135,23 @@ function Setup({ draft, setDraft, onBack, onNext }) {
             </p>
           )
         })()}
+        <p className="group-label">What do you have?</p>
+        {(() => {
+          const e = getEquipment()
+          return (
+            <Choice
+              label="Equipment"
+              value={draft.gear || e.active}
+              onPick={(v) => setDraft((d) => ({ ...d, gear: v }))}
+              options={[
+                { v: 'gym', label: `${profileMeta('gym').name} gear` },
+                { v: 'home', label: `${profileMeta('home').name} gear` },
+                { v: 'none', label: 'Nothing' },
+              ]}
+            />
+          )
+        })()}
+        <p className="muted small">Uses your Gym or Home equipment list from Settings. “Nothing” keeps it to bodyweight and a wall.</p>
         <p className="group-label">Experience</p>
         <div className="choice-list">
           {LEVELS.map((l) => (
@@ -214,9 +231,17 @@ function TestInput({ testId, value, onChange }) {
       <span className="muted small">{label}</span>
       <div className="rest-stepper">
         <button type="button" onClick={() => set((Number(v) || 0) - 1)} aria-label={`${label}: one less`} disabled={!t.signed && (Number(v) || 0) <= 0}>–</button>
-        <span className="mob-step-val">{v == null ? '—' : (t.signed && v > 0 ? `+${v}` : v)}</span>
+        <span className="mob-step-val">{v == null ? 'tap ±' : (t.signed && v > 0 ? `+${v}` : v)}</span>
         <button type="button" onClick={() => set((Number(v) || 0) + 1)} aria-label={`${label}: one more`}>+</button>
       </div>
+    </div>
+  )
+  // Quick picks for a stiff first check-in: no tapping ten times to −10.
+  const quick = testId === 'toe_touch' && (
+    <div className="choice-chips mob-quick">
+      {[[-12, 'Mid-shin'], [-6, 'Ankles'], [-2, 'Just short'], [0, 'Touch the floor'], [4, 'Palms flat']].map(([n, label]) => (
+        <button key={n} type="button" className={'chip' + (value === n ? ' is-selected' : '')} aria-pressed={value === n} onClick={() => onChange(n)}>{label}</button>
+      ))}
     </div>
   )
   if (t.sides) {
@@ -228,7 +253,7 @@ function TestInput({ testId, value, onChange }) {
       </div>
     )
   }
-  return stepper(value, onChange, UNIT_WORD[t.unit])
+  return <>{quick}{stepper(value, onChange, UNIT_WORD[t.unit])}</>
 }
 
 function CheckIn({ tests, existing, onSave, onSkip, title, step }) {
@@ -244,7 +269,7 @@ function CheckIn({ tests, existing, onSave, onSkip, title, step }) {
     <section className="page full-flow mobility">
       {step ? <StepTitle step={step} total={3}><h1>{title}</h1></StepTitle> : <header className="page-header"><p className="eyebrow">Mobility</p><h1>{title}</h1></header>}
       <div className="step-body">
-        <p className="muted small">Warm up first · same time of day each check-in · best of 2 tries. A finger width is about 2 cm.</p>
+        <p className="muted small">Best after a short warm-up · same time of day each check-in · best of 2 tries. A finger width is about 2 cm. Not warm? Skip and check in after your first session.</p>
         {tests.map((id) => {
           const t = TESTS[id]
           const prev = existing?.[id]?.at(-1)
@@ -280,7 +305,7 @@ export default function Mobility() {
   const mode = modeState === 'home' && !configured ? 'intro' : modeState
   const [draft, setDraft] = useState(() => ({ ...DEFAULT_DRAFT, ...(mob ? { goals: mob.goals || [], areas: mob.areas || [], minutes: mob.minutes || 25, perWeek: mob.perWeek || 3, level: mob.level || 'new', flags: mob.flags || {}, consent: !!mob.consent } : {}) }))
   const units = loadSettings().units === 'kg' ? 'kg' : 'lbs'
-  const equipment = useMemo(() => new Set(activeEquipmentIds()), [])
+  const equipment = useMemo(() => mobilityEquipment(mob || {}), [mob?.gear]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const finishSetup = (tests) => {
     const now = new Date().toISOString()
@@ -307,13 +332,16 @@ export default function Mobility() {
     return (
       <section className="page full-flow mobility">
         <header className="page-header">
-          <p className="eyebrow">Mobility</p>
+          <div className="onb-head-row">
+            <p className="eyebrow">Mobility</p>
+            <button type="button" className="skip-link" onClick={() => navigate('/programs')}>‹ Plans</button>
+          </div>
           <h1>Build strength through range</h1>
         </header>
         <div className="step-body">
           <div className="card welcome-hero">
             <MuscleMap pattern="hinge" size={120} />
-            <p className="muted">Slow, weighted reps and holds that make you more flexible <em>and</em> stronger at the end of your range — 15 to 40 minutes, a few times a week, alongside your lifting.</p>
+            <p className="muted">Slow, weighted reps and holds that make you more flexible <em>and</em> stronger at the end of your range — 10 to 40 minutes, a few times a week, alongside your lifting.</p>
           </div>
           <ul className="why-list">
             <li><strong>Strength, not just stretch.</strong> Slow reps with a weight through your full range improve flexibility as much as holding stretches does — and build strength where you&apos;re weakest.</li>
@@ -352,7 +380,10 @@ export default function Mobility() {
   }
 
   // ---- Home ----
-  const session = buildSession(mob, { state: mob.moves || {}, equipment })
+  const saved = loadMobilityActive()
+  const resuming = !!(saved && saved.sig === planSignature(mob) && Date.now() - (saved.startedAt || 0) < 12 * 3600e3)
+  // A session in progress is what "Continue" will run — show that one.
+  const session = resuming ? { ...saved.session, minutes: saved.session.minutes } : buildSession(mob, { state: mob.moves || {}, equipment })
   const block = blockInfo(mob.startedAt)
   const thisWeek = sessionsThisWeek(mob.log || [])
   const streak = weekStreak(mob.log || [], mob.perWeek || 3)
@@ -360,9 +391,8 @@ export default function Mobility() {
   const tests = testsFor(mob)
   const needsBaseline = tests.some((id) => !(mob.tests?.[id]?.length))
   const checkDue = block.easy && !(mob.lastCheck && Date.now() - new Date(mob.lastCheck).getTime() < 6 * 864e5)
-  const saved = loadMobilityActive()
-  const resuming = !!(saved && saved.sig === planSignature(mob) && Date.now() - (saved.startedAt || 0) < 12 * 3600e3)
-  const ready = Object.entries(mob.notes || {}).filter(([, n]) => n === 'ready_next')
+  // Not in an easy week — nothing goes up then.
+  const ready = block.easy ? [] : Object.entries(mob.notes || {}).filter(([, n]) => n === 'ready_next')
 
   const answerSore = (how) => {
     updateMobility((m) => {
@@ -400,15 +430,17 @@ export default function Mobility() {
       }
       return { ...m, notes, rungs, prefer }
     })
+    if (yes && nr) toast.show(`${EXERCISE_BY_ID[nr.next]?.name} replaces ${EXERCISE_BY_ID[id]?.name} for ${nr.area.label.toLowerCase()} from your next session`)
     refresh()
   }
 
   // Swap a move for the next one of the same kind in its area (remembered).
   const swapMove = (item) => {
-    const area = AREA_BY_ID[item.area]
-    const same = area.ladder.filter((x) => MOVES[x].kind === item.kind && allowedMove(x, { flags: mob.flags, equipment, avoid: mob.avoid || [] }))
-    if (same.length < 2) { toast.show('No other option for this one with your equipment'); return }
-    const next = same[(same.indexOf(item.id) + 1) % same.length]
+    if (resuming) { toast.show('Finish or restart the session in progress first'); return }
+    const choices = swapChoices(item, mob, equipment)
+    if (!choices.length) { toast.show('No other option at your level with this equipment'); return }
+    const current = mob.prefer?.[`${item.area}:${item.kind}`]
+    const next = choices[(choices.indexOf(current) + 1) % choices.length]
     updateMobility((m) => ({ ...m, prefer: { ...(m.prefer || {}), [`${item.area}:${item.kind}`]: next } }))
     toast.show(`Swapped to ${EXERCISE_BY_ID[next]?.name}`)
     refresh()
@@ -418,8 +450,8 @@ export default function Mobility() {
     <section className="page full-flow mobility">
       <header className="page-header">
         <div className="onb-head-row">
-          <p className="eyebrow">Mobility</p>
-          <span className={'mob-week-chip' + (block.easy ? ' is-easy' : '')}>{block.easy ? 'Easy week + check-in' : `Week ${block.week} of ${BLOCK_WEEKS}`}</span>
+          <button type="button" className="skip-link" onClick={() => navigate('/programs')}>‹ Plans</button>
+          <span className={'mob-week-chip' + (block.easy ? ' is-easy' : '')} title="Blocks of 4 weeks repeat: 3 building, 1 easy">{block.easy ? 'Easy week + check-in' : `Week ${block.week} of ${BLOCK_WEEKS}`}</span>
         </div>
         <h1>Strength through range</h1>
       </header>

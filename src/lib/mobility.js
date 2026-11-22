@@ -3,7 +3,7 @@
 // next session's dose. Pure functions (no storage) so it can all be tested.
 import { MOVES, AREAS, AREA_BY_ID, GOAL_BY_ID, TESTS, TIME_OPTIONS, UNIT_WORD } from '../data/mobility.js'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
-import { isDoable } from './equipment.js'
+import { isDoable, getEquipment } from './equipment.js'
 
 const DAY = 24 * 60 * 60 * 1000
 export const BLOCK_WEEKS = 4
@@ -164,7 +164,38 @@ export function buildSession(plan, { state = {}, now = Date.now(), equipment } =
       items.push({ id, area: areaId, ...dose, extra, main: id === picks.reps, deeper: opt.deeper && dose.kind === 'hold' && !m.active && !area.gentle && !plan.flags?.bendy && !plan.flags?.pregnant })
     }
   }
-  return { areas: sessionAreas, items: fitToTime(items, opt.min), easy, get minutes() { return estimateMinutes(this.items) } }
+  const fitted = fitToTime(items, opt.min)
+  // Only the areas that actually made it in (a tight time can drop one).
+  const areas = sessionAreas.filter((a) => fitted.some((i) => i.area === a))
+  return { areas, items: fitted, easy, get minutes() { return estimateMinutes(this.items) } }
+}
+
+// The equipment a Mobility plan uses: what you said in setup — the gym or
+// home profile, or nothing at all.
+export function mobilityEquipment(plan = {}) {
+  const e = getEquipment()
+  if (plan.gear === 'none') return new Set()
+  if (plan.gear === 'home' || plan.gear === 'gym') return new Set(e.profiles[plan.gear] || [])
+  return new Set(e.profiles[e.active] || [])
+}
+
+// Swap choices for a move: same kind, same area, nothing harder than one
+// rung above where the area is, and never a heavy or loaded-rounding move
+// unless the area has already been moved up to it.
+export function swapChoices(item, plan, equipment) {
+  const area = AREA_BY_ID[item.area]
+  if (!area) return []
+  const ok = (id) => allowedMove(id, { flags: plan.flags || {}, equipment, avoid: plan.avoid || [] })
+  const repsLadder = area.ladder.filter((id) => ok(id) && MOVES[id].kind === 'reps')
+  const at = plan.rungs?.[area.id] ?? startRung(repsLadder, plan.level)
+  return area.ladder.filter((id) => {
+    if (id === item.id || !ok(id) || MOVES[id].kind !== item.kind) return false
+    if (MOVES[id].kind !== 'reps') return true
+    const i = repsLadder.indexOf(id)
+    if (i > at + 1) return false
+    if ((MOVES[id].heavy || MOVES[id].flex) && i > at) return false
+    return true
+  })
 }
 
 // Keep the session inside the time chosen: drop the optional third moves
@@ -175,6 +206,14 @@ function fitToTime(items, minutes) {
   const over = () => estimateMinutes(out) > minutes + 2
   for (let i = out.length - 1; i >= 0 && over(); i--) if (out[i].extra) out.splice(i, 1)
   for (let i = out.length - 1; i >= 0 && over(); i--) if (out[i].sets > 2) out[i] = { ...out[i], sets: 2 }
+  // Still over: drop the last area's hold, then the last area — it comes
+  // round again in the next session.
+  while (over() && new Set(out.map((i) => i.area)).size > 1) {
+    const lastArea = out[out.length - 1].area
+    const holdAt = out.findIndex((i) => i.area === lastArea && i.kind === 'hold' && !i.main)
+    if (holdAt >= 0 && out.filter((i) => i.area === lastArea).length > 1) out.splice(holdAt, 1)
+    else for (let i = out.length - 1; i >= 0; i--) if (out[i].area === lastArea) out.splice(i, 1)
+  }
   return out
 }
 
@@ -417,6 +456,10 @@ export function formatTest(testId, v) {
   const t = TESTS[testId]
   if (!t || v == null) return '—'
   if (t.unit === 'level') return t.levels[v] || '—'
+  if (testId === 'toe_touch' && Number.isFinite(Number(v))) {
+    const n = Number(v)
+    return n < 0 ? `${-n} finger width${n === -1 ? '' : 's'} short of the floor` : n === 0 ? 'Touching the floor' : `${n} finger width${n === 1 ? '' : 's'} past the floor`
+  }
   const one = (n) => `${t.signed && n > 0 ? '+' : ''}${n} ${UNIT_WORD[t.unit]}`
   if (t.sides && typeof v === 'object') return `L ${one(v.L)} · R ${one(v.R)}`
   return one(v)
