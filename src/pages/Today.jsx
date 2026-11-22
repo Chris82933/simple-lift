@@ -14,6 +14,7 @@ import MuscleMap from '../components/MuscleMap.jsx'
 import FormCheckButton from '../components/FormCheckButton.jsx'
 import FocusTiles from '../components/FocusTiles.jsx'
 import Icon from '../components/Icon.jsx'
+import MobilityCard from '../components/MobilityCard.jsx'
 
 // Short "how long ago" label for an in-progress session's last save.
 function timeAgo(ts) {
@@ -316,11 +317,13 @@ export default function Today() {
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
       </div>
 
+      <MobilityCard restDay={!pick.isToday} />
+
       {/* Recovery, the Skill Tree and the 1RM finder live under Plans → More
           (one tap away). A single quiet link here instead of a row of four
           buttons that mixed program builders with a calculator. */}
       <p className="muted small today-more">
-        Recovery, the Skill Tree and the 1RM finder are under{' '}
+        Mobility, Recovery, the Skill Tree and the 1RM finder are under{' '}
         <Link to="/programs" state={{ scrollTo: 'more' }}>Plans → More</Link>.
       </p>
 

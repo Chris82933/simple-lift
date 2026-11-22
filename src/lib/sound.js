@@ -55,3 +55,26 @@ export function playRestDone() {
     // Audio is a nicety — never let it break the workout.
   }
 }
+
+// A short soft tick for pacing slow reps: `accent` (start of a phase) is a
+// little higher. Never throws — pacing still works silently.
+export function playTick(accent = false) {
+  try {
+    const ac = getCtx()
+    if (!ac) return
+    if (ac.state === 'suspended') ac.resume()
+    const t = ac.currentTime + 0.01
+    const osc = ac.createOscillator()
+    const g = ac.createGain()
+    osc.type = 'sine'
+    osc.frequency.value = accent ? 1320 : 880
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(accent ? 0.16 : 0.08, t + 0.005)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09)
+    osc.connect(g).connect(ac.destination)
+    osc.start(t)
+    osc.stop(t + 0.12)
+  } catch {
+    // never let audio break a session
+  }
+}

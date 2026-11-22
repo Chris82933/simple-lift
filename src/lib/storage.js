@@ -128,6 +128,43 @@ export function saveSettings(s) {
   return ok
 }
 
+// ---- Mobility (settings.mobility) ----
+// Lives inside settings on purpose: settings is synced and passed through
+// whole by import/validation, and older app versions keep it (they would drop
+// an unknown top-level key). Written with mutate — a real, synced change — but
+// without the "Saved" flash a settings screen shows.
+const MOBILITY_LOG_CAP = 150
+const MOBILITY_TEST_CAP = 40
+export const loadMobility = () => loadSettings().mobility || null
+export function updateMobility(fn) {
+  mutate(SETTINGS_KEY, { units: 'lbs' }, (s) => {
+    const prev = s.mobility || {}
+    const next = typeof fn === 'function' ? fn(prev) : { ...prev, ...fn }
+    if (Array.isArray(next.log) && next.log.length > MOBILITY_LOG_CAP) next.log = next.log.slice(-MOBILITY_LOG_CAP)
+    if (next.tests) {
+      for (const k of Object.keys(next.tests)) {
+        if (Array.isArray(next.tests[k]) && next.tests[k].length > MOBILITY_TEST_CAP) next.tests[k] = next.tests[k].slice(-MOBILITY_TEST_CAP)
+      }
+    }
+    return { ...s, mobility: next }
+  })
+  return loadMobility()
+}
+export const isMobilityAdded = () => !!loadMobility()?.added
+export function removeMobility() {
+  // Keep the history and tests (re-adding picks up where it left off); just
+  // take it out of Plans and Today.
+  updateMobility((m) => ({ ...m, added: false }))
+}
+
+// The session in progress (device-only, like the workout one: never synced).
+const MOBILITY_ACTIVE_KEY = 'simple-lift:mobilityActive'
+export const loadMobilityActive = () => read(MOBILITY_ACTIVE_KEY, null)
+export const saveMobilityActive = (s) => write(MOBILITY_ACTIVE_KEY, s, { silent: true })
+export function clearMobilityActive() {
+  try { localStorage.removeItem(MOBILITY_ACTIVE_KEY) } catch { /* ignore */ }
+}
+
 // ---- Calisthenics skills ({ [skillId]: { level, best, log:[{date,value}] } }) ----
 export const loadSkills = () => read(SKILLS_KEY, {})
 export const saveSkills = (s) => write(SKILLS_KEY, s)
@@ -837,7 +874,7 @@ export async function importCode(code) {
 }
 
 export function clearAll() {
-  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, BODYWEIGHT_KEY, CUSTOM_EX_KEY, UPDATED_KEY, REV_KEY, ACTIVE_SESSION_KEY, LEGACY_PROGRAM_KEY].forEach(
+  ;[PROFILE_KEY, PROGRAMS_KEY, ACTIVE_KEY, HISTORY_KEY, SETTINGS_KEY, MAXES_KEY, CARDIO_KEY, SKILLS_KEY, BODYWEIGHT_KEY, CUSTOM_EX_KEY, UPDATED_KEY, REV_KEY, ACTIVE_SESSION_KEY, MOBILITY_ACTIVE_KEY, LEGACY_PROGRAM_KEY].forEach(
     (k) => { try { localStorage.removeItem(k) } catch { /* ignore */ } },
   )
   window.dispatchEvent(new CustomEvent('sl-data-changed'))

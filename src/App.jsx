@@ -19,6 +19,8 @@ import Recovery from './pages/Recovery.jsx'
 import BoneDensity from './pages/BoneDensity.jsx'
 import Profile from './pages/Profile.jsx'
 import Workout from './pages/Workout.jsx'
+import Mobility from './pages/Mobility.jsx'
+import MobilitySession from './pages/MobilitySession.jsx'
 
 // A new page starts at its top. Without this a page opened from halfway down
 // another (Start workout, from the bottom of Today) appeared already scrolled,
@@ -41,6 +43,7 @@ export default function App() {
           distraction you don't want during a workout. */}
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/workout" element={<Workout />} />
+      <Route path="/mobility/session" element={<MobilitySession />} />
 
       {/* Full-screen flows (no bottom nav on mobile). FlowLayout renders
           nothing on a phone, so these stay exactly as they were; on a desktop
@@ -55,6 +58,7 @@ export default function App() {
         <Route path="/import-program" element={<ImportProgram />} />
         <Route path="/recovery" element={<Recovery />} />
         <Route path="/bone-density" element={<BoneDensity />} />
+        <Route path="/mobility" element={<Mobility />} />
       </Route>
 
       {/* Main app shell with bottom navigation */}

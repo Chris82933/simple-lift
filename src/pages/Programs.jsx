@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   loadPrograms, getActiveProgramId, setActiveProgramId, deleteProgram, restoreProgram, addProgram,
-  isSkillTreeAdded, setSkillTreeAdded, loadSkills,
+  isSkillTreeAdded, setSkillTreeAdded, loadSkills, loadMobility, removeMobility, updateMobility,
 } from '../lib/storage.js'
+import { sessionsThisWeek, blockInfo, BLOCK_WEEKS } from '../lib/mobility.js'
 import { computeStats, powerLevel, rankFor } from '../data/skills.js'
 import { useToast } from '../components/Toast.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
@@ -28,6 +29,7 @@ export default function Programs() {
   const programs = loadPrograms()
   const activeId = getActiveProgramId()
   const skillTreeAdded = isSkillTreeAdded()
+  const mob = loadMobility()
 
   const refresh = () => force((n) => n + 1)
   // Today's "Plans → More" link lands on that card, not the top of the page.
@@ -93,6 +95,35 @@ export default function Programs() {
         <div className="card placeholder-card">
           <p className="placeholder-title">No programs yet</p>
           <p className="muted">Not sure where to start? “Help me choose” asks five quick questions and picks one for you.</p>
+        </div>
+      )}
+
+      {mob?.added && (
+        <div className="card program-card skill-tree-program">
+          <div className="program-card-head">
+            <div>
+              <p className="day-title">Mobility</p>
+              <p className="muted small">
+                Strength through range · {sessionsThisWeek(mob.log || [])} of {mob.perWeek || 3} this week · {blockInfo(mob.startedAt).easy ? 'easy week' : `week ${blockInfo(mob.startedAt).week} of ${BLOCK_WEEKS}`}
+              </p>
+            </div>
+            <span className="level-chip">Alongside</span>
+          </div>
+          <p className="muted small">Runs alongside your lifting plan — short sessions on rest days or after training.</p>
+          <div className="program-card-actions">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/mobility')}>Open</button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm danger"
+              onClick={() => {
+                removeMobility()
+                refresh()
+                toast.show('Removed Mobility — your check-ins are kept', { actionLabel: 'Undo', onAction: () => { updateMobility({ added: true }); refresh() } })
+              }}
+            >
+              Remove
+            </button>
+          </div>
         </div>
       )}
 
@@ -186,6 +217,11 @@ export default function Programs() {
 
       <div className="card" id="more">
         <p className="group-label">More</p>
+        {!mob?.added && (
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/mobility')}>
+            Mobility — strength through range
+          </button>
+        )}
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/recovery')}>
           Recovery &amp; Strength — rehab a sore joint
         </button>
