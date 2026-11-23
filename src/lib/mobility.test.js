@@ -207,11 +207,15 @@ describe('review fixes', () => {
   })
 
   it('keeps heavy moves to twice a week, 48 h apart', () => {
-    const p = plan({ goals: ['toe_touch'], rungs: { hamstrings: 3 } })
+    const p = plan({ goals: ['toe_touch'], rungs: { hamstrings: 2 } })
     const now = Date.now()
     expect(buildSession(p, { equipment: GYM, now }).items.map((i) => i.id)).toContain('jefferson_curl')
     const yesterday = { d: new Date(now - 20 * 3600e3).toISOString(), m: [['jefferson_curl', 5, 8, 'good']] }
-    expect(buildSession({ ...p, log: [yesterday] }, { equipment: GYM, now }).items.map((i) => i.id)).not.toContain('jefferson_curl')
+    const ids = buildSession({ ...p, log: [yesterday] }, { equipment: GYM, now }).items.map((i) => i.id)
+    expect(ids).not.toContain('jefferson_curl')
+    // Blocked today steps DOWN to the RDL — never up to the Nordic.
+    expect(ids).toContain('db_rdl')
+    expect(ids).not.toContain('nordic_curl')
   })
 
   it('removes pregnancy-unsafe moves and keeps holds gentle', () => {

@@ -5,6 +5,7 @@ import {
   isSkillTreeAdded, setSkillTreeAdded, loadSkills, loadMobility, removeMobility, updateMobility,
 } from '../lib/storage.js'
 import { sessionsThisWeek, blockInfo, BLOCK_WEEKS } from '../lib/mobility.js'
+import { PROGRAM_BY_ID } from '../data/mobility.js'
 import { computeStats, powerLevel, rankFor } from '../data/skills.js'
 import { useToast } from '../components/Toast.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
@@ -111,7 +112,7 @@ export default function Programs() {
             <div>
               <p className="day-title">Mobility</p>
               <p className="muted small">
-                Strength through range · {sessionsThisWeek(mob.log || [])} of {mob.perWeek || 3} this week · {blockInfo(mob.startedAt).easy ? 'easy week' : `week ${blockInfo(mob.startedAt).week} of ${BLOCK_WEEKS}`}
+                {PROGRAM_BY_ID[mob.program?.id]?.label || 'Strength through range'} · {sessionsThisWeek(mob.log || [])} of {mob.perWeek || 3} this week · {blockInfo(mob.startedAt).easy ? 'easy week' : `week ${blockInfo(mob.startedAt).week} of ${BLOCK_WEEKS}`}
               </p>
             </div>
             <span className="level-chip">Alongside</span>
@@ -226,7 +227,7 @@ export default function Programs() {
         <p className="group-label">More</p>
         {!mob?.added && (
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/mobility')}>
-            Mobility — strength through range
+            Mobility — full-body, climbing, or your own
           </button>
         )}
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/recovery')}>

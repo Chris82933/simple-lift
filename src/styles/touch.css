@@ -254,7 +254,8 @@ h2.bone-q { font-size: var(--fs-sm); line-height: 1.35; text-transform: none; le
 .mob-safety { display: flex; flex-direction: column; gap: 10px; }
 .mob-safety-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .mob-safety-row .choice-title, .mob-safety-row p { margin: 0; }
-.mob-safety-row .seg { flex: none; min-width: 140px; }
+.mob-safety-row .seg { flex: none; min-width: 240px; }
+.mob-safety-row .seg-item { white-space: nowrap; }
 .mob-test { display: flex; flex-direction: column; gap: 8px; }
 .mob-test .day-title { margin: 0; }
 .mob-how { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
@@ -276,6 +277,19 @@ h2.bone-q { font-size: var(--fs-sm); line-height: 1.35; text-transform: none; le
 .mob-test-row p { margin: 0; }
 .mob-up { color: color-mix(in srgb, var(--go) 75%, var(--text)); font-weight: 600; }
 .mob-sore-row { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Programs */
+.mob-program .tag { white-space: nowrap; }
+.mob-min { white-space: nowrap; }
+.mob-moves li.mob-sec-head { display: block; padding-bottom: 0; border: 0; }
+.mob-moves li.mob-sec-head .group-label { margin: 8px 0 0; }
+.mob-climb-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mob-climb-row .btn { white-space: normal; line-height: 1.25; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mob-btn-sub { font-size: var(--fs-xs, 12px); font-weight: 400; opacity: 0.8; }
+.mob-parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mob-parts li { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; border-top: 1px solid var(--border); padding-top: 6px; }
+.mob-parts li > span:first-child { font-weight: 600; }
+.mob-all summary { cursor: pointer; color: var(--accent); font-size: var(--fs-sm); padding: 4px 0; }
+.mob-sec-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; text-align: center; }
 .mob-sore .choice-title, .mob-ready .choice-title, .mob-ready p { margin: 0; }
 .mob-why summary { cursor: pointer; color: var(--accent); font-size: var(--fs-sm); }
 .mob-notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }

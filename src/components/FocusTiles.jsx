@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
-import { loadPrograms, getActiveProgramId, setActiveProgramId, isSkillTreeAdded, isMobilityAdded } from '../lib/storage.js'
+import { loadPrograms, getActiveProgramId, setActiveProgramId, isSkillTreeAdded, isMobilityAdded, loadMobility } from '../lib/storage.js'
+import { PROGRAM_BY_ID } from '../data/mobility.js'
 
 // "Today's focus" tiles: each saved program, plus the calisthenics skill tree
 // *only if the user has added it*. Used on both Today and the Skill Tree so
@@ -36,7 +37,7 @@ export default function FocusTiles({ current, onPickProgram }) {
       {isMobilityAdded() && (
         <button type="button" className="focus-tab" onClick={() => navigate('/mobility')}>
           <span className="focus-tab-name">Mobility</span>
-          <span className="muted small">Strength through range</span>
+          <span className="muted small">{PROGRAM_BY_ID[loadMobility()?.program?.id]?.label || 'Strength through range'}</span>
         </button>
       )}
       {showSkills && (
