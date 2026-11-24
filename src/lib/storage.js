@@ -415,8 +415,26 @@ export function deleteBodyweight(date) {
   mutate(BODYWEIGHT_KEY, [], (log) => log.filter((e) => e.date !== date))
 }
 
-// The most recent recorded weight, or 0 when the user has never entered one.
+export function clearBodyweight() {
+  mutate(BODYWEIGHT_KEY, [], () => [])
+}
+
+// Tracking is a setting, off by default (settings.trackBodyweight). Someone who
+// weighed in before the setting existed keeps it on, so their chart doesn't
+// vanish. Turning it off keeps the weigh-ins but stops showing or using them.
+export function bodyweightOn(settings = loadSettings()) {
+  if (typeof settings?.trackBodyweight === 'boolean') return settings.trackBodyweight
+  return loadBodyweight().length > 0
+}
+
+export function setBodyweightTracking(on) {
+  return saveSettings({ ...loadSettings(), trackBodyweight: !!on })
+}
+
+// The most recent recorded weight, or 0 when the user has never entered one
+// or has tracking turned off (weighted pull-ups then score the added load only).
 export function currentBodyweight() {
+  if (!bodyweightOn()) return 0
   const log = loadBodyweight()
   return log.length ? Number(log[0].weight) || 0 : 0
 }

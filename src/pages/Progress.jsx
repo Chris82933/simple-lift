@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt, loadBodyweight, updateWorkout, loadMaxes, currentBodyweight, changeWorkoutDate } from '../lib/storage.js'
+import { loadHistory, loadSettings, saveSettings, loadCardio, deleteWorkout, deleteCardio, insertWorkoutAt, insertCardioAt, loadBodyweight, logBodyweight, bodyweightOn, updateWorkout, loadMaxes, currentBodyweight, changeWorkoutDate } from '../lib/storage.js'
 import { CARDIO_BY_ID } from '../data/cardio.js'
 import { exMeasure, musclesFor, matchesQuery, EXERCISE_BY_ID } from '../data/exercises.js'
 import { estimate1RM } from '../lib/oneRepMax.js'
@@ -14,7 +14,7 @@ import { buildShareCard, shareImage, canShareImage } from '../lib/shareCard.js'
 import ExerciseDetail, { bestMarksForExercise } from '../components/ExerciseDetail.jsx'
 import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
-import { acceptNumber, maxWeight, MAX_REPS, MAX_HOLD_SEC } from '../lib/limits.js'
+import { acceptNumber, maxWeight, maxBodyweight, MAX_REPS, MAX_HOLD_SEC } from '../lib/limits.js'
 
 // Chart palette — the app's own accent tokens, so series stay on-brand and
 // theme-aware (correct in both light and dark) instead of fixed hexes.
@@ -473,7 +473,16 @@ export default function Progress() {
   const refresh = () => setRefreshKey((v) => v + 1)
   const history = useMemo(() => loadHistory(), [refreshKey])
   const cardio = useMemo(() => loadCardio(), [refreshKey])
-  const bodyweightLog = useMemo(() => loadBodyweight(), [refreshKey])
+  // Bodyweight tracking is a setting (off by default): off, nothing shows here.
+  const trackBw = useMemo(() => bodyweightOn(), [refreshKey])
+  const bodyweightLog = useMemo(() => (trackBw ? loadBodyweight() : []), [refreshKey, trackBw])
+  const [bwValue, setBwValue] = useState('')
+  const saveWeighIn = () => {
+    if (!(Number(bwValue) > 0)) return
+    logBodyweight(Number(bwValue))
+    setBwValue('')
+    refresh()
+  }
   const units = loadSettings().units || 'lbs'
   const [detailEx, setDetailEx] = useState(null) // { id, name } for the detail sheet
 
@@ -665,6 +674,26 @@ export default function Progress() {
   const [order, setOrder] = useState(() => orderFrom(loadSettings().progressOrder))
   const [layoutEdit, setLayoutEdit] = useState(false)
 
+  // Quick weigh-in, shown when bodyweight tracking is on.
+  const weighInRow = (
+    <div className="bw-entry">
+      <input
+        type="number"
+        inputMode="decimal"
+        className="text-input"
+        placeholder={bodyweightLog.length && bodyweightLog[0].date.slice(0, 10) === new Date().toISOString().slice(0, 10) ? `Today: ${bodyweightLog[0].weight} ${units}` : `Today's weight in ${units}`}
+        value={bwValue}
+        min="0"
+        onChange={(e) => setBwValue(acceptNumber(e.target.value, bwValue, { max: maxBodyweight() }))}
+        onKeyDown={(e) => { if (e.key === 'Enter') saveWeighIn() }}
+        aria-label={`Today's bodyweight in ${units}`}
+      />
+      <button type="button" className="btn btn-primary btn-sm" onClick={saveWeighIn} disabled={!(Number(bwValue) > 0)}>
+        Save
+      </button>
+    </div>
+  )
+
   // Weigh-ins alone are enough to have something worth showing here.
   if (history.length === 0 && cardio.length === 0 && bodyweightLog.length < 2) {
     return (
@@ -676,6 +705,15 @@ export default function Progress() {
           <Link className="btn btn-primary" to="/today">Go to today</Link>
           <button className="btn btn-ghost" onClick={() => navigate('/cardio')}>Log cardio</button>
         </div>
+        {trackBw && (
+          <div className="card">
+            <p className="group-label">Bodyweight</p>
+            {weighInRow}
+            <p className="muted small">
+              {bodyweightLog.length ? 'One more weigh-in on another day and your chart starts here.' : 'Weigh in now and then — your chart builds from there.'}
+            </p>
+          </div>
+        )}
       </section>
     )
   }
@@ -684,7 +722,7 @@ export default function Progress() {
   const sectionVisible = {
     prs: prs.length > 0,
     weight: true,
-    bodyweight: bodyweightLog.length > 1,
+    bodyweight: trackBw,
     bw: bwSeries.length > 0,
     exlist: exercisesTracked.length > 0,
     cardio: true,
@@ -912,22 +950,26 @@ export default function Progress() {
       </div>
 
       {/* ---- Bodyweight over time ---- */}
-      {bodyweightLog.length > 1 && (
+      {trackBw && (
         <div className="progress-section" style={orderStyle('bodyweight')}>
         <CollapsibleCard
-          title={`Bodyweight over time (${units})`}
-          subtitle={`${bodyweightLog[0].weight} ${units} now`}
+          title={`Bodyweight (${units})`}
+          subtitle={bodyweightLog.length ? `${bodyweightLog[0].weight} ${units} now` : 'No weigh-ins yet'}
           open={cardOpen('bodyweight')}
           onToggle={() => toggleCard('bodyweight')}
         >
-          {inRange(bodyweightSeries).length > 0 ? (
+          {weighInRow}
+          {bodyweightLog.length < 2 ? (
+            <p className="muted small">{bodyweightLog.length ? 'One more weigh-in on another day and your chart starts here.' : 'Weigh in now and then — your chart builds from there.'}</p>
+          ) : inRange(bodyweightSeries).length > 0 ? (
             <ProgressChart series={inRange(bodyweightSeries)} units={units} ariaLabel={`Bodyweight over time (${units})`} />
           ) : (
             <p className="muted small">No weigh-ins in this range yet — try a wider one.</p>
           )}
           <p className="muted small">
-            From your weigh-ins in Settings. Also used to score weighted pull-ups and dips as
-            bodyweight + added load.
+            Re-weighing the same day replaces that day&apos;s entry. Edit or delete weigh-ins, or turn
+            this off, in Settings. Also used to score weighted pull-ups and dips as bodyweight +
+            added load.
           </p>
         </CollapsibleCard>
         </div>

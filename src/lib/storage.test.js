@@ -7,7 +7,7 @@ import {
   loadPrograms, savePrograms, addProgram, updateProgram, deleteProgram,
   loadSettings, saveSettings, loadHistory, appendWorkout, insertWorkoutAt,
   exportData, importData, exportCode, importCode, clearAll, restoreProgram,
-  loadBodyweight, logBodyweight, currentBodyweight, saveSkills, isSkillTreeAdded, setSkillTreeAdded,
+  loadBodyweight, logBodyweight, currentBodyweight, bodyweightOn, setBodyweightTracking, clearBodyweight, saveSkills, isSkillTreeAdded, setSkillTreeAdded,
   loadCustomExercises, saveCustomExercise, deleteCustomExercise,
   saveActiveSession, loadActiveSession, clearActiveSession,
   syncDecision, summarizeSnapshot, getSyncMarker, setSyncMarker,
@@ -152,6 +152,37 @@ describe('bodyweight log', () => {
     expect(currentBodyweight()).toBe(0)
     await importCode(code)
     expect(currentBodyweight()).toBe(180)
+  })
+})
+
+describe('bodyweight tracking setting', () => {
+  it('is off by default for someone who never weighed in', () => {
+    expect(bodyweightOn()).toBe(false)
+  })
+  it('stays on for someone who weighed in before the setting existed', () => {
+    logBodyweight(180, '2026-01-01T08:00:00.000Z')
+    expect(loadSettings().trackBodyweight).toBeUndefined()
+    expect(bodyweightOn()).toBe(true)
+  })
+  it('turned off: weigh-ins are kept but not used for scoring', () => {
+    logBodyweight(180, '2026-01-01T08:00:00.000Z')
+    setBodyweightTracking(false)
+    expect(bodyweightOn()).toBe(false)
+    expect(currentBodyweight()).toBe(0)
+    expect(loadBodyweight()).toHaveLength(1)
+    setBodyweightTracking(true)
+    expect(currentBodyweight()).toBe(180)
+  })
+  it('keeps the other settings when toggled', () => {
+    saveSettings({ units: 'kg', restTimer: false })
+    setBodyweightTracking(true)
+    expect(loadSettings()).toEqual({ units: 'kg', restTimer: false, trackBodyweight: true })
+  })
+  it('clearing removes every weigh-in', () => {
+    logBodyweight(180, '2026-01-01T08:00:00.000Z')
+    logBodyweight(181, '2026-01-02T08:00:00.000Z')
+    clearBodyweight()
+    expect(loadBodyweight()).toEqual([])
   })
 })
 

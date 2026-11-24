@@ -1,17 +1,23 @@
 import { useState } from 'react'
-import { loadBodyweight, logBodyweight, deleteBodyweight, loadSettings } from '../lib/storage.js'
+import { loadBodyweight, logBodyweight, deleteBodyweight, clearBodyweight, loadSettings, bodyweightOn, setBodyweightTracking } from '../lib/storage.js'
+import ConfirmModal from './ConfirmModal.jsx'
 import { acceptNumber, maxBodyweight } from '../lib/limits.js'
 
 // Records the lifter's own bodyweight. Deliberately explains *why* the app wants
 // it — an unexplained weight field in a workout app reads as judgemental, and
 // people are right to ignore one. It is optional and never shown as a goal or
-// compared to anything.
+// compared to anything. Tracking is a setting, off by default.
 export default function BodyweightCard({ compact = false }) {
   const units = loadSettings().units === 'kg' ? 'kg' : 'lbs'
   const [log, setLog] = useState(() => loadBodyweight())
   const [value, setValue] = useState('')
+  const [on, setOn] = useState(() => bodyweightOn())
+  const [confirmClear, setConfirmClear] = useState(false)
 
-  const current = log.length ? log[0] : null
+  const toggle = (next) => { setBodyweightTracking(next); setOn(next) }
+  const clearAllWeighIns = () => { clearBodyweight(); setLog([]); setConfirmClear(false) }
+
+  const current = on && log.length ? log[0] : null
 
   const save = () => {
     const w = Number(value)
@@ -25,9 +31,9 @@ export default function BodyweightCard({ compact = false }) {
   return (
     <div className="card">
       <p className="group-label">Bodyweight</p>
-      <p className="muted small">
-        Optional, and only ever used for your own numbers — the app never sets a target weight or
-        comments on it.
+      <p className="muted small" style={{ marginTop: 0 }}>
+        Log your weight over time. Optional, and only ever used for your own numbers — the app never
+        sets a target weight or comments on it.
       </p>
       <ul className="why-list">
         <li>
@@ -36,11 +42,43 @@ export default function BodyweightCard({ compact = false }) {
           {current ? Math.round(current.weight) + 25 : 205} {units} lift — without your weight the
           app can only see the 25.
         </li>
-        <li><strong>Charts your weight over time</strong> alongside your lifts, on the Progress tab.</li>
+        <li><strong>Charts your weight over time</strong> on the Progress tab, next to your lifts.</li>
         <li><strong>Strength-to-weight</strong> — the number that actually matters for climbing and calisthenics.</li>
       </ul>
+      <div className="seg">
+        {[{ id: true, label: 'On' }, { id: false, label: 'Off' }].map((o) => (
+          <button
+            key={o.label}
+            type="button"
+            className={'seg-item' + (on === o.id ? ' is-selected' : '')}
+            aria-pressed={on === o.id}
+            onClick={() => toggle(o.id)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
 
-      <div className="bw-entry">
+      {!on && log.length > 0 && (
+        <p className="muted small" style={{ marginTop: 12 }}>
+          Your {log.length} earlier weigh-in{log.length === 1 ? ' is' : 's are'} kept but not shown or
+          used. Turn this back on to see {log.length === 1 ? 'it' : 'them'} again, or{' '}
+          <button type="button" className="link-btn" onClick={() => setConfirmClear(true)}>delete {log.length === 1 ? 'it' : 'them'}</button>.
+        </p>
+      )}
+      {confirmClear && (
+        <ConfirmModal
+          title="Delete your weigh-ins?"
+          message={`This deletes all ${log.length} saved weigh-in${log.length === 1 ? '' : 's'} on this device (and in your account, if you're signed in). It can't be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={clearAllWeighIns}
+          onCancel={() => setConfirmClear(false)}
+        />
+      )}
+
+      {on && (<>
+      <div className="bw-entry" style={{ marginTop: 12 }}>
         <input
           type="number"
           inputMode="decimal"
@@ -78,6 +116,7 @@ export default function BodyweightCard({ compact = false }) {
           </div>
         </details>
       )}
+      </>)}
     </div>
   )
 }
