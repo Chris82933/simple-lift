@@ -427,7 +427,7 @@ export default function MobilitySession() {
     body = (
       <>
         <p className="eyebrow">{step.side ? `${SIDE_WORD[step.side]} · ` : ''}Set {step.set} of {step.of}</p>
-        <div className="mob-title-row"><h1 tabIndex={-1}>{ex?.name}</h1><FormCheckButton name={ex?.name} /></div>
+        <div className="mob-title-row"><h1 tabIndex={-1}>{ex?.name}</h1><FormCheckButton id={ex?.id} name={ex?.name} /></div>
         <Ring frac={inReady ? elapsed / ready : (elapsed - ready) / step.sec}>
           {inReady ? <><span className="mob-mid">Get in position</span><span className="mob-big">{ready - elapsed}</span></>
             : <span className="mob-big" aria-live="off">{fmt(holdLeft)}</span>}
@@ -474,7 +474,7 @@ export default function MobilitySession() {
       body = (
         <>
           <p className="eyebrow">{step.side ? `${SIDE_WORD[step.side]} · ` : ''}Set {step.set} of {step.of}</p>
-          <div className="mob-title-row"><h1 tabIndex={-1}>{ex?.name}</h1><FormCheckButton name={ex?.name} /></div>
+          <div className="mob-title-row"><h1 tabIndex={-1}>{ex?.name}</h1><FormCheckButton id={ex?.id} name={ex?.name} /></div>
           <p className="muted">{ex?.cues}</p>
           <button type="button" className="mob-tap" onClick={() => { setTapReps((n) => n + 1); buzz(40) }} aria-label={`Count a rep, ${tapReps} of ${step.reps} so far`}>
             <span className="mob-big">{tapReps}</span>
@@ -488,7 +488,7 @@ export default function MobilitySession() {
       body = (
         <>
           <p className="eyebrow">{step.side ? `${SIDE_WORD[step.side]} · ` : ''}Set {step.set} of {step.of}</p>
-          <div className="mob-title-row"><h1 tabIndex={-1}>{ex?.name}</h1><FormCheckButton name={ex?.name} /></div>
+          <div className="mob-title-row"><h1 tabIndex={-1}>{ex?.name}</h1><FormCheckButton id={ex?.id} name={ex?.name} /></div>
           <MuscleMap pattern={ex?.pattern} exId={ex?.id} size={110} />
           <p className="muted">{ex?.cues}</p>
           <p className="choice-title">{step.reps} slow reps — we&apos;ll count the pace for you.</p>

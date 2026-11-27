@@ -1,6 +1,11 @@
+import { formSearchUrl } from '../lib/formSearch.js'
+
 // Opens a YouTube search for the exercise so users can do a quick form check.
-export default function FormCheckButton({ name, compact = false }) {
-  const url = `https://www.youtube.com/results?search_query=${encodeURIComponent('how to ' + name + ' proper form')}`
+// Pass the exercise id when there is one: the search is tuned per exercise
+// (see lib/formSearch.js); a bare name (skill steps) falls back to the name.
+export default function FormCheckButton({ id, name, compact = false }) {
+  const url = formSearchUrl({ id, name })
+  if (!url || !name) return null
   return (
     <a
       className={'form-check' + (compact ? ' compact' : '')}
