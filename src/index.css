@@ -425,8 +425,8 @@ button, a, input, select, textarea { outline-color: var(--accent); }
 .btn-sm { padding: 8px 14px; font-size: var(--fs-sm); }
 .btn.danger { color: var(--danger-text, var(--accent-2)); border-color: color-mix(in srgb, var(--accent-2) 40%, var(--border)); }
 /* A filled danger button (confirm dialogs): red, not red text on the teal gradient. */
-.btn.btn-primary.danger { background: #c62828; color: #fff; border-color: transparent; }
-.btn.btn-primary.danger:hover:not(:disabled) { background: #b71c1c; }
+.btn.btn-primary.danger { background: var(--danger-bg, #c62828); color: #fff; border-color: transparent; box-shadow: none; }
+.btn.btn-primary.danger:hover:not(:disabled) { background: var(--danger-bg-hover, #b71c1c); border-color: transparent; }
 
 /* ---- Week strip states ---- */
 .day-chip.is-training { color: var(--text); border-color: var(--accent); }

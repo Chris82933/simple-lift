@@ -29,7 +29,7 @@ describe('form search', () => {
   })
   it('drops brackets and plus signs from our names', () => {
     expect(q('hack_squat')).toBe('machine hack squat form')
-    expect(q('lunge_calf_raise')).toBe('lunge calf raise form')
+    expect(formSearchQuery({ id: 'custom_u', name: 'Squat + Press' })).toBe('squat press form')
   })
   it('never uses the old "how to" wording, and every query is clean', () => {
     for (const ex of EXERCISES) {
@@ -49,6 +49,23 @@ describe('form search', () => {
   })
   it('custom exercises fall back to the typed name', () => {
     expect(formSearchQuery({ id: 'custom_x', name: 'Sled Push' })).toBe('sled push form')
+  })
+  it('prototype names and empty input are safe', () => {
+    expect(formSearchQuery({ name: 'constructor' })).toBe('constructor form')
+    expect(formSearchQuery({ id: 'toString', name: 'toString' })).toBe('tostring form')
+    expect(formSearchQuery(null)).toBeNull()
+    expect(formSearchQuery({})).toBeNull()
+  })
+  it('a name that already says stretch, hold or pose is used as is', () => {
+    expect(formSearchQuery({ id: 'custom_y', name: 'Hamstring Stretch' })).toBe('hamstring stretch')
+    expect(formSearchQuery({ id: 'custom_z', name: 'Pigeon Pose' })).toBe('pigeon pose')
+  })
+  it('hold skills and custom timed exercises search as holds', () => {
+    expect(formSearchQuery({ name: 'Back Lever Tuck', hold: true })).toBe('back lever tuck hold')
+    expect(formSearchQuery({ id: 'custom_w', name: 'Wall Angel Iso', unit: 'sec', hold: true })).toBe('wall angel iso hold')
+  })
+  it('slashes are spaced out', () => {
+    expect(formSearchQuery({ id: 'custom_v', name: '90/90 Breathing' })).toBe('90 90 breathing form')
   })
   it('no button for a catch-all cardio entry', () => {
     expect(formSearchUrl({ id: 'cardio_machine', name: 'Cardio (any machine)' })).toBeNull()

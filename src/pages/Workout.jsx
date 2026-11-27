@@ -1635,7 +1635,7 @@ export default function Workout() {
                     <p className="ex-name big">{ex.name}</p>
                     {editMode
                       ? <button type="button" className="icon-btn" onClick={() => removeExercise(ex.id)} aria-label={`Remove ${ex.name}`}><span aria-hidden="true">✕</span></button>
-                      : <FormCheckButton id={ex.id} name={ex.name} />}
+                      : <FormCheckButton ex={ex} />}
                   </div>
                   {/* Every tag sits on its own line UNDER the name. Beside the
                       name, a tag plus the Form button left the title no room:

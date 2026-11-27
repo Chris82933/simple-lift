@@ -1,10 +1,11 @@
 import { formSearchUrl } from '../lib/formSearch.js'
 
 // Opens a YouTube search for the exercise so users can do a quick form check.
-// Pass the exercise id when there is one: the search is tuned per exercise
-// (see lib/formSearch.js); a bare name (skill steps) falls back to the name.
-export default function FormCheckButton({ id, name, compact = false }) {
-  const url = formSearchUrl({ id, name })
+// Pass the exercise (`ex`) when there is one: the search is tuned per
+// exercise (see lib/formSearch.js). Skill steps pass a name and `hold`.
+export default function FormCheckButton({ ex, name: nameProp, hold = false, compact = false }) {
+  const name = nameProp || ex?.name
+  const url = formSearchUrl(ex ? { ...ex, name } : { name, hold })
   if (!url || !name) return null
   return (
     <a

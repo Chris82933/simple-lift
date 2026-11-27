@@ -6,6 +6,7 @@ import { exMeasure, musclesFor, matchesQuery, EXERCISE_BY_ID } from '../data/exe
 import { estimate1RM } from '../lib/oneRepMax.js'
 import { prShort, buildSessionSummary, recomputeRecordsFrom } from '../lib/records.js'
 import { SessionDateInput } from '../components/SessionDate.jsx'
+import { sameLocalDay } from '../lib/sessionDate.js'
 import { sessionsThisWeek, trainingStreakWeeks, weeklyCounts, volumeThisWeek, prTimeline } from '../lib/consistency.js'
 import ProgressChart from '../components/ProgressChart.jsx'
 import MuscleMap from '../components/MuscleMap.jsx'
@@ -483,7 +484,7 @@ export default function Progress() {
     setBwValue('')
     refresh()
   }
-  const units = loadSettings().units || 'lbs'
+  const units = loadSettings().units === 'kg' ? 'kg' : 'lbs'
   const [detailEx, setDetailEx] = useState(null) // { id, name } for the detail sheet
 
   // Delete immediately, offer Undo via toast (no blocking confirm dialog).
@@ -681,7 +682,7 @@ export default function Progress() {
         type="number"
         inputMode="decimal"
         className="text-input"
-        placeholder={bodyweightLog.length && bodyweightLog[0].date.slice(0, 10) === new Date().toISOString().slice(0, 10) ? `Today: ${bodyweightLog[0].weight} ${units}` : `Today's weight in ${units}`}
+        placeholder={`Today's weight in ${units}`}
         value={bwValue}
         min="0"
         onChange={(e) => setBwValue(acceptNumber(e.target.value, bwValue, { max: maxBodyweight() }))}
@@ -692,6 +693,13 @@ export default function Progress() {
         Save
       </button>
     </div>
+  )
+  const latestBw = bodyweightLog[0]
+  const latestLine = latestBw && (
+    <p className="muted small">
+      {sameLocalDay(latestBw.date, new Date().toISOString()) ? 'Today' : `Last weigh-in, ${new Date(latestBw.date).toLocaleDateString()}`}: <strong>{latestBw.weight} {units}</strong>
+      {sameLocalDay(latestBw.date, new Date().toISOString()) && ' — saving again replaces it'}
+    </p>
   )
 
   // Weigh-ins alone are enough to have something worth showing here.
@@ -709,6 +717,7 @@ export default function Progress() {
           <div className="card">
             <p className="group-label">Bodyweight</p>
             {weighInRow}
+            {latestLine}
             <p className="muted small">
               {bodyweightLog.length ? 'One more weigh-in on another day and your chart starts here.' : 'Weigh in now and then — your chart builds from there.'}
             </p>
@@ -959,6 +968,7 @@ export default function Progress() {
           onToggle={() => toggleCard('bodyweight')}
         >
           {weighInRow}
+          {latestLine}
           {bodyweightLog.length < 2 ? (
             <p className="muted small">{bodyweightLog.length ? 'One more weigh-in on another day and your chart starts here.' : 'Weigh in now and then — your chart builds from there.'}</p>
           ) : inRange(bodyweightSeries).length > 0 ? (
@@ -967,9 +977,8 @@ export default function Progress() {
             <p className="muted small">No weigh-ins in this range yet — try a wider one.</p>
           )}
           <p className="muted small">
-            Re-weighing the same day replaces that day&apos;s entry. Edit or delete weigh-ins, or turn
-            this off, in Settings. Also used to score weighted pull-ups and dips as bodyweight +
-            added load.
+            Delete weigh-ins, or turn this off, in Settings. Also used to score weighted pull-ups
+            and dips as bodyweight + added load.
           </p>
         </CollapsibleCard>
         </div>

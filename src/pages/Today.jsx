@@ -268,7 +268,7 @@ export default function Today() {
                 {ex.name}
                 {ex.swappedFrom && <span className="muted small swapped-note"> · swapped for your gear</span>}
               </span>
-              <FormCheckButton id={ex.id} name={ex.name} compact />
+              <FormCheckButton ex={ex} compact />
               <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)}</span>
             </li>
           ))}

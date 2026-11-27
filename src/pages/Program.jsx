@@ -103,7 +103,7 @@ export default function Program() {
               <li key={j}>
                 <MuscleMap pattern={ex.pattern} exId={ex.id} size={46} compact />
                 <span className="ex-name">{ex.name}</span>
-                <FormCheckButton id={ex.id} name={ex.name} compact />
+                <FormCheckButton ex={ex} compact />
                 <span className="muted small">{ex.sets} × {repsLabel(ex)}{ex.amrap ? '+' : ''} {measureUnit(ex)}</span>
               </li>
             ))}

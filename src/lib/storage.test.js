@@ -7,7 +7,7 @@ import {
   loadPrograms, savePrograms, addProgram, updateProgram, deleteProgram,
   loadSettings, saveSettings, loadHistory, appendWorkout, insertWorkoutAt,
   exportData, importData, exportCode, importCode, clearAll, restoreProgram,
-  loadBodyweight, logBodyweight, currentBodyweight, bodyweightOn, setBodyweightTracking, clearBodyweight, saveSkills, isSkillTreeAdded, setSkillTreeAdded,
+  loadBodyweight, logBodyweight, currentBodyweight, bodyweightOn, setBodyweightTracking, clearBodyweight, deleteBodyweight, saveSkills, isSkillTreeAdded, setSkillTreeAdded,
   loadCustomExercises, saveCustomExercise, deleteCustomExercise,
   saveActiveSession, loadActiveSession, clearActiveSession,
   syncDecision, summarizeSnapshot, getSyncMarker, setSyncMarker,
@@ -177,6 +177,27 @@ describe('bodyweight tracking setting', () => {
     saveSettings({ units: 'kg', restTimer: false })
     setBodyweightTracking(true)
     expect(loadSettings()).toEqual({ units: 'kg', restTimer: false, trackBodyweight: true })
+  })
+  it('deleting an older user’s last weigh-in keeps tracking on', () => {
+    logBodyweight(180, '2026-01-01T08:00:00.000Z')
+    deleteBodyweight('2026-01-01T08:00:00.000Z')
+    expect(loadBodyweight()).toEqual([])
+    expect(bodyweightOn()).toBe(true)
+  })
+  it('a backup without the setting keeps this device’s choice', async () => {
+    logBodyweight(180, '2026-01-01T08:00:00.000Z')
+    const code = await exportCode() // no trackBodyweight in it
+    setBodyweightTracking(false)
+    await importCode(code)
+    expect(bodyweightOn()).toBe(false)
+  })
+  it('one weigh-in per local day', () => {
+    const at = (h, d = 1) => new Date(2026, 0, d, h).toISOString()
+    logBodyweight(180, at(7))
+    logBodyweight(181, at(22))
+    expect(loadBodyweight()).toHaveLength(1)
+    logBodyweight(179, at(7, 2))
+    expect(loadBodyweight()).toHaveLength(2)
   })
   it('clearing removes every weigh-in', () => {
     logBodyweight(180, '2026-01-01T08:00:00.000Z')

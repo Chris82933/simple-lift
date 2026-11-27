@@ -36,7 +36,7 @@ const QUERY = {
   hip_adduction: 'hip adduction machine form',
   max_hangs: 'hangboard max hangs form',
   repeaters: 'hangboard repeaters form',
-  no_hang_pulls: 'no hang finger training form',
+  no_hang_pulls: 'no hang finger pulls hold',
   finger_ext_band: 'rubber band finger extensions form',
   pronation_supination: 'forearm pronation supination exercise form',
   jump_chinup_drop: 'jumping chin up drop landing form',
@@ -92,15 +92,33 @@ const QUERY = {
   cat_cow_segmental: 'cat cow pose',
   open_book: 'open book stretch',
   bench_t_spine_extension: 'bench thoracic extension stretch',
-  loaded_wrist_extension_rock: 'wrist rocks stretch',
-  hip_90_90_switch: '90 90 hip switch form',
-  loaded_ankle_rocker: 'weighted ankle rocks knee over toe form',
-  active_frog_lift: 'active frog stretch knee lifts',
+  loaded_wrist_extension_rock: 'quadruped wrist rocks stretch',
+  hip_90_90_switch: '90 90 hip switches form',
+  loaded_ankle_rocker: 'weighted knee over toe ankle rocker form',
+  active_frog_lift: 'active frog knee lift offs form',
   high_step_leg_raise: 'standing hip flexor leg raise form',
   pike_compression_lift: 'pike compression lifts form',
   straddle_compression_lift: 'straddle compression lifts form',
   scap_wall_slide: 'scapular wall slides form',
   deep_squat_hold: 'deep squat hold',
+  // Disambiguated after review: names that pull up the wrong video
+  overhead_hold: 'barbell overhead lockout hold',
+  v_sit: 'v sit calisthenics hold',
+  skin_the_cat: 'skin the cat gymnastics rings form',
+  neck_isometric: 'neck isometric hold',
+  jefferson_deadlift: 'jefferson straddle deadlift form',
+  lock_off: 'pull up lock off hold',
+  l_sit_lock_off: 'l sit pull up hold',
+  single_leg_drop_forward_jump: 'single leg drop landing forward hop form',
+  eccentric_heel_drop: 'eccentric heel drops achilles form',
+  frenchie_pullup: 'frenchie pull up climbing form',
+  reverse_nordic: 'reverse nordic curl form',
+  patrick_step: 'patrick step knees over toes form',
+  walking_incline: 'incline treadmill walking form',
+  air_bike: 'assault bike form',
+  pushup_hold: 'isometric push up hold',
+  calf_raise_hold: 'isometric calf raise hold',
+  lunge_calf_raise: 'reverse lunge to calf raise form',
 }
 
 // Skill steps (Skills page) are named for the ladder, not as exercises.
@@ -108,6 +126,7 @@ const SKILL_QUERY = {
   'full pull-up': 'pull up form',
   'advanced tuck': 'advanced tuck front lever hold',
   'full front lever': 'front lever hold',
+  'v-sit': 'v sit calisthenics hold',
   'full push-up': 'push up form',
   'pseudo-planche push-up': 'pseudo planche push up form',
   'archer push-up': 'archer push up form',
@@ -135,21 +154,27 @@ const SKILL_QUERY = {
 const BY_NAME = Object.fromEntries(EXERCISES.map((e) => [e.name.toLowerCase(), e]))
 
 // "Hack Squat (Machine)" -> "hack squat"; "Lunge + Calf Raise" -> "lunge calf raise".
-const clean = (name) => name.replace(/\s*\([^)]*\)/g, '').replace(/\s\+\s/g, ' ').replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase()
+const clean = (name) => name.replace(/\s*\([^)]*\)/g, '').replace(/\s\+\s/g, ' ').replace(/\//g, ' ').replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase()
+
+const own = (o, k) => typeof k === 'string' && Object.hasOwn(o, k)
 
 // The search for an exercise (or anything with a name). null = no button.
-export function formSearchQuery({ id, name } = {}) {
-  if (id && id in QUERY) return QUERY[id]
+// Pass the whole exercise when you have it: a custom timed exercise is only
+// known to be a hold from its own fields. `hold: true` marks a hold skill.
+export function formSearchQuery(arg) {
+  const { id, name, hold } = arg || {}
+  if (own(QUERY, id)) return QUERY[id]
   const key = (name || '').trim().toLowerCase()
-  if (!id && key in SKILL_QUERY) return SKILL_QUERY[key]
-  const ex = (id && EXERCISE_BY_ID[id]) || BY_NAME[key] || null
-  if (ex && ex.id !== id && ex.id in QUERY) return QUERY[ex.id]
+  if (!id && own(SKILL_QUERY, key)) return SKILL_QUERY[key]
+  const ex = (own(EXERCISE_BY_ID, id) && EXERCISE_BY_ID[id]) || (own(BY_NAME, key) && BY_NAME[key]) || null
+  if (ex && ex.id !== id && own(QUERY, ex.id)) return QUERY[ex.id]
   const n = clean(ex?.name || name || '')
   if (!n) return null
+  if (/\b(stretch|holds?|pose)$/.test(n)) return n
   const mob = ex && MOVES[ex.id]
-  if (mob?.kind === 'hold' && !mob.active) return /\bstretch\b/.test(n) ? n : `${n} stretch`
-  const held = ex && (mob?.kind === 'hold' || (isHold(ex) && ex.pattern !== 'conditioning'))
-  if (held) return /\bholds?$/.test(n) ? n : `${n} hold`
+  if (mob?.kind === 'hold' && !mob.active) return `${n} stretch`
+  const timed = (e) => e && isHold(e) && e.pattern !== 'conditioning'
+  if (hold || mob?.kind === 'hold' || timed(ex) || (!ex && arg?.unit === 'sec' && arg?.hold)) return `${n} hold`
   return `${n} form`
 }
 

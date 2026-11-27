@@ -1,6 +1,6 @@
 // On-device persistence with a multi-program model and change events that the
 // optional cloud-sync layer listens to. All data lives under these keys:
-import { uniqueDate } from './sessionDate.js'
+import { uniqueDate, sameLocalDay } from './sessionDate.js'
 import { hasCompression, encodeGzip, decodeGzip } from './codec.js'
 
 const PROFILE_KEY = 'simple-lift:profile'
@@ -400,10 +400,9 @@ export const loadBodyweight = () => read(BODYWEIGHT_KEY, [])
 export function logBodyweight(weight, date = new Date().toISOString()) {
   const w = Number(weight) || 0
   if (w <= 0) return loadBodyweight()
-  const day = date.slice(0, 10)
   mutate(BODYWEIGHT_KEY, [], (log) => {
-    // One entry per day — re-weighing replaces rather than stacks.
-    const rest = log.filter((e) => (e.date || '').slice(0, 10) !== day)
+    // One entry per (local) day — re-weighing replaces rather than stacks.
+    const rest = log.filter((e) => !e.date || !sameLocalDay(e.date, date))
     return [{ date, weight: w }, ...rest].sort((a, b) => (a.date < b.date ? 1 : -1))
   })
   // Announce it like a settings save so the UI flashes "✓ Saved".
@@ -412,10 +411,22 @@ export function logBodyweight(weight, date = new Date().toISOString()) {
 }
 
 export function deleteBodyweight(date) {
+  pinBodyweightChoice()
   mutate(BODYWEIGHT_KEY, [], (log) => log.filter((e) => e.date !== date))
 }
 
+// Someone who weighed in before the setting existed is "on" because they have
+// weigh-ins; make that explicit before the log can empty, so deleting their
+// last weigh-in doesn't switch tracking off behind their back.
+function pinBodyweightChoice() {
+  const s = loadSettings()
+  if (typeof s?.trackBodyweight !== 'boolean' && loadBodyweight().length) {
+    mutate(SETTINGS_KEY, { units: 'lbs' }, (cur) => ({ ...cur, trackBodyweight: true }))
+  }
+}
+
 export function clearBodyweight() {
+  pinBodyweightChoice()
   mutate(BODYWEIGHT_KEY, [], () => [])
 }
 
@@ -427,8 +438,12 @@ export function bodyweightOn(settings = loadSettings()) {
   return loadBodyweight().length > 0
 }
 
+// Through mutate: a failed settings read must never be written back as
+// "just this one key".
 export function setBodyweightTracking(on) {
-  return saveSettings({ ...loadSettings(), trackBodyweight: !!on })
+  const ok = mutate(SETTINGS_KEY, { units: 'lbs' }, (s) => ({ ...s, trackBodyweight: !!on }))
+  if (ok) { try { window.dispatchEvent(new CustomEvent('sl-saved')) } catch { /* no window */ } }
+  return ok
 }
 
 // The most recent recorded weight, or 0 when the user has never entered one
@@ -724,7 +739,13 @@ export function importData(blob) {
   if (clean.programs !== undefined) write(PROGRAMS_KEY, clean.programs, { silent: true })
   if (clean.activeProgramId !== undefined) write(ACTIVE_KEY, clean.activeProgramId, { silent: true })
   if (clean.history !== undefined) write(HISTORY_KEY, clean.history, { silent: true })
-  if (clean.settings !== undefined) write(SETTINGS_KEY, clean.settings, { silent: true })
+  if (clean.settings !== undefined) {
+    // A code from before the bodyweight setting existed has no choice in it:
+    // keep the one made on this device rather than guessing from the log.
+    const here = read(SETTINGS_KEY, {})?.trackBodyweight
+    const incoming = typeof clean.settings?.trackBodyweight !== 'boolean' && typeof here === 'boolean' ? { ...clean.settings, trackBodyweight: here } : clean.settings
+    write(SETTINGS_KEY, incoming, { silent: true })
+  }
   if (clean.maxes !== undefined) write(MAXES_KEY, clean.maxes, { silent: true })
   if (clean.cardio !== undefined) write(CARDIO_KEY, clean.cardio, { silent: true })
   if (clean.skills !== undefined) write(SKILLS_KEY, clean.skills, { silent: true })

@@ -219,7 +219,6 @@ export default function Profile() {
       title: `Switch to ${units}?`,
       message: `We'll convert your saved starting weights, saved 1RMs, bodyweight log, and past workout history from ${from} to ${units} (rounded to the nearest ${inc}${units}) — nothing just gets relabeled. This isn't perfectly reversible if you switch back and forth. Plate/bar settings aren't converted; check those under Plate calculator settings after switching.`,
       confirmLabel: `Convert to ${units}`,
-      danger: true,
       onConfirm: () => {
         setConfirmModal(null)
         convertStoredWeights(from, units)
@@ -234,34 +233,34 @@ export default function Profile() {
   }
 
   const setHidePlateCalc = (hide) => {
-    const next = { ...settings, hidePlateCalc: hide }
+    const next = { ...loadSettings(), hidePlateCalc: hide }
     setSettings(next)
     saveSettings(next)
   }
   const setWarmupStyle = (style) => {
-    const next = { ...settings, warmupStyle: style }
+    const next = { ...loadSettings(), warmupStyle: style }
     setSettings(next)
     saveSettings(next)
   }
   const setSupersetTimers = (on) => {
-    const next = { ...settings, supersetTimers: on }
+    const next = { ...loadSettings(), supersetTimers: on }
     setSettings(next)
     saveSettings(next)
   }
   const setRestTimer = (on) => {
-    const next = { ...settings, restTimer: on }
+    const next = { ...loadSettings(), restTimer: on }
     setSettings(next)
     saveSettings(next)
   }
   const setStretching = (on) => {
-    const next = { ...settings, stretching: on }
+    const next = { ...loadSettings(), stretching: on }
     setSettings(next)
     saveSettings(next)
   }
   const [notifyBusy, setNotifyBusy] = useState(false)
   const setRestNotify = async (on) => {
     if (!on) {
-      const next = { ...settings, restNotify: false }
+      const next = { ...loadSettings(), restNotify: false }
       setSettings(next); saveSettings(next); return
     }
     setNotifyBusy(true)
@@ -271,7 +270,7 @@ export default function Profile() {
       window.alert('Notifications are blocked. Turn them on for this site in your browser or phone settings, then try again.')
       return
     }
-    const next = { ...settings, restNotify: true }
+    const next = { ...loadSettings(), restNotify: true }
     setSettings(next); saveSettings(next)
   }
 
@@ -280,7 +279,7 @@ export default function Profile() {
   // agrees with what's actually on screen.
   const theme = settings.theme || 'system'
   const setTheme = (t) => {
-    const next = { ...settings, theme: t }
+    const next = { ...loadSettings(), theme: t }
     setSettings(next)
     saveSettings(next)
     applyTheme(t)
@@ -712,7 +711,7 @@ export default function Profile() {
       </div>
 
       {/* ---- Bodyweight ---- */}
-      <BodyweightCard />
+      <BodyweightCard key={settings.units || 'lbs'} />
 
       {/* ---- Setup summary ---- */}
       {profile ? (

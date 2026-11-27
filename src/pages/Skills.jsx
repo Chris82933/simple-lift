@@ -147,7 +147,7 @@ export default function Skills() {
                   <p className="ex-name big">{level.name}</p>
                   <p className="muted small">{sk.name} · Level {idx + 1}/{sk.levels.length}</p>
                 </div>
-                <FormCheckButton name={level.name} />
+                <FormCheckButton name={level.name} hold={sk.type === 'hold'} />
               </div>
 
               <div className="level-dots" aria-hidden="true">

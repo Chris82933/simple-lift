@@ -43,9 +43,9 @@ export default function BodyweightCard({ compact = false }) {
           app can only see the 25.
         </li>
         <li><strong>Charts your weight over time</strong> on the Progress tab, next to your lifts.</li>
-        <li><strong>Strength-to-weight</strong> — the number that actually matters for climbing and calisthenics.</li>
+        <li><strong>Sizes the weight limit</strong> on loaded Mobility moves like the Jefferson curl. Without it they use a small fixed limit.</li>
       </ul>
-      <div className="seg">
+      <div className="seg" role="group" aria-label="Track bodyweight">
         {[{ id: true, label: 'On' }, { id: false, label: 'Off' }].map((o) => (
           <button
             key={o.label}
@@ -69,13 +69,18 @@ export default function BodyweightCard({ compact = false }) {
       {confirmClear && (
         <ConfirmModal
           title="Delete your weigh-ins?"
-          message={`This deletes all ${log.length} saved weigh-in${log.length === 1 ? '' : 's'} on this device (and in your account, if you're signed in). It can't be undone.`}
+          message={`This deletes all ${log.length} saved weigh-in${log.length === 1 ? '' : 's'} on this device (and from your account when it next syncs, if you're signed in). It can't be undone.`}
           confirmLabel="Delete"
           danger
           onConfirm={clearAllWeighIns}
           onCancel={() => setConfirmClear(false)}
         />
       )}
+
+      <p className="muted small" style={{ marginTop: 12 }}>
+        Records you've already set keep the bodyweight they were scored with — switching this
+        only changes how new sessions are scored.
+      </p>
 
       {on && (<>
       <div className="bw-entry" style={{ marginTop: 12 }}>
@@ -102,7 +107,7 @@ export default function BodyweightCard({ compact = false }) {
         </p>
       )}
 
-      {!compact && log.length > 1 && (
+      {!compact && log.length > 0 && (
         <details className="guide">
           <summary>Weigh-in history</summary>
           <div className="bw-log">
